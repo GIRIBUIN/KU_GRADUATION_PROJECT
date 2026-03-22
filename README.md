@@ -48,7 +48,6 @@
 ---
 
 ## 목업
-
 | 로그인 | 메인 | 일정 추가 | 위젯 |
 |--------|------|-----------|------|
 | ![login](assets/mockups/login.png) | ![home](assets/mockups/home.png) | ![task](assets/mockups/task.png) | ![widget](assets/mockups/widget.png) |

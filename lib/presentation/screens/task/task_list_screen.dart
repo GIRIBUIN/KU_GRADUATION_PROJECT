@@ -6,6 +6,7 @@ import '../../../data/models/task_models.dart';
 import '../../widgets/app_badge.dart';
 import '../../widgets/task_checkbox.dart';
 import '../../widgets/task_widgets.dart';
+import 'task_edit_screen.dart';
 
 class TaskListScreen extends StatelessWidget {
   const TaskListScreen({super.key});
@@ -59,7 +60,11 @@ class TaskListScreen extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton(
         tooltip: '개인 할 일 추가',
-        onPressed: () {},
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const TaskEditScreen()),
+          );
+        },
         backgroundColor: AppTheme.successGreen,
         foregroundColor: Colors.white,
         child: const Icon(Icons.add_rounded, size: 34),
@@ -110,84 +115,91 @@ class _ExpandedTaskTile extends StatelessWidget {
       decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: AppTheme.line)),
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.only(top: 8),
-                  child: Icon(Icons.keyboard_arrow_down_rounded),
-                ),
-                const SizedBox(width: 8),
-                const TaskCheckbox(size: 28),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        task.title,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          AppBadge(
-                            label: task.dueLabel,
-                            color: AppTheme.successGreen,
-                          ),
-                          AppBadge(
-                            label: sourceLabel(task.source),
-                            color: sourceColor(task.source),
-                          ),
-                          Text(
-                            '서브 작업 ${task.doneSubTaskCount}/${task.subTasks.length} 완료',
-                            style: const TextStyle(
-                              color: AppTheme.muted,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                _TrailingMeta(task: task),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.only(left: 72),
-              child: Column(
+      child: InkWell(
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => TaskEditScreen(task: task)),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (final subTask in task.subTasks.take(2))
-                    _SubTaskRow(subTask: subTask, dueLabel: task.dueLabel),
-                  TextButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.add_circle_outline_rounded),
-                    label: const Text('서브 작업 추가'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppTheme.successGreen,
-                      textStyle: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                      ),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: Icon(Icons.keyboard_arrow_down_rounded),
+                  ),
+                  const SizedBox(width: 8),
+                  const TaskCheckbox(size: 28),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          task.title,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            AppBadge(
+                              label: task.dueLabel,
+                              color: AppTheme.successGreen,
+                            ),
+                            AppBadge(
+                              label: sourceLabel(task.source),
+                              color: sourceColor(task.source),
+                            ),
+                            Text(
+                              '서브 작업 ${task.doneSubTaskCount}/${task.subTasks.length} 완료',
+                              style: const TextStyle(
+                                color: AppTheme.muted,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
+                  _TrailingMeta(task: task),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.only(left: 72),
+                child: Column(
+                  children: [
+                    for (final subTask in task.subTasks.take(2))
+                      _SubTaskRow(subTask: subTask, dueLabel: task.dueLabel),
+                    TextButton.icon(
+                      onPressed: () {},
+                      icon: const Icon(Icons.add_circle_outline_rounded),
+                      label: const Text('서브 작업 추가'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppTheme.successGreen,
+                        textStyle: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -205,44 +217,51 @@ class _TaskListTile extends StatelessWidget {
       decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: AppTheme.line)),
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 18),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const TaskCheckbox(size: 28),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    task.title,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
+      child: InkWell(
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => TaskEditScreen(task: task)),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const TaskCheckbox(size: 28),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      task.title,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      AppBadge(
-                        label: task.dueLabel,
-                        color: AppTheme.successGreen,
-                      ),
-                      AppBadge(
-                        label: sourceLabel(task.source),
-                        color: sourceColor(task.source),
-                      ),
-                    ],
-                  ),
-                ],
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        AppBadge(
+                          label: task.dueLabel,
+                          color: AppTheme.successGreen,
+                        ),
+                        AppBadge(
+                          label: sourceLabel(task.source),
+                          color: sourceColor(task.source),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-            _TrailingMeta(task: task),
-          ],
+              _TrailingMeta(task: task),
+            ],
+          ),
         ),
       ),
     );

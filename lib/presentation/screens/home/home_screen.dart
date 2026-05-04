@@ -4,6 +4,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../data/mock/mock_data.dart';
 import '../../widgets/section_title.dart';
 import '../../widgets/task_widgets.dart';
+import '../task/sync_result_screen.dart';
+import '../task/task_edit_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -25,7 +27,13 @@ class HomeScreen extends StatelessWidget {
                 ),
                 IconButton.filledTonal(
                   tooltip: '동기화',
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const SyncResultScreen(),
+                      ),
+                    );
+                  },
                   icon: const Icon(Icons.sync_rounded),
                 ),
                 const SizedBox(width: 10),
@@ -40,7 +48,16 @@ class HomeScreen extends StatelessWidget {
             const _SummaryPanel(),
             const SectionTitle(title: '오늘 할 일'),
             for (final task in MockData.todayTasks) ...[
-              TaskCard(task: task),
+              TaskCard(
+                task: task,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => TaskEditScreen(task: task),
+                    ),
+                  );
+                },
+              ),
               const SizedBox(height: 12),
             ],
             const SectionTitle(title: '마감 임박'),
@@ -48,7 +65,16 @@ class HomeScreen extends StatelessWidget {
               child: Column(
                 children: [
                   for (final task in MockData.upcomingTasks) ...[
-                    InlineTaskRow(task: task),
+                    InlineTaskRow(
+                      task: task,
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => TaskEditScreen(task: task),
+                          ),
+                        );
+                      },
+                    ),
                     if (task != MockData.upcomingTasks.last)
                       const Divider(height: 1, indent: 12, endIndent: 12),
                   ],
@@ -76,7 +102,11 @@ class HomeScreen extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton.large(
         tooltip: '개인 할 일 추가',
-        onPressed: () {},
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const TaskEditScreen()),
+          );
+        },
         child: const Icon(Icons.add_rounded, size: 34),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,

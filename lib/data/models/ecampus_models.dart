@@ -36,6 +36,28 @@ class ParsedEcampusTask {
   final String? rawType;
 }
 
+class EcampusTodoParseResult {
+  const EcampusTodoParseResult({
+    required this.tasks,
+    required this.failures,
+  });
+
+  final List<ParsedEcampusTask> tasks;
+  final List<EcampusParseFailure> failures;
+
+  bool get hasFailures => failures.isNotEmpty;
+}
+
+class EcampusParseFailure {
+  const EcampusParseFailure({
+    required this.reason,
+    this.rawHtml,
+  });
+
+  final String reason;
+  final String? rawHtml;
+}
+
 class SyncResult {
   const SyncResult({
     required this.items,

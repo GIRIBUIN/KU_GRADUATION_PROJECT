@@ -5,4 +5,6 @@ abstract class EcampusTodoService {
   Future<String> fetchTodoHtml(EcampusSession session);
 
   EcampusTodoParseResult parseTodoHtml(String html);
+
+  Future<EcampusTodoParseResult> fetchAndParse(EcampusSession session);
 }

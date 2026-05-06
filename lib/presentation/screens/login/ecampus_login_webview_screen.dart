@@ -20,11 +20,19 @@ class EcampusLoginWebViewScreen extends StatefulWidget {
 }
 
 class _EcampusLoginWebViewScreenState extends State<EcampusLoginWebViewScreen> {
-  static const _cookieBaseUrl = 'https://ecampus.konkuk.ac.kr';
+  static const _cookieBaseUrls = [
+    'https://ecampus.konkuk.ac.kr',
+    'https://ecampus.konkuk.ac.kr/ilos/main/main_form.acl',
+    'https://ecampus.konkuk.ac.kr/ilos/m/main/main_form.acl',
+    'http://ecampus.konkuk.ac.kr',
+    'http://ecampus.konkuk.ac.kr/ilos/main/main_form.acl',
+    'http://ecampus.konkuk.ac.kr/ilos/m/main/main_form.acl',
+  ];
 
   InAppWebViewController? _controller;
   var _isLoading = true;
   var _isCompletingLogin = false;
+  String? _currentUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +40,13 @@ class _EcampusLoginWebViewScreenState extends State<EcampusLoginWebViewScreen> {
       appBar: AppBar(
         title: const Text('e-campus 로그인'),
         actions: [
+          IconButton(
+            tooltip: '로그인 완료 확인',
+            onPressed: _controller == null
+                ? null
+                : () => _tryCompleteLogin(_controller!, showFailure: true),
+            icon: const Icon(Icons.check_rounded),
+          ),
           IconButton(
             tooltip: '새로고침',
             onPressed: () => _controller?.reload(),
@@ -52,6 +67,7 @@ class _EcampusLoginWebViewScreenState extends State<EcampusLoginWebViewScreen> {
               }
               setState(() {
                 _isLoading = true;
+                _currentUrl = url?.toString();
               });
             },
             onLoadStop: (controller, url) async {
@@ -60,6 +76,7 @@ class _EcampusLoginWebViewScreenState extends State<EcampusLoginWebViewScreen> {
               }
               setState(() {
                 _isLoading = false;
+                _currentUrl = url?.toString();
               });
               await _tryCompleteLogin(controller);
             },
@@ -71,9 +88,12 @@ class _EcampusLoginWebViewScreenState extends State<EcampusLoginWebViewScreen> {
     );
   }
 
-  Future<void> _tryCompleteLogin(InAppWebViewController controller) async {
+  Future<bool> _tryCompleteLogin(
+    InAppWebViewController controller, {
+    bool showFailure = false,
+  }) async {
     if (_isCompletingLogin) {
-      return;
+      return false;
     }
 
     _isCompletingLogin = true;
@@ -86,14 +106,7 @@ class _EcampusLoginWebViewScreenState extends State<EcampusLoginWebViewScreen> {
         final html = await controller.evaluateJavascript(
           source: 'document.documentElement.outerHTML;',
         );
-        final cookies = await CookieManager.instance().getCookies(
-          url: WebUri(_cookieBaseUrl),
-        );
-        final cookieMap = <String, String>{
-          for (final cookie in cookies)
-            if ((cookie.value ?? '').trim().isNotEmpty)
-              cookie.name: cookie.value ?? '',
-        };
+        final cookieMap = await _readEcampusCookies();
 
         final result = widget.loginDetector.detect(
           html: html?.toString() ?? '',
@@ -101,17 +114,46 @@ class _EcampusLoginWebViewScreenState extends State<EcampusLoginWebViewScreen> {
         );
 
         if (!mounted) {
-          return;
+          return false;
         }
         if (result.isLoggedIn) {
           Navigator.of(context).pop(
-            EcampusSession(cookies: cookieMap, createdAt: DateTime.now()),
+            EcampusSession(
+              cookies: cookieMap,
+              createdAt: DateTime.now(),
+              lastUrl: _currentUrl,
+            ),
           );
-          return;
+          return true;
         }
       }
+
+      if (mounted && showFailure) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('아직 로그인 성공 상태를 확인하지 못했습니다.')),
+        );
+      }
+      return false;
     } finally {
       _isCompletingLogin = false;
     }
+  }
+
+  Future<Map<String, String>> _readEcampusCookies() async {
+    final cookieMap = <String, String>{};
+    final manager = CookieManager.instance();
+    final urls = {..._cookieBaseUrls, ?_currentUrl};
+
+    for (final baseUrl in urls) {
+      final cookies = await manager.getCookies(url: WebUri(baseUrl));
+      for (final cookie in cookies) {
+        final value = cookie.value ?? '';
+        if (value.trim().isNotEmpty) {
+          cookieMap[cookie.name] = value;
+        }
+      }
+    }
+
+    return cookieMap;
   }
 }

@@ -57,6 +57,19 @@ void main() {
       expect(result.hasTodoList, isFalse);
       expect(result.isLoggedIn, isTrue);
     });
+
+    test('classifies mobile logged-in page as logged in', () {
+      final result = detector.detect(
+        html: _mobileAfterLoginHtml,
+        cookies: const {'JSESSIONID': 'session-id'},
+      );
+
+      expect(result.hasUser, isTrue);
+      expect(result.hasLogoutButton, isTrue);
+      expect(result.hasLogoutLink, isTrue);
+      expect(result.hasSessionCookie, isTrue);
+      expect(result.isLoggedIn, isTrue);
+    });
   });
 }
 
@@ -102,5 +115,15 @@ const _afterLoginHtmlWithoutTodo = '''
         </a>
       </fieldset>
     </div>
+  </div>
+''';
+
+const _mobileAfterLoginHtml = '''
+  <div class="utillmenu">
+    <img alt="" src="/ilos/mp/user_image_view.acl?id=user" id="user_photo">
+    <a href="/ilos/m/lo/logout.acl">
+      <div class="header_exit">logout</div>
+    </a>
+    <a href="/ilos/m/main/todo_list.acl" title="Todo List">todo</a>
   </div>
 ''';

@@ -1,8 +1,13 @@
 class EcampusSession {
-  const EcampusSession({required this.cookies, required this.createdAt});
+  const EcampusSession({
+    required this.cookies,
+    required this.createdAt,
+    this.lastUrl,
+  });
 
   final Map<String, String> cookies;
   final DateTime createdAt;
+  final String? lastUrl;
 
   String get cookieHeader {
     return cookies.entries

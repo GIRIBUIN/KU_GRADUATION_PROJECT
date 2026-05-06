@@ -12,11 +12,19 @@ class EcampusLoginDetector {
     final document = html_parser.parse(html);
 
     return EcampusLoginDetectionResult(
-      hasUser: document.querySelector('#user') != null,
-      hasLogoutButton: document.querySelector('.header_logout') != null,
+      hasUser:
+          document.querySelector('#user') != null ||
+          document.querySelector('#user_photo') != null ||
+          document.querySelector('a[href*="myinfo"]') != null,
+      hasLogoutButton:
+          document.querySelector('.header_logout') != null ||
+          document.querySelector('.header_exit') != null,
       hasLogoutLink:
-          document.querySelector('a[href="/ilos/lo/logout.acl"]') != null,
-      hasTodoList: document.querySelector('#todoList_cnt') != null,
+          document.querySelector('a[href="/ilos/lo/logout.acl"]') != null ||
+          document.querySelector('a[href*="logout.acl"]') != null,
+      hasTodoList:
+          document.querySelector('#todoList_cnt') != null ||
+          document.querySelector('[title="Todo List"]') != null,
       hasSessionCookie: _hasSessionCookie(cookies),
     );
   }

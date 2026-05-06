@@ -71,7 +71,7 @@ class _EcampusLoginDebugScreenState extends State<EcampusLoginDebugScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'WebView 로그인 후 세션 쿠키와 todo HTML 요청을 수동으로 확인합니다.',
+              'Android WebView에서 로그인 세션 쿠키와 todo HTML 요청을 수동으로 확인합니다.',
               style: Theme.of(context).textTheme.bodyMedium,
               textAlign: TextAlign.center,
             ),

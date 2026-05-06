@@ -21,6 +21,7 @@ class EcampusLoginWebViewScreen extends StatefulWidget {
 
 class _EcampusLoginWebViewScreenState extends State<EcampusLoginWebViewScreen> {
   static const _cookieBaseUrls = [
+    // e-campus can move between desktop/mobile and http/https during login.
     'https://ecampus.konkuk.ac.kr',
     'https://ecampus.konkuk.ac.kr/ilos/main/main_form.acl',
     'https://ecampus.konkuk.ac.kr/ilos/m/main/main_form.acl',
@@ -130,7 +131,13 @@ class _EcampusLoginWebViewScreenState extends State<EcampusLoginWebViewScreen> {
 
       if (mounted && showFailure) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('아직 로그인 성공 상태를 확인하지 못했습니다.')),
+          SnackBar(
+            content: Text(
+              '로그인 성공 신호를 찾지 못했습니다. '
+              'e-campus 화면에 이름 또는 로그아웃이 보이면 다시 눌러주세요. '
+              '현재 URL: ${_currentUrl ?? '-'}',
+            ),
+          ),
         );
       }
       return false;

@@ -478,12 +478,20 @@ class _SettingsPage extends StatelessWidget {
           _SettingsSection(
             title: 'e-campus 연동',
             children: [
-              const _SettingsSwitchRow(title: '로그인 상태 유지', value: true),
-              const _SettingsSwitchRow(title: '앱 실행 시 자동 동기화', value: false),
+              const _SettingsSwitchRow(
+                icon: Icons.lock_outline_rounded,
+                title: '로그인 상태 유지',
+                value: true,
+              ),
+              const _SettingsSwitchRow(
+                icon: Icons.sync_rounded,
+                title: '앱 실행 시 자동 동기화',
+                value: false,
+              ),
               _SettingsActionRow(
                 icon: Icons.sync_rounded,
                 title: 'e-campus 연동 테스트',
-                subtitle: '로그인, todo 가져오기, 로그아웃 확인',
+                subtitle: '로그인, todo, 로그아웃 확인',
                 onTap: onOpenSyncDebug,
               ),
             ],
@@ -492,16 +500,33 @@ class _SettingsPage extends StatelessWidget {
           const _SettingsSection(
             title: '알림',
             children: [
-              _SettingsInfoRow(title: '기본 알림', value: '마감 1일 전 오전 9시'),
-              _SettingsInfoRow(title: '마감 임박 기준', value: '3일 이내'),
+              _SettingsInfoRow(
+                icon: Icons.notifications_rounded,
+                title: '기본 알림',
+                value: '1일 전 09:00',
+              ),
+              _SettingsInfoRow(
+                icon: Icons.access_time_rounded,
+                title: '마감 임박 기준',
+                value: '3일 이내',
+              ),
             ],
           ),
           const SizedBox(height: 24),
           const _SettingsSection(
             title: '보안',
             children: [
-              _SettingsInfoRow(title: '계정 저장 정책', value: '아이디와 비밀번호는 저장하지 않음'),
-              _SettingsInfoRow(title: '세션/쿠키 정리', value: '로그아웃 화면에서 처리'),
+              _SettingsInfoRow(
+                icon: Icons.verified_user_outlined,
+                title: '계정 저장 정책',
+                value: '저장 안 함',
+                subtitle: '비밀번호는 저장하지 않음',
+              ),
+              _SettingsInfoRow(
+                icon: Icons.delete_outline_rounded,
+                title: '세션/쿠키 정리',
+                value: '로그아웃 시',
+              ),
             ],
           ),
         ],
@@ -1087,45 +1112,80 @@ class _SettingsSection extends StatelessWidget {
 }
 
 class _SettingsSwitchRow extends StatelessWidget {
-  const _SettingsSwitchRow({required this.title, required this.value});
+  const _SettingsSwitchRow({
+    required this.icon,
+    required this.title,
+    required this.value,
+  });
 
+  final IconData icon;
   final String title;
   final bool value;
 
   @override
   Widget build(BuildContext context) {
-    return SwitchListTile(
-      value: value,
-      onChanged: null,
+    return ListTile(
+      minLeadingWidth: 28,
+      leading: _SettingsIcon(icon: icon, color: AppTheme.successGreen),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-      secondary: Icon(
-        value ? Icons.lock_outline_rounded : Icons.sync_rounded,
-        color: AppTheme.successGreen,
+      trailing: Switch(
+        value: value,
+        onChanged: (_) {},
       ),
     );
   }
 }
 
 class _SettingsInfoRow extends StatelessWidget {
-  const _SettingsInfoRow({required this.title, required this.value});
+  const _SettingsInfoRow({
+    required this.icon,
+    required this.title,
+    required this.value,
+    this.subtitle,
+  });
 
+  final IconData icon;
   final String title;
   final String value;
+  final String? subtitle;
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
+      minLeadingWidth: 28,
+      leading: _SettingsIcon(icon: icon, color: AppTheme.primaryBlue),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-      trailing: SizedBox(
-        width: 154,
-        child: Text(
-          value,
-          textAlign: TextAlign.end,
-          style: const TextStyle(
-            color: AppTheme.primaryBlue,
-            fontWeight: FontWeight.w700,
+      subtitle: subtitle == null
+          ? null
+          : Text(
+              subtitle!,
+              style: const TextStyle(
+                color: AppTheme.muted,
+                fontSize: 12,
+                height: 1.3,
+              ),
+            ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 86),
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppTheme.primaryBlue,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                height: 1.2,
+              ),
+            ),
           ),
-        ),
+          const SizedBox(width: 4),
+          const Icon(Icons.chevron_right_rounded, color: AppTheme.muted),
+        ],
       ),
     );
   }
@@ -1148,10 +1208,31 @@ class _SettingsActionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       onTap: onTap,
-      leading: Icon(icon, color: AppTheme.primaryBlue),
+      minLeadingWidth: 28,
+      leading: _SettingsIcon(icon: icon, color: AppTheme.primaryBlue),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
       subtitle: Text(subtitle),
       trailing: const Icon(Icons.chevron_right_rounded),
+    );
+  }
+}
+
+class _SettingsIcon extends StatelessWidget {
+  const _SettingsIcon({required this.icon, required this.color});
+
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 28,
+      height: 28,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Icon(icon, color: color, size: 18),
     );
   }
 }

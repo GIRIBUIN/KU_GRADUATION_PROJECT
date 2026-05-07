@@ -214,26 +214,51 @@ class _SyncItemCard extends StatelessWidget {
                 value: selected,
                 onChanged: (value) => onChanged(value!),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      parsedTask?.title ?? '제목 없음',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 16,
-                      ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            parsedTask?.title ?? '제목 없음',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 15,
+                              height: 1.32,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        _MiniChip(label: badge, color: badgeColor, filled: true),
+                      ],
                     ),
                     const SizedBox(height: 6),
                     Text(
                       parsedTask?.course ?? 'e-campus',
-                      style: const TextStyle(color: AppTheme.muted),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppTheme.muted,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        ?(dueLabel == null
+                            ? null
+                            : _MiniChip(label: dueLabel, color: badgeColor)),
+                      ],
                     ),
                     if (item.kind == SyncItemKind.updateCandidate &&
                         item.existingTask?.dueDate != parsedTask?.dueDate) ...[
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 8),
                       Text(
                         '마감일 변경 후보',
                         style: TextStyle(
@@ -244,17 +269,6 @@ class _SyncItemCard extends StatelessWidget {
                     ],
                   ],
                 ),
-              ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  ?(dueLabel == null
-                      ? null
-                      : _MiniChip(label: dueLabel, color: badgeColor)),
-                  const SizedBox(height: 8),
-                  _MiniChip(label: badge, color: badgeColor, filled: true),
-                ],
               ),
             ],
           ),

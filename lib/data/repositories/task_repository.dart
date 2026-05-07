@@ -9,6 +9,8 @@ abstract class TaskRepository {
 
   Future<Task?> getTaskById(String id);
 
+  Future<Task?> getTaskByEcampusSourceKey(String sourceKey);
+
   Future<Task> createTask(Task task);
 
   Future<Task> updateTask(Task task);

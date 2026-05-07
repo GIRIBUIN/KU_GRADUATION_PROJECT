@@ -2,15 +2,23 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/task_models.dart';
+import '../../../data/repositories/sub_task_repository.dart';
 import '../../../data/services/ecampus_auth_service.dart';
 import '../../../data/repositories/task_repository.dart';
+import '../../../data/services/sub_task_progress.dart';
 import '../debug/ecampus_login_debug_screen.dart';
 import '../sync/ecampus_sync_progress_screen.dart';
+import '../task/task_detail_screen.dart';
 
 class MainShellScreen extends StatefulWidget {
-  const MainShellScreen({super.key, required this.taskRepository});
+  const MainShellScreen({
+    super.key,
+    required this.taskRepository,
+    required this.subTaskRepository,
+  });
 
   final TaskRepository taskRepository;
+  final SubTaskRepository subTaskRepository;
 
   @override
   State<MainShellScreen> createState() => _MainShellScreenState();
@@ -103,6 +111,21 @@ class _MainShellScreenState extends State<MainShellScreen> {
     );
   }
 
+  Future<void> _openTaskDetail(Task task) async {
+    await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => TaskDetailScreen(
+          taskId: task.id,
+          taskRepository: widget.taskRepository,
+          subTaskRepository: widget.subTaskRepository,
+        ),
+      ),
+    );
+    if (mounted) {
+      _refreshTasks();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<Task>>(
@@ -120,6 +143,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
             onOpenSync: _openEcampusSync,
             onOpenSettings: () => setState(() => _selectedIndex = 3),
             onToggleTask: _toggleTaskCompletion,
+            subTaskRepository: widget.subTaskRepository,
           ),
           _TaskListPage(
             tasks: tasks,
@@ -129,6 +153,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
             onDeleteTask: _deleteTask,
             onRestoreTask: _restoreTask,
             onReorderTasks: _reorderTasks,
+            onOpenTaskDetail: _openTaskDetail,
+            subTaskRepository: widget.subTaskRepository,
           ),
           _ManagementPage(tasks: tasks),
           _SettingsPage(onOpenSyncDebug: _openEcampusDebug),
@@ -188,6 +214,7 @@ class _HomePage extends StatelessWidget {
     required this.onOpenSync,
     required this.onOpenSettings,
     required this.onToggleTask,
+    required this.subTaskRepository,
   });
 
   final List<Task> tasks;
@@ -196,6 +223,7 @@ class _HomePage extends StatelessWidget {
   final VoidCallback onOpenSync;
   final VoidCallback onOpenSettings;
   final ValueChanged<Task> onToggleTask;
+  final SubTaskRepository subTaskRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -273,6 +301,7 @@ class _HomePage extends StatelessWidget {
                   task: task,
                   expanded: true,
                   onToggle: () => onToggleTask(task),
+                  subTaskRepository: subTaskRepository,
                 ),
                 const SizedBox(height: 12),
               ],
@@ -285,6 +314,7 @@ class _HomePage extends StatelessWidget {
               _CompactTaskList(
                 tasks: urgentTasks.take(4).toList(),
                 onToggleTask: onToggleTask,
+                subTaskRepository: subTaskRepository,
               ),
             const SizedBox(height: 24),
             Center(
@@ -310,6 +340,8 @@ class _TaskListPage extends StatefulWidget {
     required this.onDeleteTask,
     required this.onRestoreTask,
     required this.onReorderTasks,
+    required this.onOpenTaskDetail,
+    required this.subTaskRepository,
   });
 
   final List<Task> tasks;
@@ -319,6 +351,8 @@ class _TaskListPage extends StatefulWidget {
   final ValueChanged<Task> onDeleteTask;
   final ValueChanged<Task> onRestoreTask;
   final Future<void> Function(List<Task> orderedTasks) onReorderTasks;
+  final ValueChanged<Task> onOpenTaskDetail;
+  final SubTaskRepository subTaskRepository;
 
   @override
   State<_TaskListPage> createState() => _TaskListPageState();
@@ -376,7 +410,8 @@ class _TaskListPageState extends State<_TaskListPage> {
               const _LoadingBlock()
             else if (visibleTasks.isEmpty)
               const _EmptyBlock(message: '표시할 일정이 없습니다.')
-            else ..._buildTaskSections(visibleTasks),
+            else
+              ..._buildTaskSections(visibleTasks),
           ],
         ),
       ),
@@ -405,10 +440,7 @@ class _TaskListPageState extends State<_TaskListPage> {
   List<Widget> _buildTaskSections(List<Task> tasks) {
     if (_filter == _TaskFilter.deleted) {
       return [
-        _DeletedTaskList(
-          tasks: tasks,
-          onRestoreTask: widget.onRestoreTask,
-        ),
+        _DeletedTaskList(tasks: tasks, onRestoreTask: widget.onRestoreTask),
       ];
     }
 
@@ -418,6 +450,8 @@ class _TaskListPageState extends State<_TaskListPage> {
           tasks: tasks,
           onToggleTask: widget.onToggleTask,
           onDeleteTask: widget.onDeleteTask,
+          onOpenTaskDetail: widget.onOpenTaskDetail,
+          subTaskRepository: widget.subTaskRepository,
           onReorderTasks: widget.onReorderTasks,
         ),
       ];
@@ -440,6 +474,8 @@ class _TaskListPageState extends State<_TaskListPage> {
           tasks: incompleteTasks,
           onToggleTask: widget.onToggleTask,
           onDeleteTask: widget.onDeleteTask,
+          onOpenTaskDetail: widget.onOpenTaskDetail,
+          subTaskRepository: widget.subTaskRepository,
           onReorderTasks: widget.onReorderTasks,
         ),
       const SizedBox(height: 24),
@@ -452,6 +488,8 @@ class _TaskListPageState extends State<_TaskListPage> {
           tasks: completedTasks,
           onToggleTask: widget.onToggleTask,
           onDeleteTask: widget.onDeleteTask,
+          onOpenTaskDetail: widget.onOpenTaskDetail,
+          subTaskRepository: widget.subTaskRepository,
           onReorderTasks: widget.onReorderTasks,
         ),
     ];
@@ -459,7 +497,8 @@ class _TaskListPageState extends State<_TaskListPage> {
 }
 
 bool _isHiddenInMainList(Task task) {
-  return task.status == TaskStatus.deleted || task.status == TaskStatus.excluded;
+  return task.status == TaskStatus.deleted ||
+      task.status == TaskStatus.excluded;
 }
 
 class _ManagementPage extends StatelessWidget {
@@ -707,11 +746,13 @@ class _TaskCard extends StatelessWidget {
   const _TaskCard({
     required this.task,
     required this.onToggle,
+    required this.subTaskRepository,
     this.expanded = false,
   });
 
   final Task task;
   final VoidCallback onToggle;
+  final SubTaskRepository subTaskRepository;
   final bool expanded;
 
   @override
@@ -748,14 +789,9 @@ class _TaskCard extends StatelessWidget {
                   ),
                   if (expanded) ...[
                     const SizedBox(height: 14),
-                    Text(
-                      task.memo?.isNotEmpty == true
-                          ? task.memo!
-                          : '서브 작업은 다음 단계에서 연결합니다.',
-                      style: const TextStyle(
-                        color: AppTheme.muted,
-                        fontSize: 13,
-                      ),
+                    _SubTaskProgressView(
+                      taskId: task.id,
+                      subTaskRepository: subTaskRepository,
                     ),
                   ],
                 ],
@@ -776,11 +812,15 @@ class _TaskListTile extends StatelessWidget {
     required this.task,
     required this.onToggle,
     required this.onDelete,
+    required this.onOpenDetail,
+    required this.subTaskRepository,
   });
 
   final Task task;
   final VoidCallback onToggle;
   final VoidCallback onDelete;
+  final VoidCallback onOpenDetail;
+  final SubTaskRepository subTaskRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -823,6 +863,10 @@ class _TaskListTile extends StatelessWidget {
                         _NeutralChip(label: task.ecampus!.sourceCourse!),
                     ],
                   ),
+                  _SubTaskProgressView(
+                    taskId: task.id,
+                    subTaskRepository: subTaskRepository,
+                  ),
                 ],
               ],
             ),
@@ -839,7 +883,7 @@ class _TaskListTile extends StatelessWidget {
                 ],
                 SizedBox.square(
                   dimension: 32,
-                  child: const _TaskEditButton(),
+                  child: _TaskEditButton(onTap: onOpenDetail),
                 ),
                 SizedBox.square(
                   dimension: 32,
@@ -865,12 +909,16 @@ class _TaskSectionCard extends StatefulWidget {
     required this.tasks,
     required this.onToggleTask,
     required this.onDeleteTask,
+    required this.onOpenTaskDetail,
+    required this.subTaskRepository,
     required this.onReorderTasks,
   });
 
   final List<Task> tasks;
   final ValueChanged<Task> onToggleTask;
   final ValueChanged<Task> onDeleteTask;
+  final ValueChanged<Task> onOpenTaskDetail;
+  final SubTaskRepository subTaskRepository;
   final Future<void> Function(List<Task> orderedTasks) onReorderTasks;
 
   @override
@@ -926,11 +974,11 @@ class _TaskSectionCardState extends State<_TaskSectionCard> {
               return;
             }
             setState(() {
-            _orderedTasks = previousTasks;
-          });
-          _showSnackBar(context, '순서 저장에 실패했습니다.');
-        }
-      },
+              _orderedTasks = previousTasks;
+            });
+            _showSnackBar(context, '순서 저장에 실패했습니다.');
+          }
+        },
         itemBuilder: (context, index) {
           final task = _orderedTasks[index];
           return Column(
@@ -942,6 +990,8 @@ class _TaskSectionCardState extends State<_TaskSectionCard> {
                   task: task,
                   onToggle: () => widget.onToggleTask(task),
                   onDelete: () => widget.onDeleteTask(task),
+                  onOpenDetail: () => widget.onOpenTaskDetail(task),
+                  subTaskRepository: widget.subTaskRepository,
                 ),
               ),
               if (index != _orderedTasks.length - 1)
@@ -955,10 +1005,7 @@ class _TaskSectionCardState extends State<_TaskSectionCard> {
 }
 
 class _DeletedTaskList extends StatelessWidget {
-  const _DeletedTaskList({
-    required this.tasks,
-    required this.onRestoreTask,
-  });
+  const _DeletedTaskList({required this.tasks, required this.onRestoreTask});
 
   final List<Task> tasks;
   final ValueChanged<Task> onRestoreTask;
@@ -998,7 +1045,8 @@ class _DeletedTaskTile extends StatelessWidget {
         style: const TextStyle(fontWeight: FontWeight.w900),
       ),
       subtitle: Text(
-        task.ecampus?.sourceCourse ?? (task.origin == TaskOrigin.ecampus ? 'e-campus' : '개인'),
+        task.ecampus?.sourceCourse ??
+            (task.origin == TaskOrigin.ecampus ? 'e-campus' : '개인'),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
@@ -1015,10 +1063,12 @@ class _CompactTaskList extends StatelessWidget {
   const _CompactTaskList({
     required this.tasks,
     required this.onToggleTask,
+    required this.subTaskRepository,
   });
 
   final List<Task> tasks;
   final ValueChanged<Task> onToggleTask;
+  final SubTaskRepository subTaskRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -1049,6 +1099,10 @@ class _CompactTaskList extends StatelessWidget {
                 ],
               ),
             ),
+            _CompactProgressPadding(
+              taskId: tasks[i].id,
+              subTaskRepository: subTaskRepository,
+            ),
             if (i != tasks.length - 1) const Divider(height: 1, indent: 54),
           ],
         ],
@@ -1058,14 +1112,14 @@ class _CompactTaskList extends StatelessWidget {
 }
 
 class _TaskEditButton extends StatelessWidget {
-  const _TaskEditButton();
+  const _TaskEditButton({required this.onTap});
+
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      onPressed: () {
-        _showSnackBar(context, '작업 상세/수정은 다음 단계에서 연결합니다.');
-      },
+      onPressed: onTap,
       icon: const Icon(Icons.more_vert_rounded),
       color: AppTheme.muted,
       tooltip: '작업 상세/수정',
@@ -1198,6 +1252,94 @@ class _NeutralChip extends StatelessWidget {
           fontSize: 12,
           fontWeight: FontWeight.w800,
         ),
+      ),
+    );
+  }
+}
+
+class _SubTaskProgressView extends StatelessWidget {
+  const _SubTaskProgressView({
+    required this.taskId,
+    required this.subTaskRepository,
+  });
+
+  final String taskId;
+  final SubTaskRepository subTaskRepository;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<SubTask>>(
+      future: subTaskRepository.getSubTasks(taskId),
+      builder: (context, snapshot) {
+        final progress = calculateSubTaskProgress(
+          snapshot.data ?? const <SubTask>[],
+        );
+        if (!progress.hasSubTasks) {
+          return const SizedBox.shrink();
+        }
+
+        return Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '서브 작업 ${progress.doneCount}/${progress.totalCount} 완료',
+                      style: const TextStyle(
+                        color: AppTheme.muted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '${progress.percent}%',
+                    style: const TextStyle(
+                      color: AppTheme.muted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: progress.ratio,
+                  minHeight: 5,
+                  backgroundColor: AppTheme.line,
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                    AppTheme.successGreen,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _CompactProgressPadding extends StatelessWidget {
+  const _CompactProgressPadding({
+    required this.taskId,
+    required this.subTaskRepository,
+  });
+
+  final String taskId;
+  final SubTaskRepository subTaskRepository;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(54, 0, 14, 12),
+      child: _SubTaskProgressView(
+        taskId: taskId,
+        subTaskRepository: subTaskRepository,
       ),
     );
   }
@@ -1471,10 +1613,7 @@ class _SettingsSwitchRow extends StatelessWidget {
       minLeadingWidth: 28,
       leading: _SettingsIcon(icon: icon, color: AppTheme.successGreen),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-      trailing: Switch(
-        value: value,
-        onChanged: (_) {},
-      ),
+      trailing: Switch(value: value, onChanged: (_) {}),
     );
   }
 }

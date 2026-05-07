@@ -9,6 +9,17 @@ class EcampusSession {
   final DateTime createdAt;
   final String? lastUrl;
 
+  bool get hasSessionCookie {
+    final sessionId = cookies['JSESSIONID'];
+    return sessionId != null && sessionId.trim().isNotEmpty;
+  }
+
+  bool get isEmpty => cookies.isEmpty || !hasSessionCookie;
+
+  bool isOlderThan(Duration duration, DateTime now) {
+    return now.difference(createdAt) > duration;
+  }
+
   String get cookieHeader {
     return cookies.entries
         .where((entry) => entry.key.trim().isNotEmpty)
@@ -18,10 +29,11 @@ class EcampusSession {
 }
 
 abstract class EcampusAuthService {
-  Future<EcampusSession> login({
-    required String studentId,
-    required String password,
-  });
-
   Future<void> logout(EcampusSession session);
+
+  Future<void> clearSession();
+}
+
+abstract class EcampusCookieStore {
+  Future<void> clearEcampusCookies();
 }

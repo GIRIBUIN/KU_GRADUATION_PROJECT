@@ -5,7 +5,9 @@ import '../../../data/models/ecampus_models.dart';
 import '../../../data/services/default_ecampus_todo_service.dart';
 import '../../../data/services/ecampus_auth_service.dart';
 import '../../../data/services/ecampus_todo_parser.dart';
+import '../../../data/services/http_ecampus_auth_service.dart';
 import '../../../data/services/http_ecampus_todo_client.dart';
+import '../../services/in_app_webview_ecampus_cookie_store.dart';
 import '../login/ecampus_login_webview_screen.dart';
 
 class EcampusLoginDebugScreen extends StatefulWidget {
@@ -19,14 +21,17 @@ class EcampusLoginDebugScreen extends StatefulWidget {
 class _EcampusLoginDebugScreenState extends State<EcampusLoginDebugScreen> {
   late final http.Client _httpClient;
   late final DefaultEcampusTodoService _todoService;
+  late final HttpEcampusAuthService _authService;
 
   EcampusSession? _session;
   String _status = '대기 중';
   String _todoStatus = '대기 중';
+  String _logoutStatus = '대기 중';
   EcampusTodoParseResult? _parseResult;
   int? _htmlLength;
   String? _errorMessage;
   var _isFetchingTodo = false;
+  var _isLoggingOut = false;
 
   @override
   void initState() {
@@ -35,6 +40,10 @@ class _EcampusLoginDebugScreenState extends State<EcampusLoginDebugScreen> {
     _todoService = DefaultEcampusTodoService(
       client: HttpEcampusTodoClient(httpClient: _httpClient),
       parser: const EcampusTodoParser(),
+    );
+    _authService = HttpEcampusAuthService(
+      httpClient: _httpClient,
+      cookieStore: const InAppWebViewEcampusCookieStore(),
     );
   }
 
@@ -92,6 +101,17 @@ class _EcampusLoginDebugScreenState extends State<EcampusLoginDebugScreen> {
                   : const Icon(Icons.download_rounded),
               label: Text(_isFetchingTodo ? 'todo 가져오는 중' : 'todo 가져오기'),
             ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: session == null || _isLoggingOut ? null : _logout,
+              icon: _isLoggingOut
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.logout_rounded),
+              label: Text(_isLoggingOut ? '로그아웃 중' : '로그아웃 테스트'),
+            ),
             const SizedBox(height: 24),
             _ResultRow(label: '로그인 상태', value: _status),
             _ResultRow(
@@ -107,6 +127,7 @@ class _EcampusLoginDebugScreenState extends State<EcampusLoginDebugScreen> {
               value: hasSessionId == true ? '있음' : '없음',
             ),
             _ResultRow(label: '마지막 URL', value: session?.lastUrl ?? '-'),
+            _ResultRow(label: '로그아웃 상태', value: _logoutStatus),
             const Divider(height: 32),
             _ResultRow(label: 'todo 상태', value: _todoStatus),
             _ResultRow(label: 'HTML 길이', value: '${_htmlLength ?? 0}'),
@@ -158,6 +179,7 @@ class _EcampusLoginDebugScreenState extends State<EcampusLoginDebugScreen> {
     setState(() {
       _session = session;
       _status = session == null ? '취소됨' : '성공';
+      _logoutStatus = '대기 중';
       _todoStatus = '대기 중';
       _parseResult = null;
       _htmlLength = null;
@@ -205,6 +227,51 @@ class _EcampusLoginDebugScreenState extends State<EcampusLoginDebugScreen> {
       if (mounted) {
         setState(() {
           _isFetchingTodo = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _logout() async {
+    final session = _session;
+    if (session == null) {
+      return;
+    }
+
+    setState(() {
+      _isLoggingOut = true;
+      _logoutStatus = '요청 중';
+      _errorMessage = null;
+    });
+
+    try {
+      await _authService.logout(session);
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _session = null;
+        _status = '로그아웃됨';
+        _logoutStatus = '성공';
+        _todoStatus = '대기 중';
+        _parseResult = null;
+        _htmlLength = null;
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _logoutStatus = '실패';
+        _errorMessage = error.toString();
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoggingOut = false;
         });
       }
     }

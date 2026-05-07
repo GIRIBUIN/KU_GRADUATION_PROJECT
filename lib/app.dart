@@ -1,10 +1,33 @@
 import 'package:flutter/material.dart';
 
 import 'core/theme/app_theme.dart';
-import 'presentation/screens/debug/ecampus_login_debug_screen.dart';
+import 'data/local/app_database.dart';
+import 'data/repositories/drift_task_repository.dart';
+import 'presentation/screens/main/main_shell_screen.dart';
 
-class KuTaskApp extends StatelessWidget {
+class KuTaskApp extends StatefulWidget {
   const KuTaskApp({super.key});
+
+  @override
+  State<KuTaskApp> createState() => _KuTaskAppState();
+}
+
+class _KuTaskAppState extends State<KuTaskApp> {
+  late final AppDatabase _database;
+  late final DriftTaskRepository _taskRepository;
+
+  @override
+  void initState() {
+    super.initState();
+    _database = AppDatabase.defaults();
+    _taskRepository = DriftTaskRepository(database: _database);
+  }
+
+  @override
+  void dispose() {
+    _database.close();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -12,7 +35,7 @@ class KuTaskApp extends StatelessWidget {
       title: 'KU Todo',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
-      home: const EcampusLoginDebugScreen(),
+      home: MainShellScreen(taskRepository: _taskRepository),
     );
   }
 }

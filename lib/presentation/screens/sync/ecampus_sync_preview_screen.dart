@@ -98,10 +98,10 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
                 const SizedBox(height: 10),
               ],
             const SizedBox(height: 24),
-            _SectionTitle(title: '가져오지 않을 항목', count: ignoredItems.length),
+            _SectionTitle(title: '제외된 항목', count: ignoredItems.length),
             const SizedBox(height: 10),
             if (ignoredItems.isEmpty)
-              const _EmptyPreviewCard(message: '건너뛸 항목이 없습니다.')
+              const _EmptyPreviewCard(message: '제외된 항목이 없습니다.')
             else
               Card(
                 clipBehavior: Clip.antiAlias,

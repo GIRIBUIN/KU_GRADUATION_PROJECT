@@ -8,6 +8,7 @@ import '../../../data/repositories/task_repository.dart';
 import '../../../data/services/sub_task_progress.dart';
 import '../debug/ecampus_login_debug_screen.dart';
 import '../sync/ecampus_sync_progress_screen.dart';
+import '../task/task_create_screen.dart';
 import '../task/task_detail_screen.dart';
 
 class MainShellScreen extends StatefulWidget {
@@ -95,6 +96,18 @@ class _MainShellScreenState extends State<MainShellScreen> {
     _showSnackBar(context, '삭제된 작업으로 이동했습니다.');
   }
 
+  Future<void> _deleteCompletedTasks(List<Task> tasks) async {
+    for (final task in tasks) {
+      await widget.taskRepository.markDeleted(task.id);
+    }
+    if (!mounted) {
+      return;
+    }
+
+    _refreshTasks();
+    _showSnackBar(context, '완료된 작업을 삭제된 작업으로 이동했습니다.');
+  }
+
   Future<void> _restoreTask(Task task) async {
     await widget.taskRepository.restoreTask(task.id);
     if (!mounted) {
@@ -122,6 +135,20 @@ class _MainShellScreenState extends State<MainShellScreen> {
       ),
     );
     if (mounted) {
+      _refreshTasks();
+    }
+  }
+
+  Future<void> _openTaskCreate() async {
+    final created = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => TaskCreateScreen(
+          taskRepository: widget.taskRepository,
+          subTaskRepository: widget.subTaskRepository,
+        ),
+      ),
+    );
+    if (created == true && mounted) {
       _refreshTasks();
     }
   }
@@ -154,6 +181,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
             onRefresh: _refreshTasks,
             onToggleTask: _toggleTaskCompletion,
             onDeleteTask: _deleteTask,
+            onDeleteCompletedTasks: _deleteCompletedTasks,
             onRestoreTask: _restoreTask,
             onReorderTasks: _reorderTasks,
             onOpenTaskDetail: _openTaskDetail,
@@ -197,9 +225,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
           ),
           floatingActionButton: _selectedIndex == 0 || _selectedIndex == 1
               ? FloatingActionButton(
-                  onPressed: () {
-                    _showSnackBar(context, '개인 할 일 추가는 다음 단계에서 연결합니다.');
-                  },
+                  onPressed: _openTaskCreate,
                   child: const Icon(Icons.add_rounded),
                 )
               : null,
@@ -351,6 +377,7 @@ class _TaskListPage extends StatefulWidget {
     required this.onRefresh,
     required this.onToggleTask,
     required this.onDeleteTask,
+    required this.onDeleteCompletedTasks,
     required this.onRestoreTask,
     required this.onReorderTasks,
     required this.onOpenTaskDetail,
@@ -362,6 +389,7 @@ class _TaskListPage extends StatefulWidget {
   final VoidCallback onRefresh;
   final ValueChanged<Task> onToggleTask;
   final ValueChanged<Task> onDeleteTask;
+  final Future<void> Function(List<Task> tasks) onDeleteCompletedTasks;
   final ValueChanged<Task> onRestoreTask;
   final Future<void> Function(List<Task> orderedTasks) onReorderTasks;
   final ValueChanged<Task> onOpenTaskDetail;
@@ -489,6 +517,33 @@ class _TaskListPageState extends State<_TaskListPage> {
     await widget.onReorderTasks(reorderedTasks);
   }
 
+  Future<void> _confirmDeleteCompletedTasks(List<Task> tasks) async {
+    if (tasks.isEmpty) {
+      return;
+    }
+
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('완료 작업 전체 삭제'),
+        content: Text('완료된 작업 ${tasks.length}개를 삭제된 작업으로 이동할까요?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    );
+    if (shouldDelete == true && mounted) {
+      await widget.onDeleteCompletedTasks(tasks);
+    }
+  }
+
   List<Widget> _buildTaskSections(List<Task> tasks) {
     if (_filter == _TaskFilter.deleted) {
       return [
@@ -500,6 +555,13 @@ class _TaskListPageState extends State<_TaskListPage> {
         _filter == _TaskFilter.completed ||
         _filter == _TaskFilter.overdue) {
       return [
+        if (_filter == _TaskFilter.completed) ...[
+          _CompletedBulkDeleteButton(
+            count: tasks.length,
+            onPressed: () => _confirmDeleteCompletedTasks(tasks),
+          ),
+          const SizedBox(height: 10),
+        ],
         _TaskSectionCard(
           tasks: tasks,
           onToggleTask: widget.onToggleTask,
@@ -1063,6 +1125,28 @@ class _DeletedTaskList extends StatelessWidget {
   }
 }
 
+class _CompletedBulkDeleteButton extends StatelessWidget {
+  const _CompletedBulkDeleteButton({
+    required this.count,
+    required this.onPressed,
+  });
+
+  final int count;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: TextButton.icon(
+        onPressed: count == 0 ? null : onPressed,
+        icon: const Icon(Icons.delete_sweep_outlined, size: 18),
+        label: Text('완료 전체 삭제 ($count)'),
+      ),
+    );
+  }
+}
+
 class _DeletedTaskTile extends StatelessWidget {
   const _DeletedTaskTile({required this.task, required this.onRestore});
 
@@ -1192,7 +1276,7 @@ class _OriginChip extends StatelessWidget {
     final isEcampus = origin == TaskOrigin.ecampus;
     return _ColoredChip(
       label: isEcampus ? 'e-campus' : '개인',
-      color: isEcampus ? AppTheme.primaryBlue : AppTheme.ink,
+      color: AppTheme.primaryBlue,
     );
   }
 }

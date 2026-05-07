@@ -9,7 +9,7 @@ class KuTaskApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'KU Task',
+      title: 'KU Todo',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       home: const EcampusLoginDebugScreen(),

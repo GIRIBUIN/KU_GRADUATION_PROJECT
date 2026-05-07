@@ -200,9 +200,12 @@ class _EcampusSyncProgressScreenState extends State<EcampusSyncProgressScreen> {
         _currentStep = _SyncStep.compare;
       });
 
-      await Navigator.of(context).pushReplacement<void, void>(
+      await Navigator.of(context).pushReplacement<bool?, void>(
         MaterialPageRoute(
-          builder: (_) => EcampusSyncPreviewScreen(syncResult: result),
+          builder: (_) => EcampusSyncPreviewScreen(
+            syncResult: result,
+            syncFlowService: _flowService,
+          ),
         ),
       );
     } catch (error) {

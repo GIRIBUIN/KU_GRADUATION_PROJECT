@@ -2,11 +2,17 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/ecampus_models.dart';
+import '../../../data/services/ecampus_sync_flow_service.dart';
 
 class EcampusSyncPreviewScreen extends StatefulWidget {
-  const EcampusSyncPreviewScreen({super.key, required this.syncResult});
+  const EcampusSyncPreviewScreen({
+    super.key,
+    required this.syncResult,
+    required this.syncFlowService,
+  });
 
   final SyncResult syncResult;
+  final EcampusSyncFlowService syncFlowService;
 
   @override
   State<EcampusSyncPreviewScreen> createState() =>
@@ -15,6 +21,7 @@ class EcampusSyncPreviewScreen extends StatefulWidget {
 
 class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
   late final Set<String> _selectedKeys;
+  var _isSaving = false;
 
   @override
   void initState() {
@@ -145,8 +152,15 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
             Expanded(
               flex: 2,
               child: FilledButton(
-                onPressed: _selectedKeys.isEmpty ? null : _showNextStepNotice,
-                child: Text('선택 항목 ${_selectedKeys.length}개 가져오기'),
+                onPressed: _selectedKeys.isEmpty || _isSaving
+                    ? null
+                    : _importSelectedItems,
+                child: _isSaving
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text('선택 항목 ${_selectedKeys.length}개 가져오기'),
               ),
             ),
           ],
@@ -174,10 +188,58 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
     });
   }
 
-  void _showNextStepNotice() {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('선택 항목 저장은 다음 커밋에서 연결합니다.')));
+  Future<void> _importSelectedItems() async {
+    final selectedItems = widget.syncResult.importCandidates
+        .where((item) => _selectedKeys.contains(_itemKey(item)))
+        .toList(growable: false);
+
+    if (selectedItems.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      final importedTasks = await widget.syncFlowService.importItems(
+        selectedItems,
+        syncedAt: widget.syncResult.syncedAt,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('가져오기 완료'),
+          content: Text('${importedTasks.length}개 항목을 저장했습니다.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('확인'),
+            ),
+          ],
+        ),
+      );
+
+      if (mounted) {
+        Navigator.of(context).pop(true);
+      }
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isSaving = false;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('가져오기에 실패했습니다: $error')));
+    }
   }
 }
 

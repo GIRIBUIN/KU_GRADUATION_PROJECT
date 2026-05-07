@@ -60,6 +60,48 @@ class _MainShellScreenState extends State<MainShellScreen> {
     );
   }
 
+  Future<void> _toggleTaskCompletion(Task task) async {
+    final nextStatus = task.status == TaskStatus.completed
+        ? TaskStatus.active
+        : TaskStatus.completed;
+
+    await widget.taskRepository.updateTaskStatus(task.id, nextStatus);
+    if (!mounted) {
+      return;
+    }
+
+    _refreshTasks();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(nextStatus == TaskStatus.completed ? '완료 처리했습니다.' : '미완료로 되돌렸습니다.'),
+      ),
+    );
+  }
+
+  Future<void> _deleteTask(Task task) async {
+    await widget.taskRepository.markDeleted(task.id);
+    if (!mounted) {
+      return;
+    }
+
+    _refreshTasks();
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('삭제된 작업으로 이동했습니다.')));
+  }
+
+  Future<void> _restoreTask(Task task) async {
+    await widget.taskRepository.restoreTask(task.id);
+    if (!mounted) {
+      return;
+    }
+
+    _refreshTasks();
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('작업을 복구했습니다.')));
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<Task>>(
@@ -76,11 +118,15 @@ class _MainShellScreenState extends State<MainShellScreen> {
             onRefresh: _refreshTasks,
             onOpenSync: _openEcampusSync,
             onOpenSettings: () => setState(() => _selectedIndex = 3),
+            onToggleTask: _toggleTaskCompletion,
           ),
           _TaskListPage(
             tasks: tasks,
             isLoading: isLoading,
             onRefresh: _refreshTasks,
+            onToggleTask: _toggleTaskCompletion,
+            onDeleteTask: _deleteTask,
+            onRestoreTask: _restoreTask,
           ),
           _ManagementPage(tasks: tasks),
           _SettingsPage(onOpenSyncDebug: _openEcampusDebug),
@@ -143,6 +189,7 @@ class _HomePage extends StatelessWidget {
     required this.onRefresh,
     required this.onOpenSync,
     required this.onOpenSettings,
+    required this.onToggleTask,
   });
 
   final List<Task> tasks;
@@ -150,6 +197,7 @@ class _HomePage extends StatelessWidget {
   final VoidCallback onRefresh;
   final VoidCallback onOpenSync;
   final VoidCallback onOpenSettings;
+  final ValueChanged<Task> onToggleTask;
 
   @override
   Widget build(BuildContext context) {
@@ -223,7 +271,11 @@ class _HomePage extends StatelessWidget {
               const _EmptyBlock(message: '오늘 마감인 일정이 없습니다.')
             else
               for (final task in todayTasks.take(3)) ...[
-                _TaskCard(task: task, expanded: true),
+                _TaskCard(
+                  task: task,
+                  expanded: true,
+                  onToggle: () => onToggleTask(task),
+                ),
                 const SizedBox(height: 12),
               ],
             const SizedBox(height: 20),
@@ -232,7 +284,10 @@ class _HomePage extends StatelessWidget {
             if (urgentTasks.isEmpty)
               const _EmptyBlock(message: '가까운 마감 일정이 없습니다.')
             else
-              _CompactTaskList(tasks: urgentTasks.take(4).toList()),
+              _CompactTaskList(
+                tasks: urgentTasks.take(4).toList(),
+                onToggleTask: onToggleTask,
+              ),
             const SizedBox(height: 24),
             Center(
               child: TextButton.icon(
@@ -253,11 +308,17 @@ class _TaskListPage extends StatefulWidget {
     required this.tasks,
     required this.isLoading,
     required this.onRefresh,
+    required this.onToggleTask,
+    required this.onDeleteTask,
+    required this.onRestoreTask,
   });
 
   final List<Task> tasks;
   final bool isLoading;
   final VoidCallback onRefresh;
+  final ValueChanged<Task> onToggleTask;
+  final ValueChanged<Task> onDeleteTask;
+  final ValueChanged<Task> onRestoreTask;
 
   @override
   State<_TaskListPage> createState() => _TaskListPageState();
@@ -268,8 +329,7 @@ class _TaskListPageState extends State<_TaskListPage> {
 
   @override
   Widget build(BuildContext context) {
-    final filteredTasks = widget.tasks.where(_matchesFilter).toList()
-      ..sort(_compareDueDate);
+    final visibleTasks = _visibleTasks();
 
     return SafeArea(
       child: RefreshIndicator(
@@ -296,18 +356,6 @@ class _TaskListPageState extends State<_TaskListPage> {
               ],
             ),
             const SizedBox(height: 18),
-            TextField(
-              enabled: false,
-              decoration: InputDecoration(
-                hintText: '작업 검색',
-                prefixIcon: const Icon(Icons.search_rounded),
-                disabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: AppTheme.line),
-                ),
-              ),
-            ),
-            const SizedBox(height: 18),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
@@ -324,54 +372,91 @@ class _TaskListPageState extends State<_TaskListPage> {
               ),
             ),
             const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: const [
-                Text(
-                  '마감일순',
-                  style: TextStyle(
-                    color: AppTheme.ink,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                SizedBox(width: 6),
-                Icon(Icons.swap_vert_rounded, size: 20),
-              ],
-            ),
-            const SizedBox(height: 8),
             if (widget.isLoading)
               const _LoadingBlock()
-            else if (filteredTasks.isEmpty)
+            else if (visibleTasks.isEmpty)
               const _EmptyBlock(message: '표시할 일정이 없습니다.')
-            else
-              Card(
-                clipBehavior: Clip.antiAlias,
-                child: Column(
-                  children: [
-                    for (var i = 0; i < filteredTasks.length; i++) ...[
-                      _TaskListTile(task: filteredTasks[i]),
-                      if (i != filteredTasks.length - 1)
-                        const Divider(height: 1, indent: 64),
-                    ],
-                  ],
-                ),
-              ),
+            else ..._buildTaskSections(visibleTasks),
           ],
         ),
       ),
     );
   }
 
+  List<Task> _visibleTasks() {
+    final tasks = widget.tasks.where(_matchesFilter).toList();
+    tasks.sort(_compareDueDate);
+    return tasks;
+  }
+
   bool _matchesFilter(Task task) {
     return switch (_filter) {
-      _TaskFilter.all => true,
-      _TaskFilter.ecampus => task.origin == TaskOrigin.ecampus,
-      _TaskFilter.personal => task.origin == TaskOrigin.personal,
+      _TaskFilter.all => !_isHiddenInMainList(task),
+      _TaskFilter.ecampus =>
+        task.origin == TaskOrigin.ecampus && !_isHiddenInMainList(task),
+      _TaskFilter.personal =>
+        task.origin == TaskOrigin.personal && !_isHiddenInMainList(task),
       _TaskFilter.incomplete => task.status == TaskStatus.active,
       _TaskFilter.completed => task.status == TaskStatus.completed,
       _TaskFilter.deleted => task.status == TaskStatus.deleted,
     };
   }
+
+  List<Widget> _buildTaskSections(List<Task> tasks) {
+    if (_filter == _TaskFilter.deleted) {
+      return [
+        _DeletedTaskList(
+          tasks: tasks,
+          onRestoreTask: widget.onRestoreTask,
+        ),
+      ];
+    }
+
+    if (_filter == _TaskFilter.incomplete || _filter == _TaskFilter.completed) {
+      return [
+        _TaskSectionCard(
+          tasks: tasks,
+          onToggleTask: widget.onToggleTask,
+          onDeleteTask: widget.onDeleteTask,
+        ),
+      ];
+    }
+
+    final incompleteTasks = tasks
+        .where((task) => task.status == TaskStatus.active)
+        .toList(growable: false);
+    final completedTasks = tasks
+        .where((task) => task.status == TaskStatus.completed)
+        .toList(growable: false);
+
+    return [
+      _ListSectionHeader(title: '미완료', count: incompleteTasks.length),
+      const SizedBox(height: 10),
+      if (incompleteTasks.isEmpty)
+        const _EmptyBlock(message: '해야 할 작업이 없습니다.')
+      else
+        _TaskSectionCard(
+          tasks: incompleteTasks,
+          onToggleTask: widget.onToggleTask,
+          onDeleteTask: widget.onDeleteTask,
+        ),
+      const SizedBox(height: 24),
+      _ListSectionHeader(title: '완료', count: completedTasks.length),
+      const SizedBox(height: 10),
+      if (completedTasks.isEmpty)
+        const _EmptyBlock(message: '완료된 작업이 없습니다.')
+      else
+        _TaskSectionCard(
+          tasks: completedTasks,
+          onToggleTask: widget.onToggleTask,
+          onDeleteTask: widget.onDeleteTask,
+        ),
+    ];
+  }
+}
+
+bool _isHiddenInMainList(Task task) {
+  return task.status == TaskStatus.deleted || task.status == TaskStatus.excluded;
 }
 
 class _ManagementPage extends StatelessWidget {
@@ -616,9 +701,14 @@ class _SummaryItem {
 }
 
 class _TaskCard extends StatelessWidget {
-  const _TaskCard({required this.task, this.expanded = false});
+  const _TaskCard({
+    required this.task,
+    required this.onToggle,
+    this.expanded = false,
+  });
 
   final Task task;
+  final VoidCallback onToggle;
   final bool expanded;
 
   @override
@@ -629,7 +719,7 @@ class _TaskCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _StatusCheckbox(task: task),
+            _StatusCheckbox(task: task, onTap: onToggle),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -679,18 +769,29 @@ class _TaskCard extends StatelessWidget {
 }
 
 class _TaskListTile extends StatelessWidget {
-  const _TaskListTile({required this.task});
+  const _TaskListTile({
+    required this.task,
+    required this.onToggle,
+    required this.onDelete,
+  });
 
   final Task task;
+  final VoidCallback onToggle;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
+    final isCompleted = task.status == TaskStatus.completed;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      padding: EdgeInsets.symmetric(
+        horizontal: 14,
+        vertical: isCompleted ? 10 : 14,
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _StatusCheckbox(task: task),
+          _StatusCheckbox(task: task, onTap: onToggle),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -698,39 +799,160 @@ class _TaskListTile extends StatelessWidget {
               children: [
                 Text(
                   task.title,
-                  style: const TextStyle(
-                    fontSize: 17,
+                  maxLines: isCompleted ? 2 : null,
+                  overflow: isCompleted ? TextOverflow.ellipsis : null,
+                  style: TextStyle(
+                    color: isCompleted ? AppTheme.muted : AppTheme.ink,
+                    fontSize: isCompleted ? 15 : 17,
                     fontWeight: FontWeight.w900,
+                    height: 1.3,
                   ),
                 ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    if (task.dueDate != null) _DueChip(task: task),
-                    _OriginChip(origin: task.origin),
-                    if (task.ecampus?.sourceCourse != null)
-                      _NeutralChip(label: task.ecampus!.sourceCourse!),
-                  ],
-                ),
+                if (!isCompleted) ...[
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      if (task.dueDate != null) _DueChip(task: task),
+                      _OriginChip(origin: task.origin),
+                      if (task.ecampus?.sourceCourse != null)
+                        _NeutralChip(label: task.ecampus!.sourceCourse!),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
           const SizedBox(width: 8),
-          _PriorityDot(priority: task.priority),
-          const SizedBox(width: 8),
-          const Icon(Icons.more_vert_rounded, color: AppTheme.muted),
+          Padding(
+            padding: const EdgeInsets.only(top: 0),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (!isCompleted) ...[
+                  _PriorityDot(priority: task.priority),
+                  const SizedBox(width: 4),
+                ],
+                SizedBox.square(
+                  dimension: 32,
+                  child: const _TaskEditButton(),
+                ),
+                SizedBox.square(
+                  dimension: 32,
+                  child: IconButton(
+                    onPressed: onDelete,
+                    icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                    color: AppTheme.muted,
+                    tooltip: '삭제',
+                    padding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _CompactTaskList extends StatelessWidget {
-  const _CompactTaskList({required this.tasks});
+class _TaskSectionCard extends StatelessWidget {
+  const _TaskSectionCard({
+    required this.tasks,
+    required this.onToggleTask,
+    required this.onDeleteTask,
+  });
 
   final List<Task> tasks;
+  final ValueChanged<Task> onToggleTask;
+  final ValueChanged<Task> onDeleteTask;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (var i = 0; i < tasks.length; i++) ...[
+            _TaskListTile(
+              task: tasks[i],
+              onToggle: () => onToggleTask(tasks[i]),
+              onDelete: () => onDeleteTask(tasks[i]),
+            ),
+            if (i != tasks.length - 1) const Divider(height: 1, indent: 64),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _DeletedTaskList extends StatelessWidget {
+  const _DeletedTaskList({
+    required this.tasks,
+    required this.onRestoreTask,
+  });
+
+  final List<Task> tasks;
+  final ValueChanged<Task> onRestoreTask;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (var i = 0; i < tasks.length; i++) ...[
+            _DeletedTaskTile(
+              task: tasks[i],
+              onRestore: () => onRestoreTask(tasks[i]),
+            ),
+            if (i != tasks.length - 1) const Divider(height: 1, indent: 16),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _DeletedTaskTile extends StatelessWidget {
+  const _DeletedTaskTile({required this.task, required this.onRestore});
+
+  final Task task;
+  final VoidCallback onRestore;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: Text(
+        task.title,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontWeight: FontWeight.w900),
+      ),
+      subtitle: Text(
+        task.ecampus?.sourceCourse ?? (task.origin == TaskOrigin.ecampus ? 'e-campus' : '개인'),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      trailing: TextButton.icon(
+        onPressed: onRestore,
+        icon: const Icon(Icons.restore_rounded, size: 18),
+        label: const Text('복구'),
+      ),
+    );
+  }
+}
+
+class _CompactTaskList extends StatelessWidget {
+  const _CompactTaskList({
+    required this.tasks,
+    required this.onToggleTask,
+  });
+
+  final List<Task> tasks;
+  final ValueChanged<Task> onToggleTask;
 
   @override
   Widget build(BuildContext context) {
@@ -743,7 +965,10 @@ class _CompactTaskList extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               child: Row(
                 children: [
-                  _StatusCheckbox(task: tasks[i]),
+                  _StatusCheckbox(
+                    task: tasks[i],
+                    onTap: () => onToggleTask(tasks[i]),
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -766,28 +991,60 @@ class _CompactTaskList extends StatelessWidget {
   }
 }
 
+class _TaskEditButton extends StatelessWidget {
+  const _TaskEditButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('작업 상세/수정은 다음 단계에서 연결합니다.')),
+        );
+      },
+      icon: const Icon(Icons.more_vert_rounded),
+      color: AppTheme.muted,
+      tooltip: '작업 상세/수정',
+      padding: EdgeInsets.zero,
+      iconSize: 20,
+    );
+  }
+}
+
 class _StatusCheckbox extends StatelessWidget {
-  const _StatusCheckbox({required this.task});
+  const _StatusCheckbox({required this.task, required this.onTap});
 
   final Task task;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final checked = task.status == TaskStatus.completed;
-    return Container(
-      width: 28,
-      height: 28,
-      decoration: BoxDecoration(
-        color: checked ? AppTheme.successGreen : Colors.white,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: checked ? AppTheme.successGreen : AppTheme.muted,
-          width: 1.6,
+    final disabled =
+        task.status == TaskStatus.deleted || task.status == TaskStatus.excluded;
+
+    return InkWell(
+      onTap: disabled ? null : onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          color: checked ? AppTheme.successGreen : Colors.white,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: disabled
+                ? AppTheme.line
+                : checked
+                ? AppTheme.successGreen
+                : AppTheme.muted,
+            width: 1.6,
+          ),
         ),
+        child: checked
+            ? const Icon(Icons.check_rounded, color: Colors.white, size: 20)
+            : null,
       ),
-      child: checked
-          ? const Icon(Icons.check_rounded, color: Colors.white, size: 20)
-          : null,
     );
   }
 }
@@ -922,6 +1179,28 @@ class _SectionHeader extends StatelessWidget {
         const SizedBox(width: 8),
         if (count > 0)
           _ColoredChip(label: '$count', color: AppTheme.successGreen),
+      ],
+    );
+  }
+}
+
+class _ListSectionHeader extends StatelessWidget {
+  const _ListSectionHeader({required this.title, required this.count});
+
+  final String title;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(
+          title,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+        ),
+        const SizedBox(width: 8),
+        _ColoredChip(label: '$count', color: AppTheme.successGreen),
+        const Expanded(child: Divider(indent: 12)),
       ],
     );
   }

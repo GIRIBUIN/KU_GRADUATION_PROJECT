@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/task_models.dart';
+import '../../../data/services/ecampus_auth_service.dart';
 import '../../../data/repositories/task_repository.dart';
 import '../debug/ecampus_login_debug_screen.dart';
+import '../sync/ecampus_sync_progress_screen.dart';
 
 class MainShellScreen extends StatefulWidget {
   const MainShellScreen({super.key, required this.taskRepository});
@@ -16,6 +18,7 @@ class MainShellScreen extends StatefulWidget {
 
 class _MainShellScreenState extends State<MainShellScreen> {
   var _selectedIndex = 0;
+  EcampusSession? _ecampusSession;
   late Future<List<Task>> _tasksFuture;
 
   @override
@@ -36,11 +39,25 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
   Future<void> _openEcampusSync() async {
     await Navigator.of(context).push<void>(
-      MaterialPageRoute(builder: (_) => const EcampusLoginDebugScreen()),
+      MaterialPageRoute(
+        builder: (_) => EcampusSyncProgressScreen(
+          taskRepository: widget.taskRepository,
+          initialSession: _ecampusSession,
+          onSessionChanged: (session) {
+            _ecampusSession = session;
+          },
+        ),
+      ),
     );
     if (mounted) {
       _refreshTasks();
     }
+  }
+
+  Future<void> _openEcampusDebug() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(builder: (_) => const EcampusLoginDebugScreen()),
+    );
   }
 
   @override
@@ -66,7 +83,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
             onRefresh: _refreshTasks,
           ),
           _ManagementPage(tasks: tasks),
-          _SettingsPage(onOpenSyncDebug: _openEcampusSync),
+          _SettingsPage(onOpenSyncDebug: _openEcampusDebug),
         ];
 
         return Scaffold(

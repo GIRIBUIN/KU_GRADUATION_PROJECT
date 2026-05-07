@@ -38,9 +38,7 @@ class DriftTaskRepository implements TaskRepository {
 
     query.orderBy([
       (table) => OrderingTerm(
-        expression: table.dueDate,
-        mode: OrderingMode.asc,
-        nulls: NullsOrder.last,
+        expression: table.sortOrder,
       ),
       (table) => OrderingTerm(expression: table.createdAt),
     ]);
@@ -78,25 +76,36 @@ class DriftTaskRepository implements TaskRepository {
 
   @override
   Future<Task> createTask(Task task) async {
+    final taskToCreate = task.sortOrder < 0
+        ? _copyTaskWithSortOrder(task, await _nextSortOrder())
+        : task;
+
     await _database.transaction(() async {
-      await _database.into(_database.tasks).insert(_mapper.toCompanion(task));
-      await _replaceRelations(task);
+      await _database
+          .into(_database.tasks)
+          .insert(_mapper.toCompanion(taskToCreate));
+      await _replaceRelations(taskToCreate);
     });
 
-    final created = await getTaskById(task.id);
+    final created = await getTaskById(taskToCreate.id);
     return created!;
   }
 
   @override
   Future<Task> updateTask(Task task) async {
+    final existing = await getTaskById(task.id);
+    final taskToUpdate = task.sortOrder < 0 && existing != null
+        ? _copyTaskWithSortOrder(task, existing.sortOrder)
+        : task;
+
     await _database.transaction(() async {
       await (_database.update(_database.tasks)
-            ..where((table) => table.id.equals(task.id)))
-          .write(_mapper.toCompanion(task));
-      await _replaceRelations(task);
+            ..where((table) => table.id.equals(taskToUpdate.id)))
+          .write(_mapper.toCompanion(taskToUpdate));
+      await _replaceRelations(taskToUpdate);
     });
 
-    final updated = await getTaskById(task.id);
+    final updated = await getTaskById(taskToUpdate.id);
     return updated!;
   }
 
@@ -121,6 +130,7 @@ class DriftTaskRepository implements TaskRepository {
         tagIds: existing.tagIds,
         folderIds: existing.folderIds,
         ecampus: existing.ecampus,
+        sortOrder: existing.sortOrder,
         createdAt: existing.createdAt,
         updatedAt: now,
         completedAt: status == TaskStatus.completed
@@ -129,6 +139,17 @@ class DriftTaskRepository implements TaskRepository {
         deletedAt: status == TaskStatus.deleted ? now : existing.deletedAt,
       ),
     );
+  }
+
+  @override
+  Future<void> updateTaskOrder(List<String> orderedTaskIds) async {
+    await _database.transaction(() async {
+      for (var index = 0; index < orderedTaskIds.length; index++) {
+        await (_database.update(_database.tasks)
+              ..where((table) => table.id.equals(orderedTaskIds[index])))
+            .write(db.TasksCompanion(sortOrder: Value(index)));
+      }
+    });
   }
 
   @override
@@ -156,6 +177,7 @@ class DriftTaskRepository implements TaskRepository {
         tagIds: existing.tagIds,
         folderIds: existing.folderIds,
         ecampus: existing.ecampus,
+        sortOrder: existing.sortOrder,
         createdAt: existing.createdAt,
         updatedAt: _now(),
       ),
@@ -219,5 +241,44 @@ class DriftTaskRepository implements TaskRepository {
             db.TaskFoldersCompanion.insert(taskId: task.id, folderId: folderId),
           );
     }
+  }
+
+  Future<int> _nextSortOrder() async {
+    final rows = await (_database.select(_database.tasks)
+          ..orderBy([
+            (table) => OrderingTerm(
+              expression: table.sortOrder,
+              mode: OrderingMode.desc,
+            ),
+          ])
+          ..limit(1))
+        .get();
+
+    if (rows.isEmpty) {
+      return 0;
+    }
+
+    return rows.first.sortOrder + 1;
+  }
+
+  Task _copyTaskWithSortOrder(Task task, int sortOrder) {
+    return Task(
+      id: task.id,
+      origin: task.origin,
+      status: task.status,
+      title: task.title,
+      dueDate: task.dueDate,
+      priority: task.priority,
+      memo: task.memo,
+      parentTaskId: task.parentTaskId,
+      tagIds: task.tagIds,
+      folderIds: task.folderIds,
+      ecampus: task.ecampus,
+      sortOrder: sortOrder,
+      createdAt: task.createdAt,
+      updatedAt: task.updatedAt,
+      completedAt: task.completedAt,
+      deletedAt: task.deletedAt,
+    );
   }
 }

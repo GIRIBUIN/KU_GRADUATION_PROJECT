@@ -275,6 +275,7 @@ class _FakeTaskRepository implements TaskRepository {
       tagIds: existing.tagIds,
       folderIds: existing.folderIds,
       ecampus: existing.ecampus,
+      sortOrder: existing.sortOrder,
       createdAt: existing.createdAt,
       updatedAt: existing.updatedAt,
       completedAt: existing.completedAt,
@@ -293,6 +294,9 @@ class _FakeTaskRepository implements TaskRepository {
   Future<Task> restoreTask(String id) {
     return updateTaskStatus(id, TaskStatus.active);
   }
+
+  @override
+  Future<void> updateTaskOrder(List<String> orderedTaskIds) async {}
 
   @override
   Future<void> deletePermanently(String id) async {

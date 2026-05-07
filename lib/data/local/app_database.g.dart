@@ -130,6 +130,18 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _ecampusSourceKeyMeta = const VerificationMeta(
     'ecampusSourceKey',
   );
@@ -212,6 +224,7 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     updatedAt,
     completedAt,
     deletedAt,
+    sortOrder,
     ecampusSourceKey,
     ecampusSourceTitle,
     ecampusSourceDueDate,
@@ -316,6 +329,12 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
       context.handle(
         _deletedAtMeta,
         deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
       );
     }
     if (data.containsKey('ecampus_source_key')) {
@@ -429,6 +448,10 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}deleted_at'],
       ),
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
       ecampusSourceKey: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}ecampus_source_key'],
@@ -475,6 +498,7 @@ class Task extends DataClass implements Insertable<Task> {
   final DateTime updatedAt;
   final DateTime? completedAt;
   final DateTime? deletedAt;
+  final int sortOrder;
   final String? ecampusSourceKey;
   final String? ecampusSourceTitle;
   final DateTime? ecampusSourceDueDate;
@@ -494,6 +518,7 @@ class Task extends DataClass implements Insertable<Task> {
     required this.updatedAt,
     this.completedAt,
     this.deletedAt,
+    required this.sortOrder,
     this.ecampusSourceKey,
     this.ecampusSourceTitle,
     this.ecampusSourceDueDate,
@@ -528,6 +553,7 @@ class Task extends DataClass implements Insertable<Task> {
     if (!nullToAbsent || deletedAt != null) {
       map['deleted_at'] = Variable<DateTime>(deletedAt);
     }
+    map['sort_order'] = Variable<int>(sortOrder);
     if (!nullToAbsent || ecampusSourceKey != null) {
       map['ecampus_source_key'] = Variable<String>(ecampusSourceKey);
     }
@@ -573,6 +599,7 @@ class Task extends DataClass implements Insertable<Task> {
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(deletedAt),
+      sortOrder: Value(sortOrder),
       ecampusSourceKey: ecampusSourceKey == null && nullToAbsent
           ? const Value.absent()
           : Value(ecampusSourceKey),
@@ -612,6 +639,7 @@ class Task extends DataClass implements Insertable<Task> {
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       completedAt: serializer.fromJson<DateTime?>(json['completedAt']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
       ecampusSourceKey: serializer.fromJson<String?>(json['ecampusSourceKey']),
       ecampusSourceTitle: serializer.fromJson<String?>(
         json['ecampusSourceTitle'],
@@ -646,6 +674,7 @@ class Task extends DataClass implements Insertable<Task> {
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'completedAt': serializer.toJson<DateTime?>(completedAt),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'sortOrder': serializer.toJson<int>(sortOrder),
       'ecampusSourceKey': serializer.toJson<String?>(ecampusSourceKey),
       'ecampusSourceTitle': serializer.toJson<String?>(ecampusSourceTitle),
       'ecampusSourceDueDate': serializer.toJson<DateTime?>(
@@ -670,6 +699,7 @@ class Task extends DataClass implements Insertable<Task> {
     DateTime? updatedAt,
     Value<DateTime?> completedAt = const Value.absent(),
     Value<DateTime?> deletedAt = const Value.absent(),
+    int? sortOrder,
     Value<String?> ecampusSourceKey = const Value.absent(),
     Value<String?> ecampusSourceTitle = const Value.absent(),
     Value<DateTime?> ecampusSourceDueDate = const Value.absent(),
@@ -689,6 +719,7 @@ class Task extends DataClass implements Insertable<Task> {
     updatedAt: updatedAt ?? this.updatedAt,
     completedAt: completedAt.present ? completedAt.value : this.completedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    sortOrder: sortOrder ?? this.sortOrder,
     ecampusSourceKey: ecampusSourceKey.present
         ? ecampusSourceKey.value
         : this.ecampusSourceKey,
@@ -726,6 +757,7 @@ class Task extends DataClass implements Insertable<Task> {
           ? data.completedAt.value
           : this.completedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
       ecampusSourceKey: data.ecampusSourceKey.present
           ? data.ecampusSourceKey.value
           : this.ecampusSourceKey,
@@ -762,6 +794,7 @@ class Task extends DataClass implements Insertable<Task> {
           ..write('updatedAt: $updatedAt, ')
           ..write('completedAt: $completedAt, ')
           ..write('deletedAt: $deletedAt, ')
+          ..write('sortOrder: $sortOrder, ')
           ..write('ecampusSourceKey: $ecampusSourceKey, ')
           ..write('ecampusSourceTitle: $ecampusSourceTitle, ')
           ..write('ecampusSourceDueDate: $ecampusSourceDueDate, ')
@@ -786,6 +819,7 @@ class Task extends DataClass implements Insertable<Task> {
     updatedAt,
     completedAt,
     deletedAt,
+    sortOrder,
     ecampusSourceKey,
     ecampusSourceTitle,
     ecampusSourceDueDate,
@@ -809,6 +843,7 @@ class Task extends DataClass implements Insertable<Task> {
           other.updatedAt == this.updatedAt &&
           other.completedAt == this.completedAt &&
           other.deletedAt == this.deletedAt &&
+          other.sortOrder == this.sortOrder &&
           other.ecampusSourceKey == this.ecampusSourceKey &&
           other.ecampusSourceTitle == this.ecampusSourceTitle &&
           other.ecampusSourceDueDate == this.ecampusSourceDueDate &&
@@ -830,6 +865,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
   final Value<DateTime> updatedAt;
   final Value<DateTime?> completedAt;
   final Value<DateTime?> deletedAt;
+  final Value<int> sortOrder;
   final Value<String?> ecampusSourceKey;
   final Value<String?> ecampusSourceTitle;
   final Value<DateTime?> ecampusSourceDueDate;
@@ -850,6 +886,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.updatedAt = const Value.absent(),
     this.completedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
+    this.sortOrder = const Value.absent(),
     this.ecampusSourceKey = const Value.absent(),
     this.ecampusSourceTitle = const Value.absent(),
     this.ecampusSourceDueDate = const Value.absent(),
@@ -871,6 +908,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     required DateTime updatedAt,
     this.completedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
+    this.sortOrder = const Value.absent(),
     this.ecampusSourceKey = const Value.absent(),
     this.ecampusSourceTitle = const Value.absent(),
     this.ecampusSourceDueDate = const Value.absent(),
@@ -897,6 +935,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? completedAt,
     Expression<DateTime>? deletedAt,
+    Expression<int>? sortOrder,
     Expression<String>? ecampusSourceKey,
     Expression<String>? ecampusSourceTitle,
     Expression<DateTime>? ecampusSourceDueDate,
@@ -918,6 +957,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
       if (updatedAt != null) 'updated_at': updatedAt,
       if (completedAt != null) 'completed_at': completedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
+      if (sortOrder != null) 'sort_order': sortOrder,
       if (ecampusSourceKey != null) 'ecampus_source_key': ecampusSourceKey,
       if (ecampusSourceTitle != null)
         'ecampus_source_title': ecampusSourceTitle,
@@ -945,6 +985,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Value<DateTime>? updatedAt,
     Value<DateTime?>? completedAt,
     Value<DateTime?>? deletedAt,
+    Value<int>? sortOrder,
     Value<String?>? ecampusSourceKey,
     Value<String?>? ecampusSourceTitle,
     Value<DateTime?>? ecampusSourceDueDate,
@@ -966,6 +1007,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
       updatedAt: updatedAt ?? this.updatedAt,
       completedAt: completedAt ?? this.completedAt,
       deletedAt: deletedAt ?? this.deletedAt,
+      sortOrder: sortOrder ?? this.sortOrder,
       ecampusSourceKey: ecampusSourceKey ?? this.ecampusSourceKey,
       ecampusSourceTitle: ecampusSourceTitle ?? this.ecampusSourceTitle,
       ecampusSourceDueDate: ecampusSourceDueDate ?? this.ecampusSourceDueDate,
@@ -1015,6 +1057,9 @@ class TasksCompanion extends UpdateCompanion<Task> {
     if (deletedAt.present) {
       map['deleted_at'] = Variable<DateTime>(deletedAt.value);
     }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
     if (ecampusSourceKey.present) {
       map['ecampus_source_key'] = Variable<String>(ecampusSourceKey.value);
     }
@@ -1060,6 +1105,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
           ..write('updatedAt: $updatedAt, ')
           ..write('completedAt: $completedAt, ')
           ..write('deletedAt: $deletedAt, ')
+          ..write('sortOrder: $sortOrder, ')
           ..write('ecampusSourceKey: $ecampusSourceKey, ')
           ..write('ecampusSourceTitle: $ecampusSourceTitle, ')
           ..write('ecampusSourceDueDate: $ecampusSourceDueDate, ')
@@ -3463,6 +3509,7 @@ typedef $$TasksTableCreateCompanionBuilder =
       required DateTime updatedAt,
       Value<DateTime?> completedAt,
       Value<DateTime?> deletedAt,
+      Value<int> sortOrder,
       Value<String?> ecampusSourceKey,
       Value<String?> ecampusSourceTitle,
       Value<DateTime?> ecampusSourceDueDate,
@@ -3485,6 +3532,7 @@ typedef $$TasksTableUpdateCompanionBuilder =
       Value<DateTime> updatedAt,
       Value<DateTime?> completedAt,
       Value<DateTime?> deletedAt,
+      Value<int> sortOrder,
       Value<String?> ecampusSourceKey,
       Value<String?> ecampusSourceTitle,
       Value<DateTime?> ecampusSourceDueDate,
@@ -3648,6 +3696,11 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
 
   ColumnFilters<DateTime> get deletedAt => $composableBuilder(
     column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3851,6 +3904,11 @@ class $$TasksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get ecampusSourceKey => $composableBuilder(
     column: $table.ecampusSourceKey,
     builder: (column) => ColumnOrderings(column),
@@ -3930,6 +3988,9 @@ class $$TasksTableAnnotationComposer
 
   GeneratedColumn<DateTime> get deletedAt =>
       $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
 
   GeneratedColumn<String> get ecampusSourceKey => $composableBuilder(
     column: $table.ecampusSourceKey,
@@ -4108,6 +4169,7 @@ class $$TasksTableTableManager
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
                 Value<String?> ecampusSourceKey = const Value.absent(),
                 Value<String?> ecampusSourceTitle = const Value.absent(),
                 Value<DateTime?> ecampusSourceDueDate = const Value.absent(),
@@ -4128,6 +4190,7 @@ class $$TasksTableTableManager
                 updatedAt: updatedAt,
                 completedAt: completedAt,
                 deletedAt: deletedAt,
+                sortOrder: sortOrder,
                 ecampusSourceKey: ecampusSourceKey,
                 ecampusSourceTitle: ecampusSourceTitle,
                 ecampusSourceDueDate: ecampusSourceDueDate,
@@ -4150,6 +4213,7 @@ class $$TasksTableTableManager
                 required DateTime updatedAt,
                 Value<DateTime?> completedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
                 Value<String?> ecampusSourceKey = const Value.absent(),
                 Value<String?> ecampusSourceTitle = const Value.absent(),
                 Value<DateTime?> ecampusSourceDueDate = const Value.absent(),
@@ -4170,6 +4234,7 @@ class $$TasksTableTableManager
                 updatedAt: updatedAt,
                 completedAt: completedAt,
                 deletedAt: deletedAt,
+                sortOrder: sortOrder,
                 ecampusSourceKey: ecampusSourceKey,
                 ecampusSourceTitle: ecampusSourceTitle,
                 ecampusSourceDueDate: ecampusSourceDueDate,

@@ -16,6 +16,7 @@ class Tasks extends Table {
   DateTimeColumn get updatedAt => dateTime()();
   DateTimeColumn get completedAt => dateTime().nullable()();
   DateTimeColumn get deletedAt => dateTime().nullable()();
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
 
   TextColumn get ecampusSourceKey => text().nullable().unique()();
   TextColumn get ecampusSourceTitle => text().nullable()();
@@ -119,5 +120,14 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.defaults() : super(driftDatabase(name: 'ku_task_management'));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onUpgrade: (migrator, from, to) async {
+      if (from < 2) {
+        await migrator.addColumn(tasks, tasks.sortOrder);
+      }
+    },
+  );
 }

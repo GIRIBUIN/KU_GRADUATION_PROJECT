@@ -191,6 +191,11 @@ class _FakeTaskRepository implements TaskRepository {
   Future<Task> updateTaskStatus(String id, TaskStatus status) {
     throw UnimplementedError();
   }
+
+  @override
+  Future<void> updateTaskOrder(List<String> orderedTaskIds) {
+    throw UnimplementedError();
+  }
 }
 
 class _FakeEcampusSyncService implements EcampusSyncService {

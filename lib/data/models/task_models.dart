@@ -21,6 +21,7 @@ class Task {
     this.tagIds = const [],
     this.folderIds = const [],
     this.ecampus,
+    this.sortOrder = -1,
     this.completedAt,
     this.deletedAt,
   });
@@ -36,6 +37,7 @@ class Task {
   final List<String> tagIds;
   final List<String> folderIds;
   final EcampusSyncMetadata? ecampus;
+  final int sortOrder;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? completedAt;

@@ -17,6 +17,8 @@ abstract class TaskRepository {
 
   Future<Task> updateTaskStatus(String id, TaskStatus status);
 
+  Future<void> updateTaskOrder(List<String> orderedTaskIds);
+
   Future<Task> markDeleted(String id);
 
   Future<Task> restoreTask(String id);

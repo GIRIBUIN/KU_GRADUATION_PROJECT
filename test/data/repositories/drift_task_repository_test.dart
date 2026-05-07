@@ -162,6 +162,32 @@ void main() {
       expect(await database.select(database.taskTags).get(), isEmpty);
       expect(await database.select(database.taskFolders).get(), isEmpty);
     });
+
+    test('creates tasks at the end and updates user order', () async {
+      await repository.createTask(
+        _task(id: 'task-1', sourceKey: 'course:item:1'),
+      );
+      await repository.createTask(
+        _task(id: 'task-2', sourceKey: 'course:item:2'),
+      );
+      await repository.createTask(
+        _task(id: 'task-3', sourceKey: 'course:item:3'),
+      );
+
+      expect((await repository.getTasks()).map((task) => task.id), [
+        'task-1',
+        'task-2',
+        'task-3',
+      ]);
+
+      await repository.updateTaskOrder(['task-3', 'task-1', 'task-2']);
+
+      expect((await repository.getTasks()).map((task) => task.id), [
+        'task-3',
+        'task-1',
+        'task-2',
+      ]);
+    });
   });
 }
 

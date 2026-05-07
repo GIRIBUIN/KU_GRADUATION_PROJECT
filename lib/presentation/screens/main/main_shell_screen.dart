@@ -71,10 +71,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
     }
 
     _refreshTasks();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(nextStatus == TaskStatus.completed ? '완료 처리했습니다.' : '미완료로 되돌렸습니다.'),
-      ),
+    _showSnackBar(
+      context,
+      nextStatus == TaskStatus.completed ? '완료 처리했습니다.' : '미완료로 되돌렸습니다.',
     );
   }
 
@@ -85,9 +84,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
     }
 
     _refreshTasks();
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('삭제된 작업으로 이동했습니다.')));
+    _showSnackBar(context, '삭제된 작업으로 이동했습니다.');
   }
 
   Future<void> _restoreTask(Task task) async {
@@ -97,9 +94,13 @@ class _MainShellScreenState extends State<MainShellScreen> {
     }
 
     _refreshTasks();
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('작업을 복구했습니다.')));
+    _showSnackBar(context, '작업을 복구했습니다.');
+  }
+
+  Future<void> _reorderTasks(List<Task> orderedTasks) async {
+    await widget.taskRepository.updateTaskOrder(
+      orderedTasks.map((task) => task.id).toList(growable: false),
+    );
   }
 
   @override
@@ -127,6 +128,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
             onToggleTask: _toggleTaskCompletion,
             onDeleteTask: _deleteTask,
             onRestoreTask: _restoreTask,
+            onReorderTasks: _reorderTasks,
           ),
           _ManagementPage(tasks: tasks),
           _SettingsPage(onOpenSyncDebug: _openEcampusDebug),
@@ -167,11 +169,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
           floatingActionButton: _selectedIndex == 0 || _selectedIndex == 1
               ? FloatingActionButton(
                   onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('개인 할 일 추가는 다음 단계에서 연결합니다.'),
-                      ),
-                    );
+                    _showSnackBar(context, '개인 할 일 추가는 다음 단계에서 연결합니다.');
                   },
                   child: const Icon(Icons.add_rounded),
                 )
@@ -311,6 +309,7 @@ class _TaskListPage extends StatefulWidget {
     required this.onToggleTask,
     required this.onDeleteTask,
     required this.onRestoreTask,
+    required this.onReorderTasks,
   });
 
   final List<Task> tasks;
@@ -319,6 +318,7 @@ class _TaskListPage extends StatefulWidget {
   final ValueChanged<Task> onToggleTask;
   final ValueChanged<Task> onDeleteTask;
   final ValueChanged<Task> onRestoreTask;
+  final Future<void> Function(List<Task> orderedTasks) onReorderTasks;
 
   @override
   State<_TaskListPage> createState() => _TaskListPageState();
@@ -418,6 +418,7 @@ class _TaskListPageState extends State<_TaskListPage> {
           tasks: tasks,
           onToggleTask: widget.onToggleTask,
           onDeleteTask: widget.onDeleteTask,
+          onReorderTasks: widget.onReorderTasks,
         ),
       ];
     }
@@ -439,6 +440,7 @@ class _TaskListPageState extends State<_TaskListPage> {
           tasks: incompleteTasks,
           onToggleTask: widget.onToggleTask,
           onDeleteTask: widget.onDeleteTask,
+          onReorderTasks: widget.onReorderTasks,
         ),
       const SizedBox(height: 24),
       _ListSectionHeader(title: '완료', count: completedTasks.length),
@@ -450,6 +452,7 @@ class _TaskListPageState extends State<_TaskListPage> {
           tasks: completedTasks,
           onToggleTask: widget.onToggleTask,
           onDeleteTask: widget.onDeleteTask,
+          onReorderTasks: widget.onReorderTasks,
         ),
     ];
   }
@@ -857,32 +860,95 @@ class _TaskListTile extends StatelessWidget {
   }
 }
 
-class _TaskSectionCard extends StatelessWidget {
+class _TaskSectionCard extends StatefulWidget {
   const _TaskSectionCard({
     required this.tasks,
     required this.onToggleTask,
     required this.onDeleteTask,
+    required this.onReorderTasks,
   });
 
   final List<Task> tasks;
   final ValueChanged<Task> onToggleTask;
   final ValueChanged<Task> onDeleteTask;
+  final Future<void> Function(List<Task> orderedTasks) onReorderTasks;
+
+  @override
+  State<_TaskSectionCard> createState() => _TaskSectionCardState();
+}
+
+class _TaskSectionCardState extends State<_TaskSectionCard> {
+  late List<Task> _orderedTasks;
+
+  @override
+  void initState() {
+    super.initState();
+    _orderedTasks = List<Task>.of(widget.tasks);
+  }
+
+  @override
+  void didUpdateWidget(_TaskSectionCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final previousIds = _orderedTasks.map((task) => task.id).join('|');
+    final nextIds = widget.tasks.map((task) => task.id).join('|');
+
+    if (previousIds != nextIds) {
+      _orderedTasks = List<Task>.of(widget.tasks);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Card(
       clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          for (var i = 0; i < tasks.length; i++) ...[
-            _TaskListTile(
-              task: tasks[i],
-              onToggle: () => onToggleTask(tasks[i]),
-              onDelete: () => onDeleteTask(tasks[i]),
-            ),
-            if (i != tasks.length - 1) const Divider(height: 1, indent: 64),
-          ],
-        ],
+      child: ReorderableListView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        buildDefaultDragHandles: false,
+        itemCount: _orderedTasks.length,
+        onReorder: (oldIndex, newIndex) async {
+          final previousTasks = List<Task>.of(_orderedTasks);
+          final reorderedTasks = List<Task>.of(_orderedTasks);
+          final adjustedNewIndex = newIndex > oldIndex
+              ? newIndex - 1
+              : newIndex;
+          final movedTask = reorderedTasks.removeAt(oldIndex);
+          reorderedTasks.insert(adjustedNewIndex, movedTask);
+
+          setState(() {
+            _orderedTasks = reorderedTasks;
+          });
+
+          try {
+            await widget.onReorderTasks(reorderedTasks);
+          } catch (_) {
+            if (!context.mounted) {
+              return;
+            }
+            setState(() {
+            _orderedTasks = previousTasks;
+          });
+          _showSnackBar(context, '순서 저장에 실패했습니다.');
+        }
+      },
+        itemBuilder: (context, index) {
+          final task = _orderedTasks[index];
+          return Column(
+            key: ValueKey(task.id),
+            children: [
+              ReorderableDelayedDragStartListener(
+                index: index,
+                child: _TaskListTile(
+                  task: task,
+                  onToggle: () => widget.onToggleTask(task),
+                  onDelete: () => widget.onDeleteTask(task),
+                ),
+              ),
+              if (index != _orderedTasks.length - 1)
+                const Divider(height: 1, indent: 64),
+            ],
+          );
+        },
       ),
     );
   }
@@ -998,9 +1064,7 @@ class _TaskEditButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return IconButton(
       onPressed: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('작업 상세/수정은 다음 단계에서 연결합니다.')),
-        );
+        _showSnackBar(context, '작업 상세/수정은 다음 단계에서 연결합니다.');
       },
       icon: const Icon(Icons.more_vert_rounded),
       color: AppTheme.muted,
@@ -1574,6 +1638,18 @@ int _compareDueDate(Task a, Task b) {
 String _todayLabel(DateTime date) {
   const weekdays = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
   return '${date.month}월 ${date.day}일 ${weekdays[date.weekday - 1]}';
+}
+
+void _showSnackBar(BuildContext context, String message) {
+  final messenger = ScaffoldMessenger.of(context);
+  messenger
+    ..clearSnackBars()
+    ..showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(milliseconds: 1200),
+      ),
+    );
 }
 
 String _dueLabel(DateTime date) {

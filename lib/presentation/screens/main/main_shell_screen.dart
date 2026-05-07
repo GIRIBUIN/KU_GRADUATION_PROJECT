@@ -143,6 +143,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
             onOpenSync: _openEcampusSync,
             onOpenSettings: () => setState(() => _selectedIndex = 3),
             onToggleTask: _toggleTaskCompletion,
+            onDeleteTask: _deleteTask,
+            onReorderTasks: _reorderTasks,
+            onOpenTaskDetail: _openTaskDetail,
             subTaskRepository: widget.subTaskRepository,
           ),
           _TaskListPage(
@@ -214,6 +217,9 @@ class _HomePage extends StatelessWidget {
     required this.onOpenSync,
     required this.onOpenSettings,
     required this.onToggleTask,
+    required this.onDeleteTask,
+    required this.onReorderTasks,
+    required this.onOpenTaskDetail,
     required this.subTaskRepository,
   });
 
@@ -223,6 +229,9 @@ class _HomePage extends StatelessWidget {
   final VoidCallback onOpenSync;
   final VoidCallback onOpenSettings;
   final ValueChanged<Task> onToggleTask;
+  final ValueChanged<Task> onDeleteTask;
+  final Future<void> Function(List<Task> orderedTasks) onReorderTasks;
+  final ValueChanged<Task> onOpenTaskDetail;
   final SubTaskRepository subTaskRepository;
 
   @override
@@ -296,25 +305,29 @@ class _HomePage extends StatelessWidget {
             else if (todayTasks.isEmpty)
               const _EmptyBlock(message: '오늘 마감인 일정이 없습니다.')
             else
-              for (final task in todayTasks.take(3)) ...[
-                _TaskCard(
-                  task: task,
-                  expanded: true,
-                  onToggle: () => onToggleTask(task),
-                  subTaskRepository: subTaskRepository,
-                ),
-                const SizedBox(height: 12),
-              ],
+              _TaskSectionCard(
+                tasks: todayTasks.take(3).toList(growable: false),
+                onToggleTask: onToggleTask,
+                onDeleteTask: onDeleteTask,
+                onOpenTaskDetail: onOpenTaskDetail,
+                subTaskRepository: subTaskRepository,
+                onReorderTasks: onReorderTasks,
+                enableReorder: true,
+              ),
             const SizedBox(height: 20),
             _SectionHeader(title: '마감 임박', count: urgentTasks.length),
             const SizedBox(height: 12),
             if (urgentTasks.isEmpty)
               const _EmptyBlock(message: '가까운 마감 일정이 없습니다.')
             else
-              _CompactTaskList(
-                tasks: urgentTasks.take(4).toList(),
+              _TaskSectionCard(
+                tasks: urgentTasks.take(4).toList(growable: false),
                 onToggleTask: onToggleTask,
+                onDeleteTask: onDeleteTask,
+                onOpenTaskDetail: onOpenTaskDetail,
                 subTaskRepository: subTaskRepository,
+                onReorderTasks: onReorderTasks,
+                enableReorder: true,
               ),
             const SizedBox(height: 24),
             Center(
@@ -360,6 +373,8 @@ class _TaskListPage extends StatefulWidget {
 
 class _TaskListPageState extends State<_TaskListPage> {
   var _filter = _TaskFilter.all;
+  var _sort = _TaskSort.userOrder;
+  final Map<String, int> _localSortOrders = {};
 
   @override
   Widget build(BuildContext context) {
@@ -376,11 +391,26 @@ class _TaskListPageState extends State<_TaskListPage> {
                 Expanded(
                   child: Text(
                     '목록',
-                    textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w900,
                     ),
                   ),
+                ),
+                _SortSelector(
+                  value: _sort,
+                  onChanged: (sort) {
+                    setState(() {
+                      _sort = sort;
+                    });
+                  },
+                ),
+                _FilterSelector(
+                  value: _filter,
+                  onChanged: (filter) {
+                    setState(() {
+                      _filter = filter;
+                    });
+                  },
                 ),
                 IconButton(
                   onPressed: widget.onRefresh,
@@ -389,27 +419,11 @@ class _TaskListPageState extends State<_TaskListPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 18),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  for (final filter in _TaskFilter.values) ...[
-                    ChoiceChip(
-                      label: Text(filter.label),
-                      selected: _filter == filter,
-                      onSelected: (_) => setState(() => _filter = filter),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                ],
-              ),
-            ),
             const SizedBox(height: 24),
             if (widget.isLoading)
               const _LoadingBlock()
             else if (visibleTasks.isEmpty)
-              const _EmptyBlock(message: '표시할 일정이 없습니다.')
+              _EmptyBlock(message: _emptyMessage())
             else
               ..._buildTaskSections(visibleTasks),
           ],
@@ -419,9 +433,20 @@ class _TaskListPageState extends State<_TaskListPage> {
   }
 
   List<Task> _visibleTasks() {
-    final tasks = widget.tasks.where(_matchesFilter).toList();
-    tasks.sort(_compareDueDate);
+    final tasks = widget.tasks
+        .map(_taskWithLocalSortOrder)
+        .where(_matchesFilter)
+        .toList();
+    tasks.sort(_compareTasksBySort(_sort));
     return tasks;
+  }
+
+  Task _taskWithLocalSortOrder(Task task) {
+    final sortOrder = _localSortOrders[task.id];
+    if (sortOrder == null || sortOrder == task.sortOrder) {
+      return task;
+    }
+    return _copyTaskWithSortOrder(task, sortOrder);
   }
 
   bool _matchesFilter(Task task) {
@@ -433,8 +458,35 @@ class _TaskListPageState extends State<_TaskListPage> {
         task.origin == TaskOrigin.personal && !_isHiddenInMainList(task),
       _TaskFilter.incomplete => task.status == TaskStatus.active,
       _TaskFilter.completed => task.status == TaskStatus.completed,
+      _TaskFilter.overdue =>
+        task.status == TaskStatus.active &&
+            task.dueDate != null &&
+            _isOverdue(task.dueDate!),
       _TaskFilter.deleted => task.status == TaskStatus.deleted,
     };
+  }
+
+  String _emptyMessage() {
+    return switch (_filter) {
+      _TaskFilter.overdue => '마감이 지난 작업이 없습니다.',
+      _TaskFilter.deleted => '삭제된 작업이 없습니다.',
+      _TaskFilter.completed => '완료된 작업이 없습니다.',
+      _TaskFilter.incomplete => '해야 할 작업이 없습니다.',
+      _TaskFilter.ecampus => 'e-campus 작업이 없습니다.',
+      _TaskFilter.personal => '개인 작업이 없습니다.',
+      _TaskFilter.all => '표시할 일정이 없습니다.',
+    };
+  }
+
+  Future<void> _handleReorderTasks(List<Task> orderedTasks) async {
+    final reorderedTasks = _tasksWithSequentialSortOrder(orderedTasks);
+    setState(() {
+      for (final task in reorderedTasks) {
+        _localSortOrders[task.id] = task.sortOrder;
+      }
+    });
+
+    await widget.onReorderTasks(reorderedTasks);
   }
 
   List<Widget> _buildTaskSections(List<Task> tasks) {
@@ -444,7 +496,9 @@ class _TaskListPageState extends State<_TaskListPage> {
       ];
     }
 
-    if (_filter == _TaskFilter.incomplete || _filter == _TaskFilter.completed) {
+    if (_filter == _TaskFilter.incomplete ||
+        _filter == _TaskFilter.completed ||
+        _filter == _TaskFilter.overdue) {
       return [
         _TaskSectionCard(
           tasks: tasks,
@@ -452,7 +506,8 @@ class _TaskListPageState extends State<_TaskListPage> {
           onDeleteTask: widget.onDeleteTask,
           onOpenTaskDetail: widget.onOpenTaskDetail,
           subTaskRepository: widget.subTaskRepository,
-          onReorderTasks: widget.onReorderTasks,
+          onReorderTasks: _handleReorderTasks,
+          enableReorder: _sort == _TaskSort.userOrder,
         ),
       ];
     }
@@ -476,7 +531,8 @@ class _TaskListPageState extends State<_TaskListPage> {
           onDeleteTask: widget.onDeleteTask,
           onOpenTaskDetail: widget.onOpenTaskDetail,
           subTaskRepository: widget.subTaskRepository,
-          onReorderTasks: widget.onReorderTasks,
+          onReorderTasks: _handleReorderTasks,
+          enableReorder: _sort == _TaskSort.userOrder,
         ),
       const SizedBox(height: 24),
       _ListSectionHeader(title: '완료', count: completedTasks.length),
@@ -490,7 +546,8 @@ class _TaskListPageState extends State<_TaskListPage> {
           onDeleteTask: widget.onDeleteTask,
           onOpenTaskDetail: widget.onOpenTaskDetail,
           subTaskRepository: widget.subTaskRepository,
-          onReorderTasks: widget.onReorderTasks,
+          onReorderTasks: _handleReorderTasks,
+          enableReorder: _sort == _TaskSort.userOrder,
         ),
     ];
   }
@@ -742,71 +799,6 @@ class _SummaryItem {
   final Color color;
 }
 
-class _TaskCard extends StatelessWidget {
-  const _TaskCard({
-    required this.task,
-    required this.onToggle,
-    required this.subTaskRepository,
-    this.expanded = false,
-  });
-
-  final Task task;
-  final VoidCallback onToggle;
-  final SubTaskRepository subTaskRepository;
-  final bool expanded;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _StatusCheckbox(task: task, onTap: onToggle),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    task.title,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      if (task.dueDate != null) _DueChip(task: task),
-                      _OriginChip(origin: task.origin),
-                      if (task.ecampus?.sourceCourse != null)
-                        _NeutralChip(label: task.ecampus!.sourceCourse!),
-                    ],
-                  ),
-                  if (expanded) ...[
-                    const SizedBox(height: 14),
-                    _SubTaskProgressView(
-                      taskId: task.id,
-                      subTaskRepository: subTaskRepository,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            _PriorityDot(priority: task.priority),
-            const Icon(Icons.chevron_right_rounded, color: AppTheme.muted),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _TaskListTile extends StatelessWidget {
   const _TaskListTile({
     required this.task,
@@ -825,74 +817,90 @@ class _TaskListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isCompleted = task.status == TaskStatus.completed;
+    final isOverdue = task.dueDate != null && _isOverdue(task.dueDate!);
 
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: 14,
-        vertical: isCompleted ? 10 : 14,
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return InkWell(
+      onTap: onOpenDetail,
+      child: Stack(
         children: [
-          _StatusCheckbox(task: task, onTap: onToggle),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
+          if (isOverdue && !isCompleted)
+            Positioned.fill(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Container(width: 4, color: AppTheme.dangerRed),
+              ),
+            ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              14,
+              isCompleted ? 10 : 14,
+              14,
+              isCompleted ? 10 : 14,
+            ),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  task.title,
-                  maxLines: isCompleted ? 2 : null,
-                  overflow: isCompleted ? TextOverflow.ellipsis : null,
-                  style: TextStyle(
-                    color: isCompleted ? AppTheme.muted : AppTheme.ink,
-                    fontSize: isCompleted ? 15 : 17,
-                    fontWeight: FontWeight.w900,
-                    height: 1.3,
-                  ),
-                ),
-                if (!isCompleted) ...[
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      if (task.dueDate != null) _DueChip(task: task),
-                      _OriginChip(origin: task.origin),
-                      if (task.ecampus?.sourceCourse != null)
-                        _NeutralChip(label: task.ecampus!.sourceCourse!),
+                Column(
+                  children: [
+                    _StatusCheckbox(task: task, onTap: onToggle),
+                    if (!isCompleted) ...[
+                      const SizedBox(height: 14),
+                      _PriorityDot(priority: task.priority),
                     ],
-                  ),
-                  _SubTaskProgressView(
-                    taskId: task.id,
-                    subTaskRepository: subTaskRepository,
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Padding(
-            padding: const EdgeInsets.only(top: 0),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (!isCompleted) ...[
-                  _PriorityDot(priority: task.priority),
-                  const SizedBox(width: 4),
-                ],
-                SizedBox.square(
-                  dimension: 32,
-                  child: _TaskEditButton(onTap: onOpenDetail),
+                  ],
                 ),
-                SizedBox.square(
-                  dimension: 32,
-                  child: IconButton(
-                    onPressed: onDelete,
-                    icon: const Icon(Icons.delete_outline_rounded, size: 20),
-                    color: AppTheme.muted,
-                    tooltip: '삭제',
-                    padding: EdgeInsets.zero,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              task.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: isCompleted
+                                    ? AppTheme.muted
+                                    : AppTheme.ink,
+                                fontSize: isCompleted ? 15 : 16,
+                                fontWeight: FontWeight.w900,
+                                height: 1.3,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          SizedBox.square(
+                            dimension: 32,
+                            child: IconButton(
+                              onPressed: onDelete,
+                              icon: const Icon(
+                                Icons.delete_outline_rounded,
+                                size: 20,
+                              ),
+                              color: AppTheme.muted,
+                              tooltip: '삭제',
+                              padding: EdgeInsets.zero,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (!isCompleted) ...[
+                        const SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.only(right: 2),
+                          child: _TaskMetaStrip(task: task),
+                        ),
+                        const SizedBox(height: 2),
+                        _SubTaskProgressView(
+                          taskId: task.id,
+                          subTaskRepository: subTaskRepository,
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ],
@@ -912,6 +920,7 @@ class _TaskSectionCard extends StatefulWidget {
     required this.onOpenTaskDetail,
     required this.subTaskRepository,
     required this.onReorderTasks,
+    required this.enableReorder,
   });
 
   final List<Task> tasks;
@@ -920,6 +929,7 @@ class _TaskSectionCard extends StatefulWidget {
   final ValueChanged<Task> onOpenTaskDetail;
   final SubTaskRepository subTaskRepository;
   final Future<void> Function(List<Task> orderedTasks) onReorderTasks;
+  final bool enableReorder;
 
   @override
   State<_TaskSectionCard> createState() => _TaskSectionCardState();
@@ -937,10 +947,10 @@ class _TaskSectionCardState extends State<_TaskSectionCard> {
   @override
   void didUpdateWidget(_TaskSectionCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final previousIds = _orderedTasks.map((task) => task.id).join('|');
-    final nextIds = widget.tasks.map((task) => task.id).join('|');
+    final previousSignature = _taskListSignature(_orderedTasks);
+    final nextSignature = _taskListSignature(widget.tasks);
 
-    if (previousIds != nextIds) {
+    if (previousSignature != nextSignature) {
       _orderedTasks = List<Task>.of(widget.tasks);
     }
   }
@@ -962,13 +972,16 @@ class _TaskSectionCardState extends State<_TaskSectionCard> {
               : newIndex;
           final movedTask = reorderedTasks.removeAt(oldIndex);
           reorderedTasks.insert(adjustedNewIndex, movedTask);
+          final reorderedTasksWithOrder = _tasksWithSequentialSortOrder(
+            reorderedTasks,
+          );
 
           setState(() {
-            _orderedTasks = reorderedTasks;
+            _orderedTasks = reorderedTasksWithOrder;
           });
 
           try {
-            await widget.onReorderTasks(reorderedTasks);
+            await widget.onReorderTasks(reorderedTasksWithOrder);
           } catch (_) {
             if (!context.mounted) {
               return;
@@ -984,8 +997,9 @@ class _TaskSectionCardState extends State<_TaskSectionCard> {
           return Column(
             key: ValueKey(task.id),
             children: [
-              ReorderableDelayedDragStartListener(
+              _MaybeReorderableTask(
                 index: index,
+                enabled: widget.enableReorder,
                 child: _TaskListTile(
                   task: task,
                   onToggle: () => widget.onToggleTask(task),
@@ -994,13 +1008,33 @@ class _TaskSectionCardState extends State<_TaskSectionCard> {
                   subTaskRepository: widget.subTaskRepository,
                 ),
               ),
-              if (index != _orderedTasks.length - 1)
-                const Divider(height: 1, indent: 64),
+              if (index != _orderedTasks.length - 1) const Divider(height: 1),
             ],
           );
         },
       ),
     );
+  }
+}
+
+class _MaybeReorderableTask extends StatelessWidget {
+  const _MaybeReorderableTask({
+    required this.index,
+    required this.enabled,
+    required this.child,
+  });
+
+  final int index;
+  final bool enabled;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!enabled) {
+      return child;
+    }
+
+    return ReorderableDelayedDragStartListener(index: index, child: child);
   }
 }
 
@@ -1059,76 +1093,6 @@ class _DeletedTaskTile extends StatelessWidget {
   }
 }
 
-class _CompactTaskList extends StatelessWidget {
-  const _CompactTaskList({
-    required this.tasks,
-    required this.onToggleTask,
-    required this.subTaskRepository,
-  });
-
-  final List<Task> tasks;
-  final ValueChanged<Task> onToggleTask;
-  final SubTaskRepository subTaskRepository;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          for (var i = 0; i < tasks.length; i++) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              child: Row(
-                children: [
-                  _StatusCheckbox(
-                    task: tasks[i],
-                    onTap: () => onToggleTask(tasks[i]),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      tasks[i].title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15,
-                      ),
-                    ),
-                  ),
-                  if (tasks[i].dueDate != null) _DueChip(task: tasks[i]),
-                ],
-              ),
-            ),
-            _CompactProgressPadding(
-              taskId: tasks[i].id,
-              subTaskRepository: subTaskRepository,
-            ),
-            if (i != tasks.length - 1) const Divider(height: 1, indent: 54),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _TaskEditButton extends StatelessWidget {
-  const _TaskEditButton({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(
-      onPressed: onTap,
-      icon: const Icon(Icons.more_vert_rounded),
-      color: AppTheme.muted,
-      tooltip: '작업 상세/수정',
-      padding: EdgeInsets.zero,
-      iconSize: 20,
-    );
-  }
-}
-
 class _StatusCheckbox extends StatelessWidget {
   const _StatusCheckbox({required this.task, required this.onTap});
 
@@ -1167,6 +1131,32 @@ class _StatusCheckbox extends StatelessWidget {
   }
 }
 
+class _TaskMetaStrip extends StatelessWidget {
+  const _TaskMetaStrip({required this.task});
+
+  final Task task;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          if (task.dueDate != null) ...[
+            _DueChip(task: task),
+            const SizedBox(width: 6),
+          ],
+          _OriginChip(origin: task.origin),
+          if (task.ecampus?.sourceCourse != null) ...[
+            const SizedBox(width: 6),
+            _NeutralChip(label: task.ecampus!.sourceCourse!),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _DueChip extends StatelessWidget {
   const _DueChip({required this.task});
 
@@ -1180,7 +1170,9 @@ class _DueChip extends StatelessWidget {
     }
 
     return _ColoredChip(
-      label: _dueLabel(dueDate),
+      label: _isOverdue(dueDate)
+          ? '마감 지남 · ${_shortDateLabel(dueDate)}'
+          : _dueLabel(dueDate),
       color: _isOverdue(dueDate)
           ? AppTheme.dangerRed
           : _isDueToday(task)
@@ -1214,7 +1206,7 @@ class _ColoredChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.09),
         borderRadius: BorderRadius.circular(8),
@@ -1224,7 +1216,7 @@ class _ColoredChip extends StatelessWidget {
         label,
         style: TextStyle(
           color: color,
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: FontWeight.w800,
         ),
       ),
@@ -1240,7 +1232,7 @@ class _NeutralChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
         color: const Color(0xFFF3F4F6),
         borderRadius: BorderRadius.circular(8),
@@ -1249,7 +1241,7 @@ class _NeutralChip extends StatelessWidget {
         label,
         style: const TextStyle(
           color: AppTheme.muted,
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: FontWeight.w800,
         ),
       ),
@@ -1279,7 +1271,7 @@ class _SubTaskProgressView extends StatelessWidget {
         }
 
         return Padding(
-          padding: const EdgeInsets.only(top: 12),
+          padding: const EdgeInsets.only(top: 8),
           child: Column(
             children: [
               Row(
@@ -1289,7 +1281,7 @@ class _SubTaskProgressView extends StatelessWidget {
                       '서브 작업 ${progress.doneCount}/${progress.totalCount} 완료',
                       style: const TextStyle(
                         color: AppTheme.muted,
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -1298,18 +1290,18 @@ class _SubTaskProgressView extends StatelessWidget {
                     '${progress.percent}%',
                     style: const TextStyle(
                       color: AppTheme.muted,
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 5),
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
                   value: progress.ratio,
-                  minHeight: 5,
+                  minHeight: 4,
                   backgroundColor: AppTheme.line,
                   valueColor: const AlwaysStoppedAnimation<Color>(
                     AppTheme.successGreen,
@@ -1320,27 +1312,6 @@ class _SubTaskProgressView extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-class _CompactProgressPadding extends StatelessWidget {
-  const _CompactProgressPadding({
-    required this.taskId,
-    required this.subTaskRepository,
-  });
-
-  final String taskId;
-  final SubTaskRepository subTaskRepository;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(54, 0, 14, 12),
-      child: _SubTaskProgressView(
-        taskId: taskId,
-        subTaskRepository: subTaskRepository,
-      ),
     );
   }
 }
@@ -1362,7 +1333,6 @@ class _PriorityDot extends StatelessWidget {
     return Container(
       width: 12,
       height: 12,
-      margin: const EdgeInsets.only(top: 8),
       decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
   }
@@ -1407,6 +1377,78 @@ class _ListSectionHeader extends StatelessWidget {
         const SizedBox(width: 8),
         _ColoredChip(label: '$count', color: AppTheme.successGreen),
         const Expanded(child: Divider(indent: 12)),
+      ],
+    );
+  }
+}
+
+class _SortSelector extends StatelessWidget {
+  const _SortSelector({required this.value, required this.onChanged});
+
+  final _TaskSort value;
+  final ValueChanged<_TaskSort> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return MenuAnchor(
+      builder: (context, controller, child) {
+        return IconButton(
+          onPressed: () {
+            if (controller.isOpen) {
+              controller.close();
+            } else {
+              controller.open();
+            }
+          },
+          icon: const Icon(Icons.sort_rounded),
+          tooltip: '정렬: ${value.label}',
+        );
+      },
+      menuChildren: [
+        for (final sort in _TaskSort.values)
+          MenuItemButton(
+            onPressed: () => onChanged(sort),
+            leadingIcon: value == sort
+                ? const Icon(Icons.check_rounded)
+                : const SizedBox.square(dimension: 24),
+            child: Text(sort.label),
+          ),
+      ],
+    );
+  }
+}
+
+class _FilterSelector extends StatelessWidget {
+  const _FilterSelector({required this.value, required this.onChanged});
+
+  final _TaskFilter value;
+  final ValueChanged<_TaskFilter> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return MenuAnchor(
+      builder: (context, controller, child) {
+        return IconButton(
+          onPressed: () {
+            if (controller.isOpen) {
+              controller.close();
+            } else {
+              controller.open();
+            }
+          },
+          icon: const Icon(Icons.filter_list_rounded),
+          tooltip: '보기: ${value.label}',
+        );
+      },
+      menuChildren: [
+        for (final filter in _TaskFilter.values)
+          MenuItemButton(
+            onPressed: () => onChanged(filter),
+            leadingIcon: value == filter
+                ? const Icon(Icons.check_rounded)
+                : const SizedBox.square(dimension: 24),
+            child: Text(filter.label),
+          ),
       ],
     );
   }
@@ -1725,9 +1767,21 @@ enum _TaskFilter {
   personal('개인'),
   incomplete('미완료'),
   completed('완료'),
+  overdue('마감 지남'),
   deleted('삭제됨');
 
   const _TaskFilter(this.label);
+
+  final String label;
+}
+
+enum _TaskSort {
+  userOrder('사용자 지정'),
+  dueDate('마감일'),
+  priority('우선순위'),
+  createdAt('생성일');
+
+  const _TaskSort(this.label);
 
   final String label;
 }
@@ -1774,6 +1828,90 @@ int _compareDueDate(Task a, Task b) {
   return aDueDate.compareTo(bDueDate);
 }
 
+int Function(Task a, Task b) _compareTasksBySort(_TaskSort sort) {
+  return switch (sort) {
+    _TaskSort.userOrder => _compareUserOrder,
+    _TaskSort.dueDate => _compareDueDate,
+    _TaskSort.priority => _comparePriority,
+    _TaskSort.createdAt => _compareCreatedAt,
+  };
+}
+
+int _compareUserOrder(Task a, Task b) {
+  final order = a.sortOrder.compareTo(b.sortOrder);
+  if (order != 0) {
+    return order;
+  }
+  return a.createdAt.compareTo(b.createdAt);
+}
+
+int _comparePriority(Task a, Task b) {
+  final priority = _priorityRank(
+    b.priority,
+  ).compareTo(_priorityRank(a.priority));
+  if (priority != 0) {
+    return priority;
+  }
+  return _compareDueDate(a, b);
+}
+
+int _compareCreatedAt(Task a, Task b) {
+  return b.createdAt.compareTo(a.createdAt);
+}
+
+int _priorityRank(TaskPriority? priority) {
+  return switch (priority) {
+    TaskPriority.high => 3,
+    TaskPriority.medium => 2,
+    TaskPriority.low => 1,
+    null => 0,
+  };
+}
+
+List<Task> _tasksWithSequentialSortOrder(List<Task> tasks) {
+  return [
+    for (var index = 0; index < tasks.length; index++)
+      _copyTaskWithSortOrder(tasks[index], index),
+  ];
+}
+
+Task _copyTaskWithSortOrder(Task task, int sortOrder) {
+  return Task(
+    id: task.id,
+    origin: task.origin,
+    status: task.status,
+    title: task.title,
+    dueDate: task.dueDate,
+    priority: task.priority,
+    memo: task.memo,
+    parentTaskId: task.parentTaskId,
+    tagIds: task.tagIds,
+    folderIds: task.folderIds,
+    ecampus: task.ecampus,
+    sortOrder: sortOrder,
+    createdAt: task.createdAt,
+    updatedAt: task.updatedAt,
+    completedAt: task.completedAt,
+    deletedAt: task.deletedAt,
+  );
+}
+
+String _taskListSignature(List<Task> tasks) {
+  return tasks
+      .map(
+        (task) => [
+          task.id,
+          task.status.name,
+          task.title,
+          task.dueDate?.microsecondsSinceEpoch ?? '',
+          task.priority?.name ?? '',
+          task.sortOrder,
+          task.updatedAt.microsecondsSinceEpoch,
+        ].join(':'),
+      )
+      .join('|');
+}
+
 String _todayLabel(DateTime date) {
   const weekdays = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
   return '${date.month}월 ${date.day}일 ${weekdays[date.weekday - 1]}';
@@ -1805,5 +1943,9 @@ String _dueLabel(DateTime date) {
   if (days == 1) {
     return date.hour == 0 && date.minute == 0 ? '내일' : '내일 $time';
   }
+  return '${date.month}월 ${date.day}일';
+}
+
+String _shortDateLabel(DateTime date) {
   return '${date.month}월 ${date.day}일';
 }

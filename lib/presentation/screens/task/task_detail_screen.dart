@@ -33,6 +33,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   TaskPriority? _priority;
   var _isLoading = true;
   var _isSaving = false;
+  var _didPopAfterSave = false;
 
   @override
   void initState() {
@@ -71,86 +72,106 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   Widget build(BuildContext context) {
     final task = _task;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('작업 상세'),
-        actions: [
-          TextButton(
-            onPressed: task == null || _isSaving ? null : _saveTask,
-            child: _isSaving
-                ? const SizedBox.square(
-                    dimension: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('저장'),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : task == null
-            ? const _MissingTaskView()
-            : ListView(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
-                children: [
-                  TextField(
-                    controller: _titleController,
-                    decoration: const InputDecoration(labelText: '제목'),
-                    textInputAction: TextInputAction.next,
-                  ),
-                  const SizedBox(height: 18),
-                  _DetailSection(
-                    title: '일정',
-                    child: Column(
-                      children: [
-                        _ActionTile(
-                          icon: Icons.event_rounded,
-                          title: '마감일',
-                          value: _dueDate == null
-                              ? '없음'
-                              : _dateTimeLabel(_dueDate!),
-                          onTap: _pickDueDate,
-                        ),
-                        const Divider(height: 1),
-                        _PrioritySelector(
-                          value: _priority,
-                          onChanged: (priority) {
-                            setState(() {
-                              _priority = priority;
-                            });
-                          },
-                        ),
-                      ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop || _didPopAfterSave) {
+          return;
+        }
+        await _saveTask(popAfterSave: true, showMessage: false);
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('작업 상세'),
+          actions: [
+            TextButton(
+              onPressed: task == null || _isSaving
+                  ? null
+                  : () => _saveTask(popAfterSave: true),
+              child: _isSaving
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('저장'),
+            ),
+          ],
+        ),
+        body: SafeArea(
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : task == null
+              ? const _MissingTaskView()
+              : ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+                  children: [
+                    TextField(
+                      controller: _titleController,
+                      decoration: const InputDecoration(labelText: '제목'),
+                      textInputAction: TextInputAction.next,
                     ),
-                  ),
-                  const SizedBox(height: 22),
-                  TextField(
-                    controller: _memoController,
-                    minLines: 3,
-                    maxLines: 6,
-                    decoration: const InputDecoration(
-                      labelText: '메모',
-                      alignLabelWithHint: true,
+                    const SizedBox(height: 18),
+                    _DetailSection(
+                      title: '일정',
+                      child: Column(
+                        children: [
+                          _ActionTile(
+                            icon: Icons.event_rounded,
+                            title: '마감일',
+                            value: _dueDate == null
+                                ? '없음'
+                                : _dateTimeLabel(_dueDate!),
+                            onTap: _pickDueDate,
+                          ),
+                          const Divider(height: 1),
+                          _PrioritySelector(
+                            value: _priority,
+                            onChanged: (priority) {
+                              setState(() {
+                                _priority = priority;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  _SubTaskSection(
-                    subTasks: _subTasks,
-                    controller: _subTaskController,
-                    onAdd: _addSubTask,
-                    onToggle: _toggleSubTask,
-                    onDelete: _deleteSubTask,
-                  ),
-                ],
-              ),
+                    const SizedBox(height: 22),
+                    TextField(
+                      controller: _memoController,
+                      minLines: 3,
+                      maxLines: 6,
+                      decoration: const InputDecoration(
+                        labelText: '메모',
+                        alignLabelWithHint: true,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    _SubTaskSection(
+                      subTasks: _subTasks,
+                      controller: _subTaskController,
+                      onAdd: _addSubTask,
+                      onToggle: _toggleSubTask,
+                      onDelete: _deleteSubTask,
+                    ),
+                  ],
+                ),
+        ),
       ),
     );
   }
 
-  Future<void> _saveTask() async {
+  Future<void> _saveTask({
+    bool popAfterSave = false,
+    bool showMessage = true,
+  }) async {
     final task = _task;
     if (task == null) {
+      if (popAfterSave && mounted) {
+        _popWithSavedResult();
+      }
+      return;
+    }
+    if (_isSaving) {
       return;
     }
 
@@ -192,7 +213,18 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       _task = updated;
       _isSaving = false;
     });
-    _showSnackBar(context, '작업을 저장했습니다.');
+    if (popAfterSave) {
+      _popWithSavedResult();
+      return;
+    }
+    if (showMessage) {
+      _showSnackBar(context, '작업을 저장했습니다.');
+    }
+  }
+
+  void _popWithSavedResult() {
+    _didPopAfterSave = true;
+    Navigator.of(context).pop(true);
   }
 
   Future<void> _pickDueDate() async {
@@ -231,6 +263,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     if (title.isEmpty) {
       return;
     }
+    FocusScope.of(context).unfocus();
 
     final now = DateTime.now();
     await widget.subTaskRepository.createSubTask(
@@ -256,6 +289,27 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   }
 
   Future<void> _deleteSubTask(SubTask subTask) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('서브 작업 삭제'),
+        content: Text('"${subTask.title}"을 삭제할까요?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    );
+    if (shouldDelete != true) {
+      return;
+    }
+
     await widget.subTaskRepository.deleteSubTask(subTask.id);
     await _reloadSubTasks();
   }
@@ -343,25 +397,35 @@ class _PrioritySelector extends StatelessWidget {
       title: const Text('우선순위', style: TextStyle(fontWeight: FontWeight.w800)),
       subtitle: Padding(
         padding: const EdgeInsets.only(top: 8),
-        child: Wrap(
-          spacing: 8,
-          children: [
-            ChoiceChip(
-              label: const Text('높음'),
-              selected: value == TaskPriority.high,
-              onSelected: (_) => onChanged(TaskPriority.high),
-            ),
-            ChoiceChip(
-              label: const Text('보통'),
-              selected: value == TaskPriority.medium,
-              onSelected: (_) => onChanged(TaskPriority.medium),
-            ),
-            ChoiceChip(
-              label: const Text('낮음'),
-              selected: value == TaskPriority.low,
-              onSelected: (_) => onChanged(TaskPriority.low),
-            ),
-          ],
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              ChoiceChip(
+                label: const Text('없음'),
+                selected: value == null,
+                onSelected: (_) => onChanged(null),
+              ),
+              const SizedBox(width: 8),
+              ChoiceChip(
+                label: const Text('높음'),
+                selected: value == TaskPriority.high,
+                onSelected: (_) => onChanged(TaskPriority.high),
+              ),
+              const SizedBox(width: 8),
+              ChoiceChip(
+                label: const Text('보통'),
+                selected: value == TaskPriority.medium,
+                onSelected: (_) => onChanged(TaskPriority.medium),
+              ),
+              const SizedBox(width: 8),
+              ChoiceChip(
+                label: const Text('낮음'),
+                selected: value == TaskPriority.low,
+                onSelected: (_) => onChanged(TaskPriority.low),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -416,33 +480,48 @@ class _SubTaskSection extends StatelessWidget {
               ),
               const SizedBox(height: 12),
             ],
-            for (final subTask in subTasks)
-              CheckboxListTile(
-                value: subTask.isDone,
-                onChanged: (_) => onToggle(subTask),
-                contentPadding: EdgeInsets.zero,
-                title: Text(
-                  subTask.title,
+            if (subTasks.isEmpty) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 18,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppTheme.line),
+                ),
+                child: const Text(
+                  '아직 서브 작업이 없습니다.',
+                  textAlign: TextAlign.center,
                   style: TextStyle(
-                    decoration: subTask.isDone
-                        ? TextDecoration.lineThrough
-                        : null,
-                    color: subTask.isDone ? AppTheme.muted : AppTheme.ink,
+                    color: AppTheme.muted,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                secondary: IconButton(
-                  onPressed: () => onDelete(subTask),
-                  icon: const Icon(Icons.delete_outline_rounded),
-                  tooltip: '삭제',
-                ),
               ),
+              const SizedBox(height: 12),
+            ] else
+              for (var i = 0; i < subTasks.length; i++) ...[
+                _SubTaskTile(
+                  subTask: subTasks[i],
+                  onToggle: () => onToggle(subTasks[i]),
+                  onDelete: () => onDelete(subTasks[i]),
+                ),
+                if (i != subTasks.length - 1) const Divider(height: 1),
+              ],
+            if (subTasks.isNotEmpty) const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: controller,
-                    decoration: const InputDecoration(hintText: '서브 작업 추가'),
+                    decoration: const InputDecoration(
+                      hintText: '서브 작업 추가',
+                      isDense: true,
+                    ),
+                    textInputAction: TextInputAction.done,
                     onSubmitted: (_) => onAdd(),
                   ),
                 ),
@@ -453,6 +532,53 @@ class _SubTaskSection extends StatelessWidget {
                   tooltip: '추가',
                 ),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SubTaskTile extends StatelessWidget {
+  const _SubTaskTile({
+    required this.subTask,
+    required this.onToggle,
+    required this.onDelete,
+  });
+
+  final SubTask subTask;
+  final VoidCallback onToggle;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onToggle,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: [
+            Checkbox(value: subTask.isDone, onChanged: (_) => onToggle()),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                subTask.title,
+                style: TextStyle(
+                  decoration: subTask.isDone
+                      ? TextDecoration.lineThrough
+                      : null,
+                  color: subTask.isDone ? AppTheme.muted : AppTheme.ink,
+                  fontWeight: FontWeight.w700,
+                  height: 1.25,
+                ),
+              ),
+            ),
+            IconButton(
+              onPressed: onDelete,
+              icon: const Icon(Icons.delete_outline_rounded),
+              color: AppTheme.muted,
+              tooltip: '삭제',
             ),
           ],
         ),

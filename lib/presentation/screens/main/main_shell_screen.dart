@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/task_models.dart';
+import '../../../data/repositories/folder_repository.dart';
 import '../../../data/repositories/notification_repository.dart';
 import '../../../data/repositories/settings_repository.dart';
 import '../../../data/repositories/sub_task_repository.dart';
+import '../../../data/repositories/tag_repository.dart';
 import '../../../data/services/ecampus_auth_service.dart';
 import '../../../data/repositories/task_repository.dart';
 import '../../../data/services/sub_task_progress.dart';
@@ -20,12 +22,16 @@ class MainShellScreen extends StatefulWidget {
     required this.subTaskRepository,
     required this.notificationRepository,
     required this.settingsRepository,
+    required this.tagRepository,
+    required this.folderRepository,
   });
 
   final TaskRepository taskRepository;
   final SubTaskRepository subTaskRepository;
   final NotificationRepository notificationRepository;
   final SettingsRepository settingsRepository;
+  final TagRepository tagRepository;
+  final FolderRepository folderRepository;
 
   @override
   State<MainShellScreen> createState() => _MainShellScreenState();
@@ -212,7 +218,12 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 onOpenTaskDetail: _openTaskDetail,
                 subTaskRepository: widget.subTaskRepository,
               ),
-              _ManagementPage(tasks: tasks),
+              _ManagementPage(
+                tasks: tasks,
+                tagRepository: widget.tagRepository,
+                folderRepository: widget.folderRepository,
+                onMetadataChanged: _refreshTasks,
+              ),
               _SettingsPage(
                 settingsRepository: widget.settingsRepository,
                 onSettingsChanged: () {
@@ -659,17 +670,48 @@ bool _isHiddenInMainList(Task task) {
       task.status == TaskStatus.excluded;
 }
 
-class _ManagementPage extends StatelessWidget {
-  const _ManagementPage({required this.tasks});
+class _ManagementPage extends StatefulWidget {
+  const _ManagementPage({
+    required this.tasks,
+    required this.tagRepository,
+    required this.folderRepository,
+    required this.onMetadataChanged,
+  });
 
   final List<Task> tasks;
+  final TagRepository tagRepository;
+  final FolderRepository folderRepository;
+  final VoidCallback onMetadataChanged;
+
+  @override
+  State<_ManagementPage> createState() => _ManagementPageState();
+}
+
+class _ManagementPageState extends State<_ManagementPage> {
+  late Future<List<Tag>> _tagsFuture;
+  late Future<List<Folder>> _foldersFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _tagsFuture = widget.tagRepository.getTags();
+    _foldersFuture = widget.folderRepository.getFolders();
+  }
+
+  void _refreshMetadata() {
+    setState(() {
+      _tagsFuture = widget.tagRepository.getTags();
+      _foldersFuture = widget.folderRepository.getFolders();
+    });
+    widget.onMetadataChanged();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final deletedCount = tasks
+    final deletedCount = widget.tasks
         .where((task) => task.status == TaskStatus.deleted)
         .length;
-    final excludedCount = tasks
+    final excludedCount = widget.tasks
         .where((task) => task.status == TaskStatus.excluded)
         .length;
 
@@ -679,49 +721,70 @@ class _ManagementPage extends StatelessWidget {
         children: [
           _PageTitle(title: '관리'),
           const SizedBox(height: 28),
-          _ManagementSection(
-            title: '태그',
-            children: const [
-              _ManagementRow(
-                icon: Icons.circle,
-                iconColor: AppTheme.successGreen,
-                title: '전공',
-                subtitle: '기본 우선순위 높음',
-              ),
-              _ManagementRow(
-                icon: Icons.circle,
-                iconColor: AppTheme.primaryBlue,
-                title: '교양',
-                subtitle: '기본 우선순위 보통',
-              ),
-              _ManagementRow(
-                icon: Icons.circle,
-                iconColor: AppTheme.warningOrange,
-                title: '팀플',
-                subtitle: '기본 우선순위 높음',
-              ),
-            ],
+          FutureBuilder<List<Tag>>(
+            future: _tagsFuture,
+            builder: (context, snapshot) {
+              final tags = snapshot.data ?? const <Tag>[];
+              return _ManagementSection(
+                title: '태그',
+                action: IconButton.filledTonal(
+                  onPressed: _createTag,
+                  icon: const Icon(Icons.add_rounded),
+                  tooltip: '태그 추가',
+                ),
+                children: [
+                  if (snapshot.connectionState == ConnectionState.waiting &&
+                      !snapshot.hasData)
+                    const _ManagementLoadingRow()
+                  else if (tags.isEmpty)
+                    const _ManagementEmptyRow(message: '태그가 없습니다.')
+                  else
+                    for (final tag in tags)
+                      _ManagementRow(
+                        icon: Icons.circle,
+                        iconColor: _colorFromHex(tag.color),
+                        title: tag.name,
+                        subtitle:
+                            '기본 우선순위 ${_priorityLabel(tag.defaultPriority)}',
+                        onTap: () => _editTag(tag),
+                      ),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 24),
-          _ManagementSection(
-            title: '폴더',
-            children: const [
-              _ManagementRow(
-                icon: Icons.folder_rounded,
-                iconColor: AppTheme.successGreen,
-                title: '이번 주 집중',
-              ),
-              _ManagementRow(
-                icon: Icons.folder_rounded,
-                iconColor: AppTheme.successGreen,
-                title: '졸업작품',
-              ),
-              _ManagementRow(
-                icon: Icons.folder_rounded,
-                iconColor: AppTheme.successGreen,
-                title: '시험기간',
-              ),
-            ],
+          FutureBuilder<List<Folder>>(
+            future: _foldersFuture,
+            builder: (context, snapshot) {
+              final folders = snapshot.data ?? const <Folder>[];
+              return _ManagementSection(
+                title: '폴더',
+                action: IconButton.filledTonal(
+                  onPressed: _createFolder,
+                  icon: const Icon(Icons.add_rounded),
+                  tooltip: '폴더 추가',
+                ),
+                children: [
+                  if (snapshot.connectionState == ConnectionState.waiting &&
+                      !snapshot.hasData)
+                    const _ManagementLoadingRow()
+                  else if (folders.isEmpty)
+                    const _ManagementEmptyRow(message: '폴더가 없습니다.')
+                  else
+                    for (final folder in folders)
+                      _ManagementRow(
+                        icon: Icons.folder_rounded,
+                        iconColor: _colorFromHex(
+                          folder.color,
+                          fallback: AppTheme.successGreen,
+                        ),
+                        title: folder.name,
+                        subtitle: '기본 폴더 아이콘',
+                        onTap: () => _editFolder(folder),
+                      ),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 24),
           _ManagementSection(
@@ -744,6 +807,174 @@ class _ManagementPage extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _createTag() async {
+    final result = await showDialog<_TagFormResult>(
+      context: context,
+      builder: (_) => const _TagEditDialog(),
+    );
+    if (result == null || !mounted) {
+      return;
+    }
+
+    final now = DateTime.now();
+    await widget.tagRepository.createTag(
+      Tag(
+        id: 'tag_${now.microsecondsSinceEpoch}',
+        name: result.name,
+        color: result.color,
+        defaultPriority: result.defaultPriority,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    if (!mounted) {
+      return;
+    }
+    _refreshMetadata();
+    _showSnackBar(context, '태그를 추가했습니다.');
+  }
+
+  Future<void> _editTag(Tag tag) async {
+    final result = await showDialog<_TagFormResult>(
+      context: context,
+      builder: (_) => _TagEditDialog(tag: tag),
+    );
+    if (result == null || !mounted) {
+      return;
+    }
+
+    if (result.deleteRequested) {
+      final confirmed = await _confirmDelete(
+        title: '태그 삭제',
+        message: '태그를 삭제해도 작업은 삭제되지 않고, 연결만 해제됩니다.',
+      );
+      if (!confirmed || !mounted) {
+        return;
+      }
+      await widget.tagRepository.deleteTag(tag.id);
+      if (!mounted) {
+        return;
+      }
+      _refreshMetadata();
+      _showSnackBar(context, '태그를 삭제했습니다.');
+      return;
+    }
+
+    final now = DateTime.now();
+    await widget.tagRepository.updateTag(
+      Tag(
+        id: tag.id,
+        name: result.name,
+        color: result.color,
+        defaultPriority: result.defaultPriority,
+        createdAt: tag.createdAt,
+        updatedAt: now,
+      ),
+    );
+    if (!mounted) {
+      return;
+    }
+    _refreshMetadata();
+    _showSnackBar(context, '태그를 수정했습니다.');
+  }
+
+  Future<void> _createFolder() async {
+    final result = await showDialog<_FolderFormResult>(
+      context: context,
+      builder: (_) => const _FolderEditDialog(),
+    );
+    if (result == null || !mounted) {
+      return;
+    }
+
+    final now = DateTime.now();
+    await widget.folderRepository.createFolder(
+      Folder(
+        id: 'folder_${now.microsecondsSinceEpoch}',
+        name: result.name,
+        color: result.color,
+        icon: 'folder',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    if (!mounted) {
+      return;
+    }
+    _refreshMetadata();
+    _showSnackBar(context, '폴더를 추가했습니다.');
+  }
+
+  Future<void> _editFolder(Folder folder) async {
+    final result = await showDialog<_FolderFormResult>(
+      context: context,
+      builder: (_) => _FolderEditDialog(folder: folder),
+    );
+    if (result == null || !mounted) {
+      return;
+    }
+
+    if (result.deleteRequested) {
+      final confirmed = await _confirmDelete(
+        title: '폴더 삭제',
+        message: '폴더를 삭제해도 작업은 삭제되지 않고, 연결만 해제됩니다.',
+      );
+      if (!confirmed || !mounted) {
+        return;
+      }
+      await widget.folderRepository.deleteFolder(folder.id);
+      if (!mounted) {
+        return;
+      }
+      _refreshMetadata();
+      _showSnackBar(context, '폴더를 삭제했습니다.');
+      return;
+    }
+
+    final now = DateTime.now();
+    await widget.folderRepository.updateFolder(
+      Folder(
+        id: folder.id,
+        name: result.name,
+        color: result.color,
+        icon: folder.icon ?? 'folder',
+        createdAt: folder.createdAt,
+        updatedAt: now,
+      ),
+    );
+    if (!mounted) {
+      return;
+    }
+    _refreshMetadata();
+    _showSnackBar(context, '폴더를 수정했습니다.');
+  }
+
+  Future<bool> _confirmDelete({
+    required String title,
+    required String message,
+  }) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('취소'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('삭제'),
+            ),
+          ],
+        );
+      },
+    );
+    return confirmed ?? false;
   }
 }
 
@@ -1861,19 +2092,34 @@ class _PageTitle extends StatelessWidget {
 }
 
 class _ManagementSection extends StatelessWidget {
-  const _ManagementSection({required this.title, required this.children});
+  const _ManagementSection({
+    required this.title,
+    required this.children,
+    this.action,
+  });
 
   final String title;
   final List<Widget> children;
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            ?action,
+          ],
         ),
         const SizedBox(height: 12),
         Card(
@@ -1900,6 +2146,7 @@ class _ManagementRow extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.trailing,
+    this.onTap,
   });
 
   final IconData icon;
@@ -1907,10 +2154,12 @@ class _ManagementRow extends StatelessWidget {
   final String title;
   final String? subtitle;
   final String? trailing;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
+      onTap: onTap,
       leading: Icon(icon, color: iconColor),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
       subtitle: subtitle == null ? null : Text(subtitle!),
@@ -1925,6 +2174,392 @@ class _ManagementRow extends StatelessWidget {
             ),
     );
   }
+}
+
+class _ManagementLoadingRow extends StatelessWidget {
+  const _ManagementLoadingRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ListTile(
+      leading: SizedBox(
+        width: 24,
+        height: 24,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      ),
+      title: Text('불러오는 중'),
+    );
+  }
+}
+
+class _ManagementEmptyRow extends StatelessWidget {
+  const _ManagementEmptyRow({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: const Icon(Icons.info_outline_rounded, color: AppTheme.muted),
+      title: Text(
+        message,
+        style: const TextStyle(
+          color: AppTheme.muted,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _TagEditDialog extends StatefulWidget {
+  const _TagEditDialog({this.tag});
+
+  final Tag? tag;
+
+  @override
+  State<_TagEditDialog> createState() => _TagEditDialogState();
+}
+
+class _TagEditDialogState extends State<_TagEditDialog> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _colorController;
+  late TaskPriority? _defaultPriority;
+  String? _errorText;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.tag?.name ?? '');
+    _colorController = TextEditingController(
+      text: _normalizeHex(widget.tag?.color ?? '#3B82F6'),
+    );
+    _defaultPriority = widget.tag?.defaultPriority;
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _colorController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedColor = _colorFromHex(_colorController.text);
+    return AlertDialog(
+      title: Text(widget.tag == null ? '태그 추가' : '태그 수정'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(labelText: '태그 이름'),
+              textInputAction: TextInputAction.next,
+            ),
+            const SizedBox(height: 16),
+            const Text('색상', style: TextStyle(fontWeight: FontWeight.w900)),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                for (final color in _metadataColorOptions)
+                  _ColorOptionButton(
+                    color: _colorFromHex(color),
+                    selected: _normalizeHex(_colorController.text) == color,
+                    onTap: () {
+                      setState(() {
+                        _colorController.text = color;
+                        _errorText = null;
+                      });
+                    },
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _colorController,
+              decoration: InputDecoration(
+                labelText: '직접 입력',
+                hintText: '#3B82F6',
+                errorText: _errorText,
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: selectedColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const SizedBox(width: 18, height: 18),
+                  ),
+                ),
+              ),
+              onChanged: (_) {
+                if (_errorText != null) {
+                  setState(() => _errorText = null);
+                }
+              },
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              '기본 우선순위',
+              style: TextStyle(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ChoiceChip(
+                  label: const Text('없음'),
+                  selected: _defaultPriority == null,
+                  onSelected: (_) => setState(() => _defaultPriority = null),
+                ),
+                for (final priority in TaskPriority.values)
+                  ChoiceChip(
+                    label: Text(_priorityLabel(priority)),
+                    selected: _defaultPriority == priority,
+                    onSelected: (_) {
+                      setState(() => _defaultPriority = priority);
+                    },
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        if (widget.tag != null)
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(_TagFormResult.delete()),
+            child: const Text('삭제'),
+          ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('취소'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('저장')),
+      ],
+    );
+  }
+
+  void _submit() {
+    final name = _nameController.text.trim();
+    final color = _normalizeHex(_colorController.text);
+    if (name.isEmpty) {
+      setState(() => _errorText = null);
+      _showSnackBar(context, '이름을 입력해주세요.');
+      return;
+    }
+    if (!_isValidHexColor(color)) {
+      setState(() => _errorText = '#RRGGBB 형식으로 입력해주세요.');
+      return;
+    }
+    Navigator.of(context).pop(
+      _TagFormResult(
+        name: name,
+        color: color,
+        defaultPriority: _defaultPriority,
+      ),
+    );
+  }
+}
+
+class _FolderEditDialog extends StatefulWidget {
+  const _FolderEditDialog({this.folder});
+
+  final Folder? folder;
+
+  @override
+  State<_FolderEditDialog> createState() => _FolderEditDialogState();
+}
+
+class _FolderEditDialogState extends State<_FolderEditDialog> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _colorController;
+  String? _errorText;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.folder?.name ?? '');
+    _colorController = TextEditingController(
+      text: _normalizeHex(widget.folder?.color ?? '#22C55E'),
+    );
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _colorController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedColor = _colorFromHex(
+      _colorController.text,
+      fallback: AppTheme.successGreen,
+    );
+    return AlertDialog(
+      title: Text(widget.folder == null ? '폴더 추가' : '폴더 수정'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(labelText: '폴더 이름'),
+              textInputAction: TextInputAction.next,
+            ),
+            const SizedBox(height: 16),
+            const Text('색상', style: TextStyle(fontWeight: FontWeight.w900)),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                for (final color in _metadataColorOptions)
+                  _ColorOptionButton(
+                    color: _colorFromHex(color),
+                    selected: _normalizeHex(_colorController.text) == color,
+                    onTap: () {
+                      setState(() {
+                        _colorController.text = color;
+                        _errorText = null;
+                      });
+                    },
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _colorController,
+              decoration: InputDecoration(
+                labelText: '직접 입력',
+                hintText: '#22C55E',
+                errorText: _errorText,
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Icon(
+                    Icons.folder_rounded,
+                    color: selectedColor,
+                    size: 22,
+                  ),
+                ),
+              ),
+              onChanged: (_) {
+                if (_errorText != null) {
+                  setState(() => _errorText = null);
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        if (widget.folder != null)
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(_FolderFormResult.delete());
+            },
+            child: const Text('삭제'),
+          ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('취소'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('저장')),
+      ],
+    );
+  }
+
+  void _submit() {
+    final name = _nameController.text.trim();
+    final color = _normalizeHex(_colorController.text);
+    if (name.isEmpty) {
+      setState(() => _errorText = null);
+      _showSnackBar(context, '이름을 입력해주세요.');
+      return;
+    }
+    if (!_isValidHexColor(color)) {
+      setState(() => _errorText = '#RRGGBB 형식으로 입력해주세요.');
+      return;
+    }
+    Navigator.of(context).pop(_FolderFormResult(name: name, color: color));
+  }
+}
+
+class _ColorOptionButton extends StatelessWidget {
+  const _ColorOptionButton({
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: selected ? AppTheme.ink : Colors.transparent,
+            width: 2,
+          ),
+        ),
+        child: selected
+            ? const Icon(Icons.check_rounded, color: Colors.white, size: 18)
+            : null,
+      ),
+    );
+  }
+}
+
+class _TagFormResult {
+  const _TagFormResult({
+    required this.name,
+    required this.color,
+    required this.defaultPriority,
+  }) : deleteRequested = false;
+
+  const _TagFormResult.delete()
+    : name = '',
+      color = '',
+      defaultPriority = null,
+      deleteRequested = true;
+
+  final String name;
+  final String color;
+  final TaskPriority? defaultPriority;
+  final bool deleteRequested;
+}
+
+class _FolderFormResult {
+  const _FolderFormResult({required this.name, required this.color})
+    : deleteRequested = false;
+
+  const _FolderFormResult.delete()
+    : name = '',
+      color = '',
+      deleteRequested = true;
+
+  final String name;
+  final String color;
+  final bool deleteRequested;
 }
 
 class _SettingsSection extends StatelessWidget {
@@ -2240,6 +2875,46 @@ String _taskListSignature(List<Task> tasks) {
         ].join(':'),
       )
       .join('|');
+}
+
+const _metadataColorOptions = [
+  '#EF4444',
+  '#F97316',
+  '#EAB308',
+  '#22C55E',
+  '#3B82F6',
+  '#8B5CF6',
+  '#6B7280',
+];
+
+Color _colorFromHex(String? value, {Color fallback = AppTheme.primaryBlue}) {
+  final normalized = _normalizeHex(value);
+  if (!_isValidHexColor(normalized)) {
+    return fallback;
+  }
+  return Color(int.parse('FF${normalized.substring(1)}', radix: 16));
+}
+
+String _normalizeHex(String? value) {
+  final trimmed = value?.trim() ?? '';
+  if (trimmed.isEmpty) {
+    return '';
+  }
+  final withHash = trimmed.startsWith('#') ? trimmed : '#$trimmed';
+  return withHash.toUpperCase();
+}
+
+bool _isValidHexColor(String value) {
+  return RegExp(r'^#[0-9A-F]{6}$').hasMatch(value);
+}
+
+String _priorityLabel(TaskPriority? priority) {
+  return switch (priority) {
+    TaskPriority.high => '높음',
+    TaskPriority.medium => '보통',
+    TaskPriority.low => '낮음',
+    null => '없음',
+  };
 }
 
 String _todayLabel(DateTime date) {

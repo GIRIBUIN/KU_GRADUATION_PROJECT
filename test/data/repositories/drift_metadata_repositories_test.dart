@@ -125,20 +125,29 @@ void main() {
 
       expect(defaults.autoSyncEnabled, isFalse);
       expect(defaults.saveEcampusAccount, isFalse);
+      expect(defaults.defaultNotificationEnabled, isTrue);
       expect(defaults.defaultNotificationDays, 1);
+      expect(defaults.defaultNotificationTime, '09:00');
+      expect(defaults.urgentDueDays, 3);
 
       final saved = await settingsRepository.saveSettings(
         const AppSettings(
           autoSyncEnabled: true,
           saveEcampusAccount: false,
+          defaultNotificationEnabled: false,
           defaultNotificationDays: 2,
+          defaultNotificationTime: '10:30',
+          urgentDueDays: 7,
         ),
       );
 
       expect(saved.autoSyncEnabled, isTrue);
       expect(saved.saveEcampusAccount, isFalse);
+      expect(saved.defaultNotificationEnabled, isFalse);
       expect(saved.defaultNotificationDays, 2);
-      expect((await database.select(database.appSettings).get()).length, 3);
+      expect(saved.defaultNotificationTime, '10:30');
+      expect(saved.urgentDueDays, 7);
+      expect((await database.select(database.appSettings).get()).length, 6);
     });
   });
 }

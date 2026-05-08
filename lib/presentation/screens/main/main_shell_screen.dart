@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/task_models.dart';
+import '../../../data/repositories/notification_repository.dart';
+import '../../../data/repositories/settings_repository.dart';
 import '../../../data/repositories/sub_task_repository.dart';
 import '../../../data/services/ecampus_auth_service.dart';
 import '../../../data/repositories/task_repository.dart';
@@ -16,10 +18,14 @@ class MainShellScreen extends StatefulWidget {
     super.key,
     required this.taskRepository,
     required this.subTaskRepository,
+    required this.notificationRepository,
+    required this.settingsRepository,
   });
 
   final TaskRepository taskRepository;
   final SubTaskRepository subTaskRepository;
+  final NotificationRepository notificationRepository;
+  final SettingsRepository settingsRepository;
 
   @override
   State<MainShellScreen> createState() => _MainShellScreenState();
@@ -29,11 +35,13 @@ class _MainShellScreenState extends State<MainShellScreen> {
   var _selectedIndex = 0;
   EcampusSession? _ecampusSession;
   late Future<List<Task>> _tasksFuture;
+  late Future<AppSettings> _settingsFuture;
 
   @override
   void initState() {
     super.initState();
     _tasksFuture = _loadTasks();
+    _settingsFuture = widget.settingsRepository.getSettings();
   }
 
   Future<List<Task>> _loadTasks() {
@@ -131,6 +139,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
           taskId: task.id,
           taskRepository: widget.taskRepository,
           subTaskRepository: widget.subTaskRepository,
+          notificationRepository: widget.notificationRepository,
         ),
       ),
     );
@@ -145,6 +154,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
         builder: (_) => TaskCreateScreen(
           taskRepository: widget.taskRepository,
           subTaskRepository: widget.subTaskRepository,
+          notificationRepository: widget.notificationRepository,
+          settingsRepository: widget.settingsRepository,
         ),
       ),
     );
@@ -162,73 +173,97 @@ class _MainShellScreenState extends State<MainShellScreen> {
         final isLoading =
             snapshot.connectionState == ConnectionState.waiting &&
             !snapshot.hasData;
-        final pages = [
-          _HomePage(
-            tasks: tasks,
-            isLoading: isLoading,
-            onRefresh: _refreshTasks,
-            onOpenSync: _openEcampusSync,
-            onOpenSettings: () => setState(() => _selectedIndex = 3),
-            onToggleTask: _toggleTaskCompletion,
-            onDeleteTask: _deleteTask,
-            onReorderTasks: _reorderTasks,
-            onOpenTaskDetail: _openTaskDetail,
-            subTaskRepository: widget.subTaskRepository,
-          ),
-          _TaskListPage(
-            tasks: tasks,
-            isLoading: isLoading,
-            onRefresh: _refreshTasks,
-            onToggleTask: _toggleTaskCompletion,
-            onDeleteTask: _deleteTask,
-            onDeleteCompletedTasks: _deleteCompletedTasks,
-            onRestoreTask: _restoreTask,
-            onReorderTasks: _reorderTasks,
-            onOpenTaskDetail: _openTaskDetail,
-            subTaskRepository: widget.subTaskRepository,
-          ),
-          _ManagementPage(tasks: tasks),
-          _SettingsPage(onOpenSyncDebug: _openEcampusDebug),
-        ];
+        return FutureBuilder<AppSettings>(
+          future: _settingsFuture,
+          builder: (context, settingsSnapshot) {
+            final settings =
+                settingsSnapshot.data ??
+                const AppSettings(
+                  autoSyncEnabled: false,
+                  saveEcampusAccount: false,
+                  defaultNotificationEnabled: true,
+                  defaultNotificationDays: 1,
+                  defaultNotificationTime: '09:00',
+                  urgentDueDays: 3,
+                );
+            final pages = [
+              _HomePage(
+                tasks: tasks,
+                isLoading: isLoading,
+                urgentDueDays: settings.urgentDueDays,
+                onRefresh: _refreshTasks,
+                onOpenSync: _openEcampusSync,
+                onOpenSettings: () => setState(() => _selectedIndex = 3),
+                onToggleTask: _toggleTaskCompletion,
+                onDeleteTask: _deleteTask,
+                onReorderTasks: _reorderTasks,
+                onOpenTaskDetail: _openTaskDetail,
+                subTaskRepository: widget.subTaskRepository,
+              ),
+              _TaskListPage(
+                tasks: tasks,
+                isLoading: isLoading,
+                onRefresh: _refreshTasks,
+                onToggleTask: _toggleTaskCompletion,
+                onDeleteTask: _deleteTask,
+                onDeleteCompletedTasks: _deleteCompletedTasks,
+                onRestoreTask: _restoreTask,
+                onReorderTasks: _reorderTasks,
+                onOpenTaskDetail: _openTaskDetail,
+                subTaskRepository: widget.subTaskRepository,
+              ),
+              _ManagementPage(tasks: tasks),
+              _SettingsPage(
+                settingsRepository: widget.settingsRepository,
+                onSettingsChanged: () {
+                  setState(() {
+                    _settingsFuture = widget.settingsRepository.getSettings();
+                  });
+                },
+                onOpenSyncDebug: _openEcampusDebug,
+              ),
+            ];
 
-        return Scaffold(
-          body: IndexedStack(index: _selectedIndex, children: pages),
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: _selectedIndex,
-            onDestinationSelected: (index) {
-              setState(() {
-                _selectedIndex = index;
-              });
-            },
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.home_outlined),
-                selectedIcon: Icon(Icons.home_rounded),
-                label: '홈',
+            return Scaffold(
+              body: IndexedStack(index: _selectedIndex, children: pages),
+              bottomNavigationBar: NavigationBar(
+                selectedIndex: _selectedIndex,
+                onDestinationSelected: (index) {
+                  setState(() {
+                    _selectedIndex = index;
+                  });
+                },
+                destinations: const [
+                  NavigationDestination(
+                    icon: Icon(Icons.home_outlined),
+                    selectedIcon: Icon(Icons.home_rounded),
+                    label: '홈',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.format_list_bulleted_rounded),
+                    selectedIcon: Icon(Icons.format_list_bulleted_rounded),
+                    label: '목록',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.folder_outlined),
+                    selectedIcon: Icon(Icons.folder_rounded),
+                    label: '관리',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.settings_outlined),
+                    selectedIcon: Icon(Icons.settings_rounded),
+                    label: '설정',
+                  ),
+                ],
               ),
-              NavigationDestination(
-                icon: Icon(Icons.format_list_bulleted_rounded),
-                selectedIcon: Icon(Icons.format_list_bulleted_rounded),
-                label: '목록',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.folder_outlined),
-                selectedIcon: Icon(Icons.folder_rounded),
-                label: '관리',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.settings_outlined),
-                selectedIcon: Icon(Icons.settings_rounded),
-                label: '설정',
-              ),
-            ],
-          ),
-          floatingActionButton: _selectedIndex == 0 || _selectedIndex == 1
-              ? FloatingActionButton(
-                  onPressed: _openTaskCreate,
-                  child: const Icon(Icons.add_rounded),
-                )
-              : null,
+              floatingActionButton: _selectedIndex == 0 || _selectedIndex == 1
+                  ? FloatingActionButton(
+                      onPressed: _openTaskCreate,
+                      child: const Icon(Icons.add_rounded),
+                    )
+                  : null,
+            );
+          },
         );
       },
     );
@@ -239,6 +274,7 @@ class _HomePage extends StatelessWidget {
   const _HomePage({
     required this.tasks,
     required this.isLoading,
+    required this.urgentDueDays,
     required this.onRefresh,
     required this.onOpenSync,
     required this.onOpenSettings,
@@ -251,6 +287,7 @@ class _HomePage extends StatelessWidget {
 
   final List<Task> tasks;
   final bool isLoading;
+  final int urgentDueDays;
   final VoidCallback onRefresh;
   final VoidCallback onOpenSync;
   final VoidCallback onOpenSettings;
@@ -266,7 +303,9 @@ class _HomePage extends StatelessWidget {
         .where((task) => task.status == TaskStatus.active)
         .toList(growable: false);
     final todayTasks = activeTasks.where(_isDueToday).toList(growable: false);
-    final urgentTasks = activeTasks.where(_isUrgent).toList(growable: false);
+    final urgentTasks = activeTasks
+        .where((task) => _isUrgent(task, urgentDueDays))
+        .toList(growable: false);
 
     return SafeArea(
       child: RefreshIndicator(
@@ -708,75 +747,274 @@ class _ManagementPage extends StatelessWidget {
   }
 }
 
-class _SettingsPage extends StatelessWidget {
-  const _SettingsPage({required this.onOpenSyncDebug});
+class _SettingsPage extends StatefulWidget {
+  const _SettingsPage({
+    required this.settingsRepository,
+    required this.onSettingsChanged,
+    required this.onOpenSyncDebug,
+  });
 
+  final SettingsRepository settingsRepository;
+  final VoidCallback onSettingsChanged;
   final VoidCallback onOpenSyncDebug;
 
   @override
+  State<_SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<_SettingsPage> {
+  late Future<AppSettings> _settingsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _settingsFuture = widget.settingsRepository.getSettings();
+  }
+
+  Future<void> _saveSettings(AppSettings settings) async {
+    final saved = await widget.settingsRepository.saveSettings(settings);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _settingsFuture = Future.value(saved);
+    });
+    widget.onSettingsChanged();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 18, 20, 96),
-        children: [
-          _PageTitle(title: '설정'),
-          const SizedBox(height: 28),
-          _SettingsSection(
-            title: 'e-campus 연동',
+    return FutureBuilder<AppSettings>(
+      future: _settingsFuture,
+      builder: (context, snapshot) {
+        final settings =
+            snapshot.data ??
+            const AppSettings(
+              autoSyncEnabled: false,
+              saveEcampusAccount: false,
+              defaultNotificationEnabled: true,
+              defaultNotificationDays: 1,
+              defaultNotificationTime: '09:00',
+              urgentDueDays: 3,
+            );
+        final isLoading =
+            snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData;
+
+        return SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 96),
             children: [
-              const _SettingsSwitchRow(
-                icon: Icons.lock_outline_rounded,
-                title: '로그인 상태 유지',
-                value: true,
+              _PageTitle(title: '설정'),
+              const SizedBox(height: 28),
+              _SettingsSection(
+                title: 'e-campus 연동',
+                children: [
+                  const _SettingsSwitchRow(
+                    icon: Icons.lock_outline_rounded,
+                    title: '로그인 상태 유지',
+                    value: true,
+                  ),
+                  _SettingsSwitchRow(
+                    icon: Icons.sync_rounded,
+                    title: '앱 실행 시 자동 동기화',
+                    value: settings.autoSyncEnabled,
+                    onChanged: isLoading
+                        ? null
+                        : (value) => _saveSettings(
+                            settings.copyWith(autoSyncEnabled: value),
+                          ),
+                  ),
+                  _SettingsActionRow(
+                    icon: Icons.sync_rounded,
+                    title: 'e-campus 연동 테스트',
+                    subtitle: '로그인, todo, 로그아웃 확인',
+                    onTap: widget.onOpenSyncDebug,
+                  ),
+                ],
               ),
-              const _SettingsSwitchRow(
-                icon: Icons.sync_rounded,
-                title: '앱 실행 시 자동 동기화',
-                value: false,
+              const SizedBox(height: 24),
+              _SettingsSection(
+                title: '알림',
+                children: [
+                  _SettingsSwitchRow(
+                    icon: Icons.notifications_rounded,
+                    title: '기본 알림',
+                    value: settings.defaultNotificationEnabled,
+                    subtitle: settings.defaultNotificationEnabled
+                        ? '${_notificationDaysLabel(settings.defaultNotificationDays)} ${settings.defaultNotificationTime}'
+                        : '꺼짐',
+                    onChanged: isLoading
+                        ? null
+                        : (value) => _saveSettings(
+                            settings.copyWith(
+                              defaultNotificationEnabled: value,
+                            ),
+                          ),
+                  ),
+                  if (settings.defaultNotificationEnabled) ...[
+                    _SettingsInfoRow(
+                      icon: Icons.access_time_rounded,
+                      title: '알림 시점',
+                      value: _notificationDaysLabel(
+                        settings.defaultNotificationDays,
+                      ),
+                      onTap: isLoading
+                          ? null
+                          : () => _pickDefaultNotificationDays(settings),
+                    ),
+                    _SettingsInfoRow(
+                      icon: Icons.schedule_rounded,
+                      title: '기본 알림 시각',
+                      value: settings.defaultNotificationTime,
+                      onTap: isLoading
+                          ? null
+                          : () => _pickNotificationTime(settings),
+                    ),
+                  ],
+                ],
               ),
-              _SettingsActionRow(
-                icon: Icons.sync_rounded,
-                title: 'e-campus 연동 테스트',
-                subtitle: '로그인, todo, 로그아웃 확인',
-                onTap: onOpenSyncDebug,
+              const SizedBox(height: 24),
+              _SettingsSection(
+                title: '홈 표시',
+                children: [
+                  _SettingsInfoRow(
+                    icon: Icons.access_time_rounded,
+                    title: '마감 임박 기준',
+                    value: '${settings.urgentDueDays}일 이내',
+                    onTap: isLoading
+                        ? null
+                        : () => _pickUrgentDueDays(settings),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              const _SettingsSection(
+                title: '보안',
+                children: [
+                  _SettingsInfoRow(
+                    icon: Icons.verified_user_outlined,
+                    title: '계정 저장 정책',
+                    value: '저장 안 함',
+                    subtitle: '비밀번호는 저장하지 않음',
+                  ),
+                  _SettingsInfoRow(
+                    icon: Icons.delete_outline_rounded,
+                    title: '세션/쿠키 정리',
+                    value: '로그아웃 시',
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          const _SettingsSection(
-            title: '알림',
-            children: [
-              _SettingsInfoRow(
-                icon: Icons.notifications_rounded,
-                title: '기본 알림',
-                value: '1일 전 09:00',
+        );
+      },
+    );
+  }
+
+  Future<void> _pickDefaultNotificationDays(AppSettings settings) async {
+    final days = await _pickDaySlider(
+      title: '알림 시점',
+      selected: settings.defaultNotificationDays,
+      min: 0,
+      max: 7,
+      labelBuilder: _notificationDaysLabel,
+    );
+    if (days != null) {
+      await _saveSettings(settings.copyWith(defaultNotificationDays: days));
+    }
+  }
+
+  Future<void> _pickUrgentDueDays(AppSettings settings) async {
+    final days = await _pickDaySlider(
+      title: '마감 임박 기준',
+      selected: settings.urgentDueDays,
+      min: 1,
+      max: 14,
+      labelBuilder: (days) => '$days일 이내',
+    );
+    if (days != null) {
+      await _saveSettings(settings.copyWith(urgentDueDays: days));
+    }
+  }
+
+  Future<int?> _pickDaySlider({
+    required String title,
+    required int selected,
+    required int min,
+    required int max,
+    required String Function(int days) labelBuilder,
+  }) {
+    var current = selected.clamp(min, max);
+    return showModalBottomSheet<int>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Center(
+                    child: _ColoredChip(
+                      label: labelBuilder(current),
+                      color: AppTheme.primaryBlue,
+                    ),
+                  ),
+                  Slider(
+                    value: current.toDouble(),
+                    min: min.toDouble(),
+                    max: max.toDouble(),
+                    divisions: max - min,
+                    label: labelBuilder(current),
+                    onChanged: (value) {
+                      setSheetState(() {
+                        current = value.round();
+                      });
+                    },
+                  ),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () => Navigator.of(context).pop(current),
+                      child: const Text('적용'),
+                    ),
+                  ),
+                ],
               ),
-              _SettingsInfoRow(
-                icon: Icons.access_time_rounded,
-                title: '마감 임박 기준',
-                value: '3일 이내',
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          const _SettingsSection(
-            title: '보안',
-            children: [
-              _SettingsInfoRow(
-                icon: Icons.verified_user_outlined,
-                title: '계정 저장 정책',
-                value: '저장 안 함',
-                subtitle: '비밀번호는 저장하지 않음',
-              ),
-              _SettingsInfoRow(
-                icon: Icons.delete_outline_rounded,
-                title: '세션/쿠키 정리',
-                value: '로그아웃 시',
-              ),
-            ],
-          ),
-        ],
+            ),
+          );
+        },
       ),
+    );
+  }
+
+  String _notificationDaysLabel(int days) {
+    if (days == 0) {
+      return '마감 당일';
+    }
+    return '마감 $days일 전';
+  }
+
+  Future<void> _pickNotificationTime(AppSettings settings) async {
+    final initial = _parseTimeOfDay(settings.defaultNotificationTime);
+    final time = await showTimePicker(context: context, initialTime: initial);
+    if (time == null) {
+      return;
+    }
+
+    await _saveSettings(
+      settings.copyWith(defaultNotificationTime: _timeLabel(time)),
     );
   }
 }
@@ -1727,11 +1965,15 @@ class _SettingsSwitchRow extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.value,
+    this.subtitle,
+    this.onChanged,
   });
 
   final IconData icon;
   final String title;
   final bool value;
+  final String? subtitle;
+  final ValueChanged<bool>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -1739,7 +1981,8 @@ class _SettingsSwitchRow extends StatelessWidget {
       minLeadingWidth: 28,
       leading: _SettingsIcon(icon: icon, color: AppTheme.successGreen),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-      trailing: Switch(value: value, onChanged: (_) {}),
+      subtitle: subtitle == null ? null : Text(subtitle!),
+      trailing: Switch(value: value, onChanged: onChanged),
     );
   }
 }
@@ -1750,16 +1993,19 @@ class _SettingsInfoRow extends StatelessWidget {
     required this.title,
     required this.value,
     this.subtitle,
+    this.onTap,
   });
 
   final IconData icon;
   final String title;
   final String value;
   final String? subtitle;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
+      onTap: onTap,
       minLeadingWidth: 28,
       leading: _SettingsIcon(icon: icon, color: AppTheme.primaryBlue),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
@@ -1881,7 +2127,7 @@ bool _isDueToday(Task task) {
       dueDate.day == now.day;
 }
 
-bool _isUrgent(Task task) {
+bool _isUrgent(Task task, int urgentDueDays) {
   final dueDate = task.dueDate;
   if (dueDate == null) {
     return false;
@@ -1890,7 +2136,7 @@ bool _isUrgent(Task task) {
   final startOfToday = DateTime(now.year, now.month, now.day);
   final dueDay = DateTime(dueDate.year, dueDate.month, dueDate.day);
   final days = dueDay.difference(startOfToday).inDays;
-  return days >= 0 && days <= 3 && !_isDueToday(task);
+  return days >= 0 && days <= urgentDueDays && !_isDueToday(task);
 }
 
 bool _isOverdue(DateTime dueDate) {
@@ -2032,4 +2278,27 @@ String _dueLabel(DateTime date) {
 
 String _shortDateLabel(DateTime date) {
   return '${date.month}월 ${date.day}일';
+}
+
+TimeOfDay _parseTimeOfDay(String value) {
+  final parts = value.split(':');
+  if (parts.length != 2) {
+    return const TimeOfDay(hour: 9, minute: 0);
+  }
+
+  final hour = int.tryParse(parts[0]);
+  final minute = int.tryParse(parts[1]);
+  if (hour == null ||
+      minute == null ||
+      hour < 0 ||
+      hour > 23 ||
+      minute < 0 ||
+      minute > 59) {
+    return const TimeOfDay(hour: 9, minute: 0);
+  }
+  return TimeOfDay(hour: hour, minute: minute);
+}
+
+String _timeLabel(TimeOfDay time) {
+  return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
 }

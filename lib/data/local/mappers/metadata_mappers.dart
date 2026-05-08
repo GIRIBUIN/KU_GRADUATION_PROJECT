@@ -91,14 +91,21 @@ class AppSettingsMapper {
 
   static const autoSyncEnabledKey = 'autoSyncEnabled';
   static const saveEcampusAccountKey = 'saveEcampusAccount';
+  static const defaultNotificationEnabledKey = 'defaultNotificationEnabled';
   static const defaultNotificationDaysKey = 'defaultNotificationDays';
+  static const defaultNotificationTimeKey = 'defaultNotificationTime';
+  static const urgentDueDaysKey = 'urgentDueDays';
 
   settings_model.AppSettings fromMap(Map<String, String> values) {
     return settings_model.AppSettings(
       autoSyncEnabled: _parseBool(values[autoSyncEnabledKey]) ?? false,
       saveEcampusAccount: _parseBool(values[saveEcampusAccountKey]) ?? false,
+      defaultNotificationEnabled:
+          _parseBool(values[defaultNotificationEnabledKey]) ?? true,
       defaultNotificationDays:
           int.tryParse(values[defaultNotificationDaysKey] ?? '') ?? 1,
+      defaultNotificationTime: values[defaultNotificationTimeKey] ?? '09:00',
+      urgentDueDays: int.tryParse(values[urgentDueDaysKey] ?? '') ?? 3,
     );
   }
 
@@ -106,7 +113,11 @@ class AppSettingsMapper {
     return {
       autoSyncEnabledKey: settings.autoSyncEnabled.toString(),
       saveEcampusAccountKey: settings.saveEcampusAccount.toString(),
+      defaultNotificationEnabledKey: settings.defaultNotificationEnabled
+          .toString(),
       defaultNotificationDaysKey: settings.defaultNotificationDays.toString(),
+      defaultNotificationTimeKey: settings.defaultNotificationTime,
+      urgentDueDaysKey: settings.urgentDueDays.toString(),
     };
   }
 

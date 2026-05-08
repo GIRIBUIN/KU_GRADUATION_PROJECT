@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/task_models.dart';
+import '../../../data/repositories/notification_repository.dart';
+import '../../../data/repositories/settings_repository.dart';
 import '../../../data/repositories/sub_task_repository.dart';
 import '../../../data/repositories/task_repository.dart';
 import '../../../data/services/sub_task_progress.dart';
@@ -11,10 +13,14 @@ class TaskCreateScreen extends StatefulWidget {
     super.key,
     required this.taskRepository,
     required this.subTaskRepository,
+    required this.notificationRepository,
+    required this.settingsRepository,
   });
 
   final TaskRepository taskRepository;
   final SubTaskRepository subTaskRepository;
+  final NotificationRepository notificationRepository;
+  final SettingsRepository settingsRepository;
 
   @override
   State<TaskCreateScreen> createState() => _TaskCreateScreenState();
@@ -28,6 +34,10 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
 
   DateTime? _dueDate;
   TaskPriority? _priority;
+  var _notificationEnabled = true;
+  var _notificationDays = 1;
+  var _notificationTime = '09:00';
+  var _isLoadingSettings = true;
   var _isSaving = false;
   var _didPopAfterSave = false;
 
@@ -37,6 +47,25 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
     _memoController.dispose();
     _subTaskController.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDefaults();
+  }
+
+  Future<void> _loadDefaults() async {
+    final settings = await widget.settingsRepository.getSettings();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _notificationEnabled = settings.defaultNotificationEnabled;
+      _notificationDays = settings.defaultNotificationDays;
+      _notificationTime = settings.defaultNotificationTime;
+      _isLoadingSettings = false;
+    });
   }
 
   @override
@@ -95,6 +124,49 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
                         });
                       },
                     ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 22),
+              _CreateSection(
+                title: '알림',
+                child: Column(
+                  children: [
+                    _CreateSwitchTile(
+                      icon: Icons.notifications_rounded,
+                      title: '작업 알림',
+                      subtitle: _notificationEnabled
+                          ? '${_notificationDaysLabel(_notificationDays)} $_notificationTime'
+                          : '꺼짐',
+                      value: _notificationEnabled,
+                      onChanged: _isLoadingSettings
+                          ? null
+                          : (value) {
+                              setState(() {
+                                _notificationEnabled = value;
+                              });
+                            },
+                    ),
+                    if (_notificationEnabled) ...[
+                      const Divider(height: 1),
+                      _CreateActionTile(
+                        icon: Icons.schedule_rounded,
+                        title: '알림 시점',
+                        value: _notificationDaysLabel(_notificationDays),
+                        onTap: _isLoadingSettings
+                            ? null
+                            : _pickNotificationDays,
+                      ),
+                      const Divider(height: 1),
+                      _CreateActionTile(
+                        icon: Icons.access_time_rounded,
+                        title: '알림 시각',
+                        value: _notificationTime,
+                        onTap: _isLoadingSettings
+                            ? null
+                            : _pickNotificationTime,
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -205,6 +277,16 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
       );
     }
 
+    await widget.notificationRepository.save(
+      NotificationSetting(
+        id: 'notification_${task.id}',
+        taskId: task.id,
+        enabled: _notificationEnabled,
+        daysBeforeDue: _notificationDays,
+        notifyTime: _notificationTime,
+      ),
+    );
+
     if (!mounted) {
       return;
     }
@@ -247,6 +329,34 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
         time?.minute ?? 59,
       );
     });
+  }
+
+  Future<void> _pickNotificationDays() async {
+    final days = await _pickDaySlider(
+      context: context,
+      title: '알림 시점',
+      selected: _notificationDays,
+      min: 0,
+      max: 7,
+      labelBuilder: _notificationDaysLabel,
+    );
+    if (days != null) {
+      setState(() {
+        _notificationDays = days;
+      });
+    }
+  }
+
+  Future<void> _pickNotificationTime() async {
+    final time = await showTimePicker(
+      context: context,
+      initialTime: _parseTimeOfDay(_notificationTime),
+    );
+    if (time != null) {
+      setState(() {
+        _notificationTime = _timeLabel(time);
+      });
+    }
   }
 
   void _addSubTask() {
@@ -322,7 +432,7 @@ class _CreateActionTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final String value;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -343,6 +453,32 @@ class _CreateActionTile extends StatelessWidget {
           const Icon(Icons.chevron_right_rounded, color: AppTheme.muted),
         ],
       ),
+    );
+  }
+}
+
+class _CreateSwitchTile extends StatelessWidget {
+  const _CreateSwitchTile({
+    required this.icon,
+    required this.title,
+    required this.value,
+    this.subtitle,
+    this.onChanged,
+  });
+
+  final IconData icon;
+  final String title;
+  final bool value;
+  final String? subtitle;
+  final ValueChanged<bool>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(icon, color: AppTheme.primaryBlue),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+      subtitle: subtitle == null ? null : Text(subtitle!),
+      trailing: Switch(value: value, onChanged: onChanged),
     );
   }
 }
@@ -564,6 +700,114 @@ String _dateTimeLabel(DateTime date) {
   final hour = date.hour.toString().padLeft(2, '0');
   final minute = date.minute.toString().padLeft(2, '0');
   return '${date.month}.${date.day} $hour:$minute';
+}
+
+Future<int?> _pickDaySlider({
+  required BuildContext context,
+  required String title,
+  required int selected,
+  required int min,
+  required int max,
+  required String Function(int days) labelBuilder,
+}) {
+  var current = selected.clamp(min, max);
+  return showModalBottomSheet<int>(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setSheetState) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryBlue.withValues(alpha: 0.09),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppTheme.primaryBlue.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Text(
+                      labelBuilder(current),
+                      style: const TextStyle(
+                        color: AppTheme.primaryBlue,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+                Slider(
+                  value: current.toDouble(),
+                  min: min.toDouble(),
+                  max: max.toDouble(),
+                  divisions: max - min,
+                  label: labelBuilder(current),
+                  onChanged: (value) {
+                    setSheetState(() {
+                      current = value.round();
+                    });
+                  },
+                ),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () => Navigator.of(context).pop(current),
+                    child: const Text('적용'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    ),
+  );
+}
+
+String _notificationDaysLabel(int days) {
+  if (days == 0) {
+    return '마감 당일';
+  }
+  return '마감 $days일 전';
+}
+
+TimeOfDay _parseTimeOfDay(String value) {
+  final parts = value.split(':');
+  if (parts.length != 2) {
+    return const TimeOfDay(hour: 9, minute: 0);
+  }
+  final hour = int.tryParse(parts[0]);
+  final minute = int.tryParse(parts[1]);
+  if (hour == null ||
+      minute == null ||
+      hour < 0 ||
+      hour > 23 ||
+      minute < 0 ||
+      minute > 59) {
+    return const TimeOfDay(hour: 9, minute: 0);
+  }
+  return TimeOfDay(hour: hour, minute: minute);
+}
+
+String _timeLabel(TimeOfDay time) {
+  return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
 }
 
 void _showSnackBar(BuildContext context, String message) {

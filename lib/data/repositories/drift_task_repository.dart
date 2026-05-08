@@ -37,9 +37,7 @@ class DriftTaskRepository implements TaskRepository {
     }
 
     query.orderBy([
-      (table) => OrderingTerm(
-        expression: table.sortOrder,
-      ),
+      (table) => OrderingTerm(expression: table.sortOrder),
       (table) => OrderingTerm(expression: table.createdAt),
     ]);
 
@@ -234,7 +232,7 @@ class DriftTaskRepository implements TaskRepository {
           .insert(db.TaskTagsCompanion.insert(taskId: task.id, tagId: tagId));
     }
 
-    for (final folderId in task.folderIds) {
+    for (final folderId in task.folderIds.take(1)) {
       await _database
           .into(_database.taskFolders)
           .insert(
@@ -244,15 +242,16 @@ class DriftTaskRepository implements TaskRepository {
   }
 
   Future<int> _nextSortOrder() async {
-    final rows = await (_database.select(_database.tasks)
-          ..orderBy([
-            (table) => OrderingTerm(
-              expression: table.sortOrder,
-              mode: OrderingMode.desc,
-            ),
-          ])
-          ..limit(1))
-        .get();
+    final rows =
+        await (_database.select(_database.tasks)
+              ..orderBy([
+                (table) => OrderingTerm(
+                  expression: table.sortOrder,
+                  mode: OrderingMode.desc,
+                ),
+              ])
+              ..limit(1))
+            .get();
 
     if (rows.isEmpty) {
       return 0;

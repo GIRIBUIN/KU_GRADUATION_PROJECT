@@ -12,9 +12,6 @@ class TagMapper {
       id: row.id,
       name: row.name,
       color: row.color,
-      defaultPriority: row.defaultPriority == null
-          ? null
-          : models.TaskPriority.values.byName(row.defaultPriority!),
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     );
@@ -25,7 +22,6 @@ class TagMapper {
       id: Value(tag.id),
       name: Value(tag.name),
       color: Value(tag.color),
-      defaultPriority: Value(tag.defaultPriority?.name),
       createdAt: Value(tag.createdAt),
       updatedAt: Value(tag.updatedAt),
     );
@@ -41,6 +37,7 @@ class FolderMapper {
       name: row.name,
       color: row.color,
       icon: row.icon,
+      parentFolderId: row.parentFolderId,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     );
@@ -52,6 +49,7 @@ class FolderMapper {
       name: Value(folder.name),
       color: Value(folder.color),
       icon: Value(folder.icon),
+      parentFolderId: Value(folder.parentFolderId),
       createdAt: Value(folder.createdAt),
       updatedAt: Value(folder.updatedAt),
     );

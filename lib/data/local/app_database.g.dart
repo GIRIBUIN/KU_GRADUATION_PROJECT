@@ -1559,17 +1559,6 @@ class $TagsTable extends Tags with TableInfo<$TagsTable, Tag> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _defaultPriorityMeta = const VerificationMeta(
-    'defaultPriority',
-  );
-  @override
-  late final GeneratedColumn<String> defaultPriority = GeneratedColumn<String>(
-    'default_priority',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1593,14 +1582,7 @@ class $TagsTable extends Tags with TableInfo<$TagsTable, Tag> {
     requiredDuringInsert: true,
   );
   @override
-  List<GeneratedColumn> get $columns => [
-    id,
-    name,
-    color,
-    defaultPriority,
-    createdAt,
-    updatedAt,
-  ];
+  List<GeneratedColumn> get $columns => [id, name, color, createdAt, updatedAt];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1633,15 +1615,6 @@ class $TagsTable extends Tags with TableInfo<$TagsTable, Tag> {
       );
     } else if (isInserting) {
       context.missing(_colorMeta);
-    }
-    if (data.containsKey('default_priority')) {
-      context.handle(
-        _defaultPriorityMeta,
-        defaultPriority.isAcceptableOrUnknown(
-          data['default_priority']!,
-          _defaultPriorityMeta,
-        ),
-      );
     }
     if (data.containsKey('created_at')) {
       context.handle(
@@ -1680,10 +1653,6 @@ class $TagsTable extends Tags with TableInfo<$TagsTable, Tag> {
         DriftSqlType.string,
         data['${effectivePrefix}color'],
       )!,
-      defaultPriority: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}default_priority'],
-      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -1705,14 +1674,12 @@ class Tag extends DataClass implements Insertable<Tag> {
   final String id;
   final String name;
   final String color;
-  final String? defaultPriority;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Tag({
     required this.id,
     required this.name,
     required this.color,
-    this.defaultPriority,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -1722,9 +1689,6 @@ class Tag extends DataClass implements Insertable<Tag> {
     map['id'] = Variable<String>(id);
     map['name'] = Variable<String>(name);
     map['color'] = Variable<String>(color);
-    if (!nullToAbsent || defaultPriority != null) {
-      map['default_priority'] = Variable<String>(defaultPriority);
-    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -1735,9 +1699,6 @@ class Tag extends DataClass implements Insertable<Tag> {
       id: Value(id),
       name: Value(name),
       color: Value(color),
-      defaultPriority: defaultPriority == null && nullToAbsent
-          ? const Value.absent()
-          : Value(defaultPriority),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -1752,7 +1713,6 @@ class Tag extends DataClass implements Insertable<Tag> {
       id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       color: serializer.fromJson<String>(json['color']),
-      defaultPriority: serializer.fromJson<String?>(json['defaultPriority']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -1764,7 +1724,6 @@ class Tag extends DataClass implements Insertable<Tag> {
       'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String>(name),
       'color': serializer.toJson<String>(color),
-      'defaultPriority': serializer.toJson<String?>(defaultPriority),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -1774,16 +1733,12 @@ class Tag extends DataClass implements Insertable<Tag> {
     String? id,
     String? name,
     String? color,
-    Value<String?> defaultPriority = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Tag(
     id: id ?? this.id,
     name: name ?? this.name,
     color: color ?? this.color,
-    defaultPriority: defaultPriority.present
-        ? defaultPriority.value
-        : this.defaultPriority,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -1792,9 +1747,6 @@ class Tag extends DataClass implements Insertable<Tag> {
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
       color: data.color.present ? data.color.value : this.color,
-      defaultPriority: data.defaultPriority.present
-          ? data.defaultPriority.value
-          : this.defaultPriority,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1806,7 +1758,6 @@ class Tag extends DataClass implements Insertable<Tag> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('color: $color, ')
-          ..write('defaultPriority: $defaultPriority, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1814,8 +1765,7 @@ class Tag extends DataClass implements Insertable<Tag> {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, name, color, defaultPriority, createdAt, updatedAt);
+  int get hashCode => Object.hash(id, name, color, createdAt, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1823,7 +1773,6 @@ class Tag extends DataClass implements Insertable<Tag> {
           other.id == this.id &&
           other.name == this.name &&
           other.color == this.color &&
-          other.defaultPriority == this.defaultPriority &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -1832,7 +1781,6 @@ class TagsCompanion extends UpdateCompanion<Tag> {
   final Value<String> id;
   final Value<String> name;
   final Value<String> color;
-  final Value<String?> defaultPriority;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -1840,7 +1788,6 @@ class TagsCompanion extends UpdateCompanion<Tag> {
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.color = const Value.absent(),
-    this.defaultPriority = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1849,7 +1796,6 @@ class TagsCompanion extends UpdateCompanion<Tag> {
     required String id,
     required String name,
     required String color,
-    this.defaultPriority = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
@@ -1862,7 +1808,6 @@ class TagsCompanion extends UpdateCompanion<Tag> {
     Expression<String>? id,
     Expression<String>? name,
     Expression<String>? color,
-    Expression<String>? defaultPriority,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -1871,7 +1816,6 @@ class TagsCompanion extends UpdateCompanion<Tag> {
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (color != null) 'color': color,
-      if (defaultPriority != null) 'default_priority': defaultPriority,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -1882,7 +1826,6 @@ class TagsCompanion extends UpdateCompanion<Tag> {
     Value<String>? id,
     Value<String>? name,
     Value<String>? color,
-    Value<String?>? defaultPriority,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -1891,7 +1834,6 @@ class TagsCompanion extends UpdateCompanion<Tag> {
       id: id ?? this.id,
       name: name ?? this.name,
       color: color ?? this.color,
-      defaultPriority: defaultPriority ?? this.defaultPriority,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -1909,9 +1851,6 @@ class TagsCompanion extends UpdateCompanion<Tag> {
     }
     if (color.present) {
       map['color'] = Variable<String>(color.value);
-    }
-    if (defaultPriority.present) {
-      map['default_priority'] = Variable<String>(defaultPriority.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -1931,7 +1870,6 @@ class TagsCompanion extends UpdateCompanion<Tag> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('color: $color, ')
-          ..write('defaultPriority: $defaultPriority, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -1981,6 +1919,20 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, Folder> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _parentFolderIdMeta = const VerificationMeta(
+    'parentFolderId',
+  );
+  @override
+  late final GeneratedColumn<String> parentFolderId = GeneratedColumn<String>(
+    'parent_folder_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES folders (id)',
+    ),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -2009,6 +1961,7 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, Folder> {
     name,
     color,
     icon,
+    parentFolderId,
     createdAt,
     updatedAt,
   ];
@@ -2047,6 +2000,15 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, Folder> {
       context.handle(
         _iconMeta,
         icon.isAcceptableOrUnknown(data['icon']!, _iconMeta),
+      );
+    }
+    if (data.containsKey('parent_folder_id')) {
+      context.handle(
+        _parentFolderIdMeta,
+        parentFolderId.isAcceptableOrUnknown(
+          data['parent_folder_id']!,
+          _parentFolderIdMeta,
+        ),
       );
     }
     if (data.containsKey('created_at')) {
@@ -2090,6 +2052,10 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, Folder> {
         DriftSqlType.string,
         data['${effectivePrefix}icon'],
       ),
+      parentFolderId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}parent_folder_id'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -2112,6 +2078,7 @@ class Folder extends DataClass implements Insertable<Folder> {
   final String name;
   final String? color;
   final String? icon;
+  final String? parentFolderId;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Folder({
@@ -2119,6 +2086,7 @@ class Folder extends DataClass implements Insertable<Folder> {
     required this.name,
     this.color,
     this.icon,
+    this.parentFolderId,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -2133,6 +2101,9 @@ class Folder extends DataClass implements Insertable<Folder> {
     if (!nullToAbsent || icon != null) {
       map['icon'] = Variable<String>(icon);
     }
+    if (!nullToAbsent || parentFolderId != null) {
+      map['parent_folder_id'] = Variable<String>(parentFolderId);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -2146,6 +2117,9 @@ class Folder extends DataClass implements Insertable<Folder> {
           ? const Value.absent()
           : Value(color),
       icon: icon == null && nullToAbsent ? const Value.absent() : Value(icon),
+      parentFolderId: parentFolderId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(parentFolderId),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -2161,6 +2135,7 @@ class Folder extends DataClass implements Insertable<Folder> {
       name: serializer.fromJson<String>(json['name']),
       color: serializer.fromJson<String?>(json['color']),
       icon: serializer.fromJson<String?>(json['icon']),
+      parentFolderId: serializer.fromJson<String?>(json['parentFolderId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -2173,6 +2148,7 @@ class Folder extends DataClass implements Insertable<Folder> {
       'name': serializer.toJson<String>(name),
       'color': serializer.toJson<String?>(color),
       'icon': serializer.toJson<String?>(icon),
+      'parentFolderId': serializer.toJson<String?>(parentFolderId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -2183,6 +2159,7 @@ class Folder extends DataClass implements Insertable<Folder> {
     String? name,
     Value<String?> color = const Value.absent(),
     Value<String?> icon = const Value.absent(),
+    Value<String?> parentFolderId = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Folder(
@@ -2190,6 +2167,9 @@ class Folder extends DataClass implements Insertable<Folder> {
     name: name ?? this.name,
     color: color.present ? color.value : this.color,
     icon: icon.present ? icon.value : this.icon,
+    parentFolderId: parentFolderId.present
+        ? parentFolderId.value
+        : this.parentFolderId,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -2199,6 +2179,9 @@ class Folder extends DataClass implements Insertable<Folder> {
       name: data.name.present ? data.name.value : this.name,
       color: data.color.present ? data.color.value : this.color,
       icon: data.icon.present ? data.icon.value : this.icon,
+      parentFolderId: data.parentFolderId.present
+          ? data.parentFolderId.value
+          : this.parentFolderId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -2211,6 +2194,7 @@ class Folder extends DataClass implements Insertable<Folder> {
           ..write('name: $name, ')
           ..write('color: $color, ')
           ..write('icon: $icon, ')
+          ..write('parentFolderId: $parentFolderId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -2218,7 +2202,8 @@ class Folder extends DataClass implements Insertable<Folder> {
   }
 
   @override
-  int get hashCode => Object.hash(id, name, color, icon, createdAt, updatedAt);
+  int get hashCode =>
+      Object.hash(id, name, color, icon, parentFolderId, createdAt, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2227,6 +2212,7 @@ class Folder extends DataClass implements Insertable<Folder> {
           other.name == this.name &&
           other.color == this.color &&
           other.icon == this.icon &&
+          other.parentFolderId == this.parentFolderId &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -2236,6 +2222,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
   final Value<String> name;
   final Value<String?> color;
   final Value<String?> icon;
+  final Value<String?> parentFolderId;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -2244,6 +2231,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
     this.name = const Value.absent(),
     this.color = const Value.absent(),
     this.icon = const Value.absent(),
+    this.parentFolderId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -2253,6 +2241,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
     required String name,
     this.color = const Value.absent(),
     this.icon = const Value.absent(),
+    this.parentFolderId = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
@@ -2265,6 +2254,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
     Expression<String>? name,
     Expression<String>? color,
     Expression<String>? icon,
+    Expression<String>? parentFolderId,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -2274,6 +2264,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
       if (name != null) 'name': name,
       if (color != null) 'color': color,
       if (icon != null) 'icon': icon,
+      if (parentFolderId != null) 'parent_folder_id': parentFolderId,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -2285,6 +2276,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
     Value<String>? name,
     Value<String?>? color,
     Value<String?>? icon,
+    Value<String?>? parentFolderId,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -2294,6 +2286,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
       name: name ?? this.name,
       color: color ?? this.color,
       icon: icon ?? this.icon,
+      parentFolderId: parentFolderId ?? this.parentFolderId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -2315,6 +2308,9 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
     if (icon.present) {
       map['icon'] = Variable<String>(icon.value);
     }
+    if (parentFolderId.present) {
+      map['parent_folder_id'] = Variable<String>(parentFolderId.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -2334,6 +2330,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
           ..write('name: $name, ')
           ..write('color: $color, ')
           ..write('icon: $icon, ')
+          ..write('parentFolderId: $parentFolderId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -4712,7 +4709,6 @@ typedef $$TagsTableCreateCompanionBuilder =
       required String id,
       required String name,
       required String color,
-      Value<String?> defaultPriority,
       required DateTime createdAt,
       required DateTime updatedAt,
       Value<int> rowid,
@@ -4722,7 +4718,6 @@ typedef $$TagsTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> name,
       Value<String> color,
-      Value<String?> defaultPriority,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -4772,11 +4767,6 @@ class $$TagsTableFilterComposer extends Composer<_$AppDatabase, $TagsTable> {
 
   ColumnFilters<String> get color => $composableBuilder(
     column: $table.color,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get defaultPriority => $composableBuilder(
-    column: $table.defaultPriority,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4839,11 +4829,6 @@ class $$TagsTableOrderingComposer extends Composer<_$AppDatabase, $TagsTable> {
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get defaultPriority => $composableBuilder(
-    column: $table.defaultPriority,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -4872,11 +4857,6 @@ class $$TagsTableAnnotationComposer
 
   GeneratedColumn<String> get color =>
       $composableBuilder(column: $table.color, builder: (column) => column);
-
-  GeneratedColumn<String> get defaultPriority => $composableBuilder(
-    column: $table.defaultPriority,
-    builder: (column) => column,
-  );
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -4941,7 +4921,6 @@ class $$TagsTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String> color = const Value.absent(),
-                Value<String?> defaultPriority = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -4949,7 +4928,6 @@ class $$TagsTableTableManager
                 id: id,
                 name: name,
                 color: color,
-                defaultPriority: defaultPriority,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -4959,7 +4937,6 @@ class $$TagsTableTableManager
                 required String id,
                 required String name,
                 required String color,
-                Value<String?> defaultPriority = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<int> rowid = const Value.absent(),
@@ -4967,7 +4944,6 @@ class $$TagsTableTableManager
                 id: id,
                 name: name,
                 color: color,
-                defaultPriority: defaultPriority,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -5025,6 +5001,7 @@ typedef $$FoldersTableCreateCompanionBuilder =
       required String name,
       Value<String?> color,
       Value<String?> icon,
+      Value<String?> parentFolderId,
       required DateTime createdAt,
       required DateTime updatedAt,
       Value<int> rowid,
@@ -5035,6 +5012,7 @@ typedef $$FoldersTableUpdateCompanionBuilder =
       Value<String> name,
       Value<String?> color,
       Value<String?> icon,
+      Value<String?> parentFolderId,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -5043,6 +5021,25 @@ typedef $$FoldersTableUpdateCompanionBuilder =
 final class $$FoldersTableReferences
     extends BaseReferences<_$AppDatabase, $FoldersTable, Folder> {
   $$FoldersTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $FoldersTable _parentFolderIdTable(_$AppDatabase db) =>
+      db.folders.createAlias(
+        $_aliasNameGenerator(db.folders.parentFolderId, db.folders.id),
+      );
+
+  $$FoldersTableProcessedTableManager? get parentFolderId {
+    final $_column = $_itemColumn<String>('parent_folder_id');
+    if ($_column == null) return null;
+    final manager = $$FoldersTableTableManager(
+      $_db,
+      $_db.folders,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_parentFolderIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
 
   static MultiTypedResultKey<$TaskFoldersTable, List<TaskFolder>>
   _taskFoldersRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
@@ -5101,6 +5098,29 @@ class $$FoldersTableFilterComposer
     column: $table.updatedAt,
     builder: (column) => ColumnFilters(column),
   );
+
+  $$FoldersTableFilterComposer get parentFolderId {
+    final $$FoldersTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.parentFolderId,
+      referencedTable: $db.folders,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FoldersTableFilterComposer(
+            $db: $db,
+            $table: $db.folders,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 
   Expression<bool> taskFoldersRefs(
     Expression<bool> Function($$TaskFoldersTableFilterComposer f) f,
@@ -5166,6 +5186,29 @@ class $$FoldersTableOrderingComposer
     column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  $$FoldersTableOrderingComposer get parentFolderId {
+    final $$FoldersTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.parentFolderId,
+      referencedTable: $db.folders,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FoldersTableOrderingComposer(
+            $db: $db,
+            $table: $db.folders,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$FoldersTableAnnotationComposer
@@ -5194,6 +5237,29 @@ class $$FoldersTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$FoldersTableAnnotationComposer get parentFolderId {
+    final $$FoldersTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.parentFolderId,
+      referencedTable: $db.folders,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FoldersTableAnnotationComposer(
+            $db: $db,
+            $table: $db.folders,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 
   Expression<T> taskFoldersRefs<T extends Object>(
     Expression<T> Function($$TaskFoldersTableAnnotationComposer a) f,
@@ -5234,7 +5300,7 @@ class $$FoldersTableTableManager
           $$FoldersTableUpdateCompanionBuilder,
           (Folder, $$FoldersTableReferences),
           Folder,
-          PrefetchHooks Function({bool taskFoldersRefs})
+          PrefetchHooks Function({bool parentFolderId, bool taskFoldersRefs})
         > {
   $$FoldersTableTableManager(_$AppDatabase db, $FoldersTable table)
     : super(
@@ -5253,6 +5319,7 @@ class $$FoldersTableTableManager
                 Value<String> name = const Value.absent(),
                 Value<String?> color = const Value.absent(),
                 Value<String?> icon = const Value.absent(),
+                Value<String?> parentFolderId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -5261,6 +5328,7 @@ class $$FoldersTableTableManager
                 name: name,
                 color: color,
                 icon: icon,
+                parentFolderId: parentFolderId,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -5271,6 +5339,7 @@ class $$FoldersTableTableManager
                 required String name,
                 Value<String?> color = const Value.absent(),
                 Value<String?> icon = const Value.absent(),
+                Value<String?> parentFolderId = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<int> rowid = const Value.absent(),
@@ -5279,6 +5348,7 @@ class $$FoldersTableTableManager
                 name: name,
                 color: color,
                 icon: icon,
+                parentFolderId: parentFolderId,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -5291,35 +5361,72 @@ class $$FoldersTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({taskFoldersRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [if (taskFoldersRefs) db.taskFolders],
-              addJoins: null,
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (taskFoldersRefs)
-                    await $_getPrefetchedData<
-                      Folder,
-                      $FoldersTable,
-                      TaskFolder
-                    >(
-                      currentTable: table,
-                      referencedTable: $$FoldersTableReferences
-                          ._taskFoldersRefsTable(db),
-                      managerFromTypedResult: (p0) => $$FoldersTableReferences(
-                        db,
-                        table,
-                        p0,
-                      ).taskFoldersRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where((e) => e.folderId == item.id),
-                      typedResults: items,
-                    ),
-                ];
+          prefetchHooksCallback:
+              ({parentFolderId = false, taskFoldersRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (taskFoldersRefs) db.taskFolders,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (parentFolderId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.parentFolderId,
+                                    referencedTable: $$FoldersTableReferences
+                                        ._parentFolderIdTable(db),
+                                    referencedColumn: $$FoldersTableReferences
+                                        ._parentFolderIdTable(db)
+                                        .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (taskFoldersRefs)
+                        await $_getPrefetchedData<
+                          Folder,
+                          $FoldersTable,
+                          TaskFolder
+                        >(
+                          currentTable: table,
+                          referencedTable: $$FoldersTableReferences
+                              ._taskFoldersRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$FoldersTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).taskFoldersRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.folderId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -5336,7 +5443,7 @@ typedef $$FoldersTableProcessedTableManager =
       $$FoldersTableUpdateCompanionBuilder,
       (Folder, $$FoldersTableReferences),
       Folder,
-      PrefetchHooks Function({bool taskFoldersRefs})
+      PrefetchHooks Function({bool parentFolderId, bool taskFoldersRefs})
     >;
 typedef $$TaskTagsTableCreateCompanionBuilder =
     TaskTagsCompanion Function({

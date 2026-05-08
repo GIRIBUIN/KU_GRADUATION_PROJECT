@@ -45,7 +45,6 @@ class Tags extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
   TextColumn get color => text()();
-  TextColumn get defaultPriority => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 
@@ -58,6 +57,7 @@ class Folders extends Table {
   TextColumn get name => text()();
   TextColumn get color => text().nullable()();
   TextColumn get icon => text().nullable()();
+  TextColumn get parentFolderId => text().nullable().references(Folders, #id)();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 
@@ -120,13 +120,35 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.defaults() : super(driftDatabase(name: 'ku_task_management'));
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onUpgrade: (migrator, from, to) async {
       if (from < 2) {
         await migrator.addColumn(tasks, tasks.sortOrder);
+      }
+      if (from < 3) {
+        await migrator.addColumn(folders, folders.parentFolderId);
+      }
+      if (from < 4) {
+        await customStatement('PRAGMA foreign_keys = OFF');
+        await customStatement('''
+CREATE TABLE tags_new (
+  id TEXT NOT NULL PRIMARY KEY,
+  name TEXT NOT NULL,
+  color TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+)
+''');
+        await customStatement('''
+INSERT INTO tags_new (id, name, color, created_at, updated_at)
+SELECT id, name, color, created_at, updated_at FROM tags
+''');
+        await customStatement('DROP TABLE tags');
+        await customStatement('ALTER TABLE tags_new RENAME TO tags');
+        await customStatement('PRAGMA foreign_keys = ON');
       }
     },
   );

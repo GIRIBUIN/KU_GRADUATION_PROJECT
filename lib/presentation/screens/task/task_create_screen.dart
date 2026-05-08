@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/task_models.dart';
+import '../../../data/repositories/folder_repository.dart';
 import '../../../data/repositories/notification_repository.dart';
 import '../../../data/repositories/settings_repository.dart';
 import '../../../data/repositories/sub_task_repository.dart';
+import '../../../data/repositories/tag_repository.dart';
 import '../../../data/repositories/task_repository.dart';
 import '../../../data/services/sub_task_progress.dart';
+import '../../widgets/task_metadata_picker.dart';
 
 class TaskCreateScreen extends StatefulWidget {
   const TaskCreateScreen({
@@ -15,12 +18,16 @@ class TaskCreateScreen extends StatefulWidget {
     required this.subTaskRepository,
     required this.notificationRepository,
     required this.settingsRepository,
+    required this.tagRepository,
+    required this.folderRepository,
   });
 
   final TaskRepository taskRepository;
   final SubTaskRepository subTaskRepository;
   final NotificationRepository notificationRepository;
   final SettingsRepository settingsRepository;
+  final TagRepository tagRepository;
+  final FolderRepository folderRepository;
 
   @override
   State<TaskCreateScreen> createState() => _TaskCreateScreenState();
@@ -31,6 +38,10 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
   final _memoController = TextEditingController();
   final _subTaskController = TextEditingController();
   final List<_DraftSubTask> _subTasks = [];
+  List<Tag> _tags = const [];
+  List<Folder> _folders = const [];
+  final Set<String> _selectedTagIds = {};
+  String? _selectedFolderId;
 
   DateTime? _dueDate;
   TaskPriority? _priority;
@@ -57,10 +68,14 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
 
   Future<void> _loadDefaults() async {
     final settings = await widget.settingsRepository.getSettings();
+    final tags = await widget.tagRepository.getTags();
+    final folders = await widget.folderRepository.getFolders();
     if (!mounted) {
       return;
     }
     setState(() {
+      _tags = tags;
+      _folders = folders;
       _notificationEnabled = settings.defaultNotificationEnabled;
       _notificationDays = settings.defaultNotificationDays;
       _notificationTime = settings.defaultNotificationTime;
@@ -171,6 +186,20 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
                 ),
               ),
               const SizedBox(height: 22),
+              TagPickerSection(
+                tags: _tags,
+                selectedIds: _selectedTagIds,
+                onToggle: _toggleTag,
+                onAdd: _createTag,
+              ),
+              const SizedBox(height: 22),
+              FolderPickerSection(
+                folders: _folders,
+                selectedId: _selectedFolderId,
+                onSelect: _selectFolder,
+                onAdd: _createFolder,
+              ),
+              const SizedBox(height: 22),
               TextField(
                 controller: _memoController,
                 minLines: 3,
@@ -228,7 +257,9 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
         _memoController.text.trim().isNotEmpty ||
         _dueDate != null ||
         _priority != null ||
-        _subTasks.isNotEmpty;
+        _subTasks.isNotEmpty ||
+        _selectedTagIds.isNotEmpty ||
+        _selectedFolderId != null;
   }
 
   Future<void> _saveTask() async {
@@ -258,6 +289,8 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
         memo: _memoController.text.trim().isEmpty
             ? null
             : _memoController.text.trim(),
+        tagIds: _selectedTagIds.toList(growable: false),
+        folderIds: _selectedFolderId == null ? const [] : [_selectedFolderId!],
         createdAt: now,
         updatedAt: now,
       ),
@@ -368,6 +401,75 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
     setState(() {
       _subTasks.add(_DraftSubTask(title: title));
       _subTaskController.clear();
+    });
+  }
+
+  void _toggleTag(Tag tag) {
+    setState(() {
+      if (_selectedTagIds.contains(tag.id)) {
+        _selectedTagIds.remove(tag.id);
+      } else {
+        _selectedTagIds.add(tag.id);
+      }
+    });
+  }
+
+  void _selectFolder(Folder? folder) {
+    setState(() {
+      _selectedFolderId = folder?.id;
+    });
+  }
+
+  Future<void> _createTag() async {
+    final draft = await showTagCreateDialog(context);
+    if (draft == null || !mounted) {
+      return;
+    }
+
+    final now = DateTime.now();
+    final tag = await widget.tagRepository.createTag(
+      Tag(
+        id: 'tag_${now.microsecondsSinceEpoch}',
+        name: draft.name,
+        color: draft.color,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _tags = [..._tags, tag]..sort((a, b) => a.name.compareTo(b.name));
+      _selectedTagIds.add(tag.id);
+    });
+  }
+
+  Future<void> _createFolder() async {
+    final draft = await showFolderCreateDialog(context, folders: _folders);
+    if (draft == null || !mounted) {
+      return;
+    }
+
+    final now = DateTime.now();
+    final folder = await widget.folderRepository.createFolder(
+      Folder(
+        id: 'folder_${now.microsecondsSinceEpoch}',
+        name: draft.name,
+        color: draft.color,
+        icon: 'folder',
+        parentFolderId: draft.parentFolderId,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _folders = [..._folders, folder]
+        ..sort((a, b) => a.name.compareTo(b.name));
+      _selectedFolderId = folder.id;
     });
   }
 

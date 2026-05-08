@@ -5,11 +5,11 @@ import 'package:ku_task_management/data/local/app_database.dart';
 
 void main() {
   group('AppDatabase', () {
-    test('opens schema version 2 database', () async {
+    test('opens schema version 4 database', () async {
       final database = AppDatabase(NativeDatabase.memory());
       addTearDown(database.close);
 
-      expect(database.schemaVersion, 2);
+      expect(database.schemaVersion, 4);
 
       final row = await database
           .customSelect(

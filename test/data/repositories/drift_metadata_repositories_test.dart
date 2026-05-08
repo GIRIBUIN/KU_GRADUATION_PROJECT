@@ -159,7 +159,6 @@ Tag _tag({required String id, required String name}) {
     id: id,
     name: name,
     color: '#1262D6',
-    defaultPriority: TaskPriority.high,
     createdAt: now,
     updatedAt: now,
   );

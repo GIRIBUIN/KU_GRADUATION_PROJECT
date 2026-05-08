@@ -76,13 +76,11 @@ class Tag {
     required this.color,
     required this.createdAt,
     required this.updatedAt,
-    this.defaultPriority,
   });
 
   final String id;
   final String name;
   final String color;
-  final TaskPriority? defaultPriority;
   final DateTime createdAt;
   final DateTime updatedAt;
 }
@@ -95,12 +93,14 @@ class Folder {
     required this.updatedAt,
     this.color,
     this.icon,
+    this.parentFolderId,
   });
 
   final String id;
   final String name;
   final String? color;
   final String? icon;
+  final String? parentFolderId;
   final DateTime createdAt;
   final DateTime updatedAt;
 }

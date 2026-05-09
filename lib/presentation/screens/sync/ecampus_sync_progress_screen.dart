@@ -200,7 +200,7 @@ class _EcampusSyncProgressScreenState extends State<EcampusSyncProgressScreen> {
         _currentStep = _SyncStep.compare;
       });
 
-      await Navigator.of(context).pushReplacement<bool?, void>(
+      final didImport = await Navigator.of(context).push<bool>(
         MaterialPageRoute(
           builder: (_) => EcampusSyncPreviewScreen(
             syncResult: result,
@@ -208,6 +208,10 @@ class _EcampusSyncProgressScreenState extends State<EcampusSyncProgressScreen> {
           ),
         ),
       );
+      if (!mounted) {
+        return;
+      }
+      Navigator.of(context).pop(didImport == true);
     } catch (error) {
       if (!mounted) {
         return;

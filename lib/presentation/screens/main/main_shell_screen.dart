@@ -86,7 +86,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   Future<void> _openEcampusSync() async {
-    await Navigator.of(context).push<void>(
+    final didImport = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => EcampusSyncProgressScreen(
           taskRepository: widget.taskRepository,
@@ -98,7 +98,11 @@ class _MainShellScreenState extends State<MainShellScreen> {
       ),
     );
     if (mounted) {
-      _refreshTasks();
+      if (didImport == true) {
+        _refreshTasksAndMetadata();
+      } else {
+        _refreshTasks();
+      }
     }
   }
 
@@ -155,6 +159,16 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
     _refreshTasks();
     _showSnackBar(context, '작업을 복구했습니다.');
+  }
+
+  Future<void> _deleteTaskPermanently(Task task) async {
+    await widget.taskRepository.deletePermanently(task.id);
+    if (!mounted) {
+      return;
+    }
+
+    _refreshTasks();
+    _showSnackBar(context, '작업을 영구 삭제했습니다.');
   }
 
   Future<void> _reorderTasks(List<Task> orderedTasks) async {
@@ -261,6 +275,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
                     metadataVersion: _metadataVersion,
                     onMetadataChanged: _refreshMetadata,
                     onOpenTaskDetail: _openTaskDetail,
+                    onRestoreTask: _restoreTask,
+                    onDeletePermanently: _deleteTaskPermanently,
                   ),
                   _SettingsPage(
                     settingsRepository: widget.settingsRepository,
@@ -538,11 +554,6 @@ class _TaskListPageState extends State<_TaskListPage> {
                     });
                   },
                 ),
-                IconButton(
-                  onPressed: widget.onRefresh,
-                  icon: const Icon(Icons.refresh_rounded),
-                  tooltip: '새로고침',
-                ),
               ],
             ),
             const SizedBox(height: 24),
@@ -754,6 +765,8 @@ class _ManagementPage extends StatefulWidget {
     required this.metadataVersion,
     required this.onMetadataChanged,
     required this.onOpenTaskDetail,
+    required this.onRestoreTask,
+    required this.onDeletePermanently,
   });
 
   final List<Task> tasks;
@@ -762,6 +775,8 @@ class _ManagementPage extends StatefulWidget {
   final int metadataVersion;
   final VoidCallback onMetadataChanged;
   final Future<void> Function(Task task) onOpenTaskDetail;
+  final Future<void> Function(Task task) onRestoreTask;
+  final Future<void> Function(Task task) onDeletePermanently;
 
   @override
   State<_ManagementPage> createState() => _ManagementPageState();
@@ -893,6 +908,7 @@ class _ManagementPageState extends State<_ManagementPage> {
                 iconColor: AppTheme.muted,
                 title: '삭제된 작업',
                 trailing: '$deletedCount',
+                onTap: _openDeletedTasks,
               ),
               _ManagementRow(
                 icon: Icons.block_rounded,
@@ -924,6 +940,22 @@ class _ManagementPageState extends State<_ManagementPage> {
           iconColor: _colorFromHex(tag.color),
           tasks: tasks,
           onOpenTaskDetail: widget.onOpenTaskDetail,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openDeletedTasks() async {
+    final deletedTasks = widget.tasks
+        .where((task) => task.status == TaskStatus.deleted)
+        .toList(growable: false);
+
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => _DeletedTasksManagementScreen(
+          tasks: deletedTasks,
+          onRestoreTask: widget.onRestoreTask,
+          onDeletePermanently: widget.onDeletePermanently,
         ),
       ),
     );
@@ -1361,6 +1393,256 @@ class _MetadataTaskTile extends StatelessWidget {
         ),
       ),
       trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.muted),
+    );
+  }
+}
+
+class _DeletedTasksManagementScreen extends StatefulWidget {
+  const _DeletedTasksManagementScreen({
+    required this.tasks,
+    required this.onRestoreTask,
+    required this.onDeletePermanently,
+  });
+
+  final List<Task> tasks;
+  final Future<void> Function(Task task) onRestoreTask;
+  final Future<void> Function(Task task) onDeletePermanently;
+
+  @override
+  State<_DeletedTasksManagementScreen> createState() =>
+      _DeletedTasksManagementScreenState();
+}
+
+class _DeletedTasksManagementScreenState
+    extends State<_DeletedTasksManagementScreen> {
+  late List<Task> _tasks;
+  final Set<String> _busyTaskIds = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _tasks = List<Task>.of(widget.tasks)..sort(_compareDeletedTasks);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('삭제된 작업')),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppTheme.dangerRed.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.delete_outline_rounded,
+                    color: AppTheme.dangerRed,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '삭제한 작업',
+                        style: TextStyle(
+                          color: AppTheme.muted,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${_tasks.length}개 작업',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            if (_tasks.isEmpty)
+              const _EmptyBlock(message: '삭제된 작업이 없습니다.')
+            else
+              Card(
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    for (var i = 0; i < _tasks.length; i++) ...[
+                      _DeletedManagementTaskTile(
+                        task: _tasks[i],
+                        isBusy: _busyTaskIds.contains(_tasks[i].id),
+                        onRestore: () => _restoreTask(_tasks[i]),
+                        onDeletePermanently: () =>
+                            _confirmDeletePermanently(_tasks[i]),
+                      ),
+                      if (i != _tasks.length - 1)
+                        const Divider(height: 1, indent: 16),
+                    ],
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _restoreTask(Task task) async {
+    if (_busyTaskIds.contains(task.id)) {
+      return;
+    }
+    setState(() {
+      _busyTaskIds.add(task.id);
+    });
+
+    try {
+      await widget.onRestoreTask(task);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _tasks.removeWhere((item) => item.id == task.id);
+        _busyTaskIds.remove(task.id);
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _busyTaskIds.remove(task.id);
+      });
+      _showSnackBar(context, '작업 복구에 실패했습니다.');
+    }
+  }
+
+  Future<void> _confirmDeletePermanently(Task task) async {
+    if (_busyTaskIds.contains(task.id)) {
+      return;
+    }
+
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('영구 삭제'),
+        content: Text('"${task.title}"을 완전히 삭제할까요? 이 작업은 되돌릴 수 없습니다.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('영구 삭제'),
+          ),
+        ],
+      ),
+    );
+    if (shouldDelete == true) {
+      await _deletePermanently(task);
+    }
+  }
+
+  Future<void> _deletePermanently(Task task) async {
+    setState(() {
+      _busyTaskIds.add(task.id);
+    });
+
+    try {
+      await widget.onDeletePermanently(task);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _tasks.removeWhere((item) => item.id == task.id);
+        _busyTaskIds.remove(task.id);
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _busyTaskIds.remove(task.id);
+      });
+      _showSnackBar(context, '작업 영구 삭제에 실패했습니다.');
+    }
+  }
+}
+
+class _DeletedManagementTaskTile extends StatelessWidget {
+  const _DeletedManagementTaskTile({
+    required this.task,
+    required this.isBusy,
+    required this.onRestore,
+    required this.onDeletePermanently,
+  });
+
+  final Task task;
+  final bool isBusy;
+  final VoidCallback onRestore;
+  final VoidCallback onDeletePermanently;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            task.title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.w900, height: 1.3),
+          ),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                if (task.dueDate != null) ...[
+                  _DueChip(task: task),
+                  const SizedBox(width: 6),
+                ],
+                _OriginChip(origin: task.origin),
+                if (task.deletedAt != null) ...[
+                  const SizedBox(width: 6),
+                  _NeutralChip(label: '삭제 ${_shortDateLabel(task.deletedAt!)}'),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton.icon(
+                onPressed: isBusy ? null : onRestore,
+                icon: const Icon(Icons.restore_rounded, size: 18),
+                label: const Text('복구'),
+              ),
+              const SizedBox(width: 8),
+              TextButton.icon(
+                onPressed: isBusy ? null : onDeletePermanently,
+                icon: const Icon(Icons.delete_forever_outlined, size: 18),
+                label: const Text('영구 삭제'),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -2576,12 +2858,24 @@ class _ManagementRow extends StatelessWidget {
             )
           : trailing == null
           ? const Icon(Icons.chevron_right_rounded, color: AppTheme.muted)
-          : Text(
-              trailing!,
-              style: const TextStyle(
-                fontWeight: FontWeight.w900,
-                color: AppTheme.muted,
-              ),
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  trailing!,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    color: AppTheme.muted,
+                  ),
+                ),
+                if (onTap != null) ...[
+                  const SizedBox(width: 4),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppTheme.muted,
+                  ),
+                ],
+              ],
             ),
     );
   }
@@ -3258,6 +3552,21 @@ int _comparePriority(Task a, Task b) {
 
 int _compareCreatedAt(Task a, Task b) {
   return b.createdAt.compareTo(a.createdAt);
+}
+
+int _compareDeletedTasks(Task a, Task b) {
+  final aDeletedAt = a.deletedAt;
+  final bDeletedAt = b.deletedAt;
+  if (aDeletedAt == null && bDeletedAt == null) {
+    return _compareCreatedAt(a, b);
+  }
+  if (aDeletedAt == null) {
+    return 1;
+  }
+  if (bDeletedAt == null) {
+    return -1;
+  }
+  return bDeletedAt.compareTo(aDeletedAt);
 }
 
 int _compareMetadataTasks(Task a, Task b) {

@@ -820,40 +820,55 @@ Future<int?> _pickNotificationOffsetMinutes({
   var current = _closestNotificationOffset(selected);
   return showModalBottomSheet<int>(
     context: context,
+    isScrollControlled: true,
     builder: (context) => StatefulBuilder(
       builder: (context, setSheetState) {
         return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(context).height * 0.8,
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 16),
-                for (final option in _notificationOffsetOptions)
-                  ListTile(
-                    onTap: () {
-                      setSheetState(() {
-                        current = option;
-                      });
-                    },
-                    title: Text(_notificationOffsetLabel(option)),
-                    trailing: current == option
-                        ? const Icon(Icons.check_rounded)
-                        : null,
+                Expanded(
+                  child: ListView(
+                    padding: EdgeInsets.zero,
+                    children: [
+                      for (final option in _notificationOffsetOptions)
+                        ListTile(
+                          onTap: () {
+                            setSheetState(() {
+                              current = option;
+                            });
+                          },
+                          title: Text(_notificationOffsetLabel(option)),
+                          trailing: current == option
+                              ? const Icon(Icons.check_rounded)
+                              : null,
+                        ),
+                    ],
                   ),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: () => Navigator.of(context).pop(current),
-                    child: const Text('적용'),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () => Navigator.of(context).pop(current),
+                      child: const Text('적용'),
+                    ),
                   ),
                 ),
               ],
@@ -865,7 +880,18 @@ Future<int?> _pickNotificationOffsetMinutes({
   );
 }
 
-const _notificationOffsetOptions = [10, 30, 60, 180, 360, 720, 1440, 4320];
+const _notificationOffsetOptions = [
+  0,
+  10,
+  20,
+  30,
+  60,
+  180,
+  360,
+  720,
+  1440,
+  4320,
+];
 
 int _closestNotificationOffset(int value) {
   var closest = _notificationOffsetOptions.first;
@@ -880,6 +906,9 @@ int _closestNotificationOffset(int value) {
 }
 
 String _notificationOffsetLabel(int minutes) {
+  if (minutes == 0) {
+    return '마감 시각';
+  }
   if (minutes < 60) {
     return '마감 $minutes분 전';
   }

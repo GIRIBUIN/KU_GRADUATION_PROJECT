@@ -60,6 +60,9 @@ class LocalNotificationService {
     final androidGranted = await androidPlugin
         ?.requestNotificationsPermission();
     if (androidGranted != null) {
+      if (androidGranted) {
+        await androidPlugin?.requestExactAlarmsPermission();
+      }
       return androidGranted;
     }
 
@@ -128,7 +131,7 @@ class LocalNotificationService {
         iOS: DarwinNotificationDetails(),
         macOS: DarwinNotificationDetails(),
       ),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       payload: task.id,
     );
   }

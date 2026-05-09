@@ -260,6 +260,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
                     folderRepository: widget.folderRepository,
                     metadataVersion: _metadataVersion,
                     onMetadataChanged: _refreshMetadata,
+                    onOpenTaskDetail: _openTaskDetail,
                   ),
                   _SettingsPage(
                     settingsRepository: widget.settingsRepository,
@@ -752,6 +753,7 @@ class _ManagementPage extends StatefulWidget {
     required this.folderRepository,
     required this.metadataVersion,
     required this.onMetadataChanged,
+    required this.onOpenTaskDetail,
   });
 
   final List<Task> tasks;
@@ -759,6 +761,7 @@ class _ManagementPage extends StatefulWidget {
   final FolderRepository folderRepository;
   final int metadataVersion;
   final VoidCallback onMetadataChanged;
+  final Future<void> Function(Task task) onOpenTaskDetail;
 
   @override
   State<_ManagementPage> createState() => _ManagementPageState();
@@ -833,8 +836,11 @@ class _ManagementPageState extends State<_ManagementPage> {
                         icon: Icons.circle,
                         iconColor: _colorFromHex(tag.color),
                         title: tag.name,
-                        subtitle: '태그 색상 ${tag.color}',
-                        onTap: () => _editTag(tag),
+                        subtitle:
+                            '연결된 작업 ${_metadataTaskCountForTag(tag.id)}개',
+                        onTap: () => _openTagTasks(tag),
+                        onEdit: () => _editTag(tag),
+                        editTooltip: '태그 편집',
                       ),
                 ],
               );
@@ -845,6 +851,7 @@ class _ManagementPageState extends State<_ManagementPage> {
             future: _foldersFuture,
             builder: (context, snapshot) {
               final folders = snapshot.data ?? const <Folder>[];
+              final rootFolders = _rootFoldersOf(folders);
               return _ManagementSection(
                 title: '폴더',
                 action: IconButton.filledTonal(
@@ -856,10 +863,10 @@ class _ManagementPageState extends State<_ManagementPage> {
                   if (snapshot.connectionState == ConnectionState.waiting &&
                       !snapshot.hasData)
                     const _ManagementLoadingRow()
-                  else if (folders.isEmpty)
+                  else if (rootFolders.isEmpty)
                     const _ManagementEmptyRow(message: '폴더가 없습니다.')
                   else
-                    for (final folder in folders)
+                    for (final folder in rootFolders)
                       _ManagementRow(
                         icon: Icons.folder_rounded,
                         iconColor: _colorFromHex(
@@ -867,8 +874,11 @@ class _ManagementPageState extends State<_ManagementPage> {
                           fallback: AppTheme.successGreen,
                         ),
                         title: folder.name,
-                        subtitle: _folderSubtitle(folder, folders),
-                        onTap: () => _editFolder(folder, folders),
+                        subtitle:
+                            '${_folderSubtitle(folder, folders)} · 연결된 작업 ${_metadataTaskCountForFolder(folder.id)}개',
+                        onTap: () => _openFolderTasks(folder, folders),
+                        onEdit: () => _editFolder(folder, folders),
+                        editTooltip: '폴더 편집',
                       ),
                 ],
               );
@@ -895,6 +905,90 @@ class _ManagementPageState extends State<_ManagementPage> {
         ],
       ),
     );
+  }
+
+  Future<void> _openTagTasks(Tag tag) async {
+    final tasks = widget.tasks
+        .where(
+          (task) =>
+              !_isHiddenInMainList(task) && task.tagIds.contains(tag.id),
+        )
+        .toList(growable: false);
+
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => _MetadataTaskListScreen(
+          title: tag.name,
+          subtitle: '태그 작업',
+          icon: Icons.circle,
+          iconColor: _colorFromHex(tag.color),
+          tasks: tasks,
+          onOpenTaskDetail: widget.onOpenTaskDetail,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openFolderTasks(Folder folder, List<Folder> folders) async {
+    final tasks = widget.tasks
+        .where(
+          (task) =>
+              !_isHiddenInMainList(task) &&
+              task.folderIds.contains(folder.id),
+        )
+        .toList(growable: false);
+
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => _MetadataTaskListScreen(
+          title: folder.name,
+          subtitle: '폴더 작업',
+          icon: Icons.folder_rounded,
+          iconColor: _colorFromHex(
+            folder.color,
+            fallback: AppTheme.successGreen,
+          ),
+          tasks: tasks,
+          childFolders: _childFoldersOf(folder, folders),
+          onOpenFolder: (childFolder) => _openFolderTasks(childFolder, folders),
+          onOpenTaskDetail: widget.onOpenTaskDetail,
+        ),
+      ),
+    );
+  }
+
+  List<Folder> _childFoldersOf(Folder parent, List<Folder> folders) {
+    final children = folders
+        .where((folder) => folder.parentFolderId == parent.id)
+        .toList(growable: false);
+    children.sort((a, b) => a.name.compareTo(b.name));
+    return children;
+  }
+
+  List<Folder> _rootFoldersOf(List<Folder> folders) {
+    final roots = folders
+        .where((folder) => folder.parentFolderId == null)
+        .toList(growable: false);
+    roots.sort((a, b) => a.name.compareTo(b.name));
+    return roots;
+  }
+
+  int _metadataTaskCountForTag(String tagId) {
+    return widget.tasks
+        .where(
+          (task) =>
+              !_isHiddenInMainList(task) && task.tagIds.contains(tagId),
+        )
+        .length;
+  }
+
+  int _metadataTaskCountForFolder(String folderId) {
+    return widget.tasks
+        .where(
+          (task) =>
+              !_isHiddenInMainList(task) && task.folderIds.contains(folderId),
+        )
+        .length;
   }
 
   Future<void> _createTag() async {
@@ -1063,6 +1157,199 @@ class _ManagementPageState extends State<_ManagementPage> {
       },
     );
     return confirmed ?? false;
+  }
+}
+
+class _MetadataTaskListScreen extends StatelessWidget {
+  const _MetadataTaskListScreen({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.iconColor,
+    required this.tasks,
+    required this.onOpenTaskDetail,
+    this.childFolders = const [],
+    this.onOpenFolder,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color iconColor;
+  final List<Task> tasks;
+  final Future<void> Function(Task task) onOpenTaskDetail;
+  final List<Folder> childFolders;
+  final ValueChanged<Folder>? onOpenFolder;
+
+  @override
+  Widget build(BuildContext context) {
+    final sortedTasks = List<Task>.of(tasks)..sort(_compareMetadataTasks);
+
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: iconColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: iconColor),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          color: AppTheme.muted,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${sortedTasks.length}개 작업',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            if (childFolders.isNotEmpty) ...[
+              _ChildFolderStrip(
+                folders: childFolders,
+                onOpenFolder: onOpenFolder,
+              ),
+              const SizedBox(height: 20),
+            ],
+            if (sortedTasks.isEmpty)
+              const _EmptyBlock(message: '연결된 작업이 없습니다.')
+            else
+              Card(
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    for (var i = 0; i < sortedTasks.length; i++) ...[
+                      _MetadataTaskTile(
+                        task: sortedTasks[i],
+                        onTap: () => onOpenTaskDetail(sortedTasks[i]),
+                      ),
+                      if (i != sortedTasks.length - 1)
+                        const Divider(height: 1, indent: 16),
+                    ],
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ChildFolderStrip extends StatelessWidget {
+  const _ChildFolderStrip({required this.folders, required this.onOpenFolder});
+
+  final List<Folder> folders;
+  final ValueChanged<Folder>? onOpenFolder;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '하위 폴더',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+        ),
+        const SizedBox(height: 10),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (final folder in folders) ...[
+                ActionChip(
+                  avatar: Icon(
+                    Icons.folder_rounded,
+                    color: _colorFromHex(
+                      folder.color,
+                      fallback: AppTheme.successGreen,
+                    ),
+                    size: 18,
+                  ),
+                  label: Text(folder.name),
+                  onPressed: onOpenFolder == null
+                      ? null
+                      : () => onOpenFolder!(folder),
+                ),
+                const SizedBox(width: 8),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MetadataTaskTile extends StatelessWidget {
+  const _MetadataTaskTile({required this.task, required this.onTap});
+
+  final Task task;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isCompleted = task.status == TaskStatus.completed;
+    return ListTile(
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      title: Text(
+        task.title,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: isCompleted ? AppTheme.muted : AppTheme.ink,
+          fontWeight: FontWeight.w900,
+          decoration: isCompleted ? TextDecoration.lineThrough : null,
+        ),
+      ),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              if (task.dueDate != null) ...[
+                _DueChip(task: task),
+                const SizedBox(width: 6),
+              ],
+              _ColoredChip(
+                label: isCompleted ? '완료' : '미완료',
+                color: isCompleted ? AppTheme.successGreen : AppTheme.muted,
+              ),
+              const SizedBox(width: 6),
+              _OriginChip(origin: task.origin),
+            ],
+          ),
+        ),
+      ),
+      trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.muted),
+    );
   }
 }
 
@@ -2249,6 +2536,8 @@ class _ManagementRow extends StatelessWidget {
     this.subtitle,
     this.trailing,
     this.onTap,
+    this.onEdit,
+    this.editTooltip,
   });
 
   final IconData icon;
@@ -2257,6 +2546,8 @@ class _ManagementRow extends StatelessWidget {
   final String? subtitle;
   final String? trailing;
   final VoidCallback? onTap;
+  final VoidCallback? onEdit;
+  final String? editTooltip;
 
   @override
   Widget build(BuildContext context) {
@@ -2265,8 +2556,14 @@ class _ManagementRow extends StatelessWidget {
       leading: Icon(icon, color: iconColor),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
       subtitle: subtitle == null ? null : Text(subtitle!),
-      trailing: trailing == null
-          ? const Icon(Icons.chevron_right_rounded)
+      trailing: onEdit != null
+          ? IconButton(
+              onPressed: onEdit,
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: editTooltip ?? '편집',
+            )
+          : trailing == null
+          ? const Icon(Icons.chevron_right_rounded, color: AppTheme.muted)
           : Text(
               trailing!,
               style: const TextStyle(
@@ -2597,8 +2894,30 @@ class _FolderEditDialogState extends State<_FolderEditDialog> {
   List<Folder> get _parentCandidates {
     final editingId = widget.folder?.id;
     return widget.folders
-        .where((folder) => folder.id != editingId)
+        .where((folder) => !_isSelfOrDescendant(folder.id, editingId))
         .toList(growable: false);
+  }
+
+  bool _isSelfOrDescendant(String candidateId, String? editingId) {
+    if (editingId == null) {
+      return false;
+    }
+    if (candidateId == editingId) {
+      return true;
+    }
+
+    var current = widget.folders
+        .where((folder) => folder.id == candidateId)
+        .firstOrNull;
+    while (current?.parentFolderId != null) {
+      if (current!.parentFolderId == editingId) {
+        return true;
+      }
+      current = widget.folders
+          .where((folder) => folder.id == current!.parentFolderId)
+          .firstOrNull;
+    }
+    return false;
   }
 }
 
@@ -2927,6 +3246,25 @@ int _comparePriority(Task a, Task b) {
 
 int _compareCreatedAt(Task a, Task b) {
   return b.createdAt.compareTo(a.createdAt);
+}
+
+int _compareMetadataTasks(Task a, Task b) {
+  final status = _metadataStatusRank(a.status).compareTo(
+    _metadataStatusRank(b.status),
+  );
+  if (status != 0) {
+    return status;
+  }
+  return _compareDueDate(a, b);
+}
+
+int _metadataStatusRank(TaskStatus status) {
+  return switch (status) {
+    TaskStatus.active => 0,
+    TaskStatus.completed => 1,
+    TaskStatus.deleted => 2,
+    TaskStatus.excluded => 3,
+  };
 }
 
 int _priorityRank(TaskPriority? priority) {

@@ -951,6 +951,8 @@ class _ManagementPageState extends State<_ManagementPage> {
           tasks: tasks,
           childFolders: _childFoldersOf(folder, folders),
           onOpenFolder: (childFolder) => _openFolderTasks(childFolder, folders),
+          onEdit: () => _editFolder(folder, folders),
+          editTooltip: '현재 폴더 편집',
           onOpenTaskDetail: widget.onOpenTaskDetail,
         ),
       ),
@@ -1170,6 +1172,8 @@ class _MetadataTaskListScreen extends StatelessWidget {
     required this.onOpenTaskDetail,
     this.childFolders = const [],
     this.onOpenFolder,
+    this.onEdit,
+    this.editTooltip,
   });
 
   final String title;
@@ -1180,6 +1184,8 @@ class _MetadataTaskListScreen extends StatelessWidget {
   final Future<void> Function(Task task) onOpenTaskDetail;
   final List<Folder> childFolders;
   final ValueChanged<Folder>? onOpenFolder;
+  final VoidCallback? onEdit;
+  final String? editTooltip;
 
   @override
   Widget build(BuildContext context) {
@@ -1226,6 +1232,12 @@ class _MetadataTaskListScreen extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (onEdit != null)
+                  IconButton.filledTonal(
+                    onPressed: onEdit,
+                    icon: const Icon(Icons.edit_outlined),
+                    tooltip: editTooltip ?? '편집',
+                  ),
               ],
             ),
             const SizedBox(height: 20),

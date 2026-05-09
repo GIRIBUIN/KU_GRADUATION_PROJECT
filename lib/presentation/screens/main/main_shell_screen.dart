@@ -18,9 +18,10 @@ import '../../../data/services/ecampus_sync_apply_service.dart';
 import '../../../data/services/ecampus_sync_classifier.dart';
 import '../../../data/services/ecampus_sync_flow_service.dart';
 import '../../../data/services/ecampus_todo_parser.dart';
+import '../../../data/services/http_ecampus_auth_service.dart';
 import '../../../data/services/http_ecampus_todo_client.dart';
 import '../../../data/services/sub_task_progress.dart';
-import '../debug/ecampus_login_debug_screen.dart';
+import '../../services/in_app_webview_ecampus_cookie_store.dart';
 import '../login/ecampus_login_webview_screen.dart';
 import '../sync/ecampus_sync_preview_screen.dart';
 import '../task/task_create_screen.dart';
@@ -189,10 +190,31 @@ class _MainShellScreenState extends State<MainShellScreen> {
     );
   }
 
-  Future<void> _openEcampusDebug() async {
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute(builder: (_) => const EcampusLoginDebugScreen()),
+  Future<void> _clearEcampusSession() async {
+    final httpClient = http.Client();
+    final cookieStore = const InAppWebViewEcampusCookieStore();
+    final authService = HttpEcampusAuthService(
+      httpClient: httpClient,
+      cookieStore: cookieStore,
     );
+
+    try {
+      final session = _ecampusSession;
+      if (session == null) {
+        await authService.clearSession();
+      } else {
+        await authService.logout(session);
+      }
+    } finally {
+      httpClient.close();
+    }
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _ecampusSession = null;
+    });
+    _showSnackBar(context, 'e-campus 세션과 쿠키를 정리했습니다.');
   }
 
   Future<void> _toggleTaskCompletion(Task task) async {
@@ -363,13 +385,16 @@ class _MainShellScreenState extends State<MainShellScreen> {
                   ),
                   _SettingsPage(
                     settingsRepository: widget.settingsRepository,
+                    isEcampusLoggedIn:
+                        _ecampusSession?.hasSessionCookie == true,
                     onSettingsChanged: () {
                       setState(() {
                         _settingsFuture = widget.settingsRepository
                             .getSettings();
                       });
                     },
-                    onOpenSyncDebug: _openEcampusDebug,
+                    onOpenSync: _openEcampusSync,
+                    onClearEcampusSession: _clearEcampusSession,
                   ),
                 ];
 
@@ -443,7 +468,7 @@ class _HomePage extends StatelessWidget {
   final int urgentDueDays;
   final _TaskMetadataLookup metadata;
   final VoidCallback onRefresh;
-  final VoidCallback onOpenSync;
+  final Future<void> Function() onOpenSync;
   final VoidCallback onOpenSettings;
   final ValueChanged<Task> onToggleTask;
   final ValueChanged<Task> onDeleteTask;
@@ -1724,13 +1749,17 @@ class _DeletedManagementTaskTile extends StatelessWidget {
 class _SettingsPage extends StatefulWidget {
   const _SettingsPage({
     required this.settingsRepository,
+    required this.isEcampusLoggedIn,
     required this.onSettingsChanged,
-    required this.onOpenSyncDebug,
+    required this.onOpenSync,
+    required this.onClearEcampusSession,
   });
 
   final SettingsRepository settingsRepository;
+  final bool isEcampusLoggedIn;
   final VoidCallback onSettingsChanged;
-  final VoidCallback onOpenSyncDebug;
+  final Future<void> Function() onOpenSync;
+  final Future<void> Function() onClearEcampusSession;
 
   @override
   State<_SettingsPage> createState() => _SettingsPageState();
@@ -1784,26 +1813,23 @@ class _SettingsPageState extends State<_SettingsPage> {
               _SettingsSection(
                 title: 'e-campus 연동',
                 children: [
-                  const _SettingsSwitchRow(
-                    icon: Icons.lock_outline_rounded,
-                    title: '로그인 상태 유지',
-                    value: true,
-                  ),
-                  _SettingsSwitchRow(
-                    icon: Icons.sync_rounded,
-                    title: '앱 실행 시 자동 동기화',
-                    value: settings.autoSyncEnabled,
-                    onChanged: isLoading
-                        ? null
-                        : (value) => _saveSettings(
-                            settings.copyWith(autoSyncEnabled: value),
-                          ),
-                  ),
                   _SettingsActionRow(
                     icon: Icons.sync_rounded,
-                    title: 'e-campus 연동 테스트',
-                    subtitle: '로그인, todo, 로그아웃 확인',
-                    onTap: widget.onOpenSyncDebug,
+                    title: 'e-campus 동기화',
+                    subtitle: 'WebView 로그인 후 todo를 가져옵니다.',
+                    onTap: () => unawaited(widget.onOpenSync()),
+                  ),
+                  _SettingsInfoRow(
+                    icon: Icons.lock_outline_rounded,
+                    title: '로그인 세션',
+                    value: widget.isEcampusLoggedIn ? '로그인됨' : '로그인 필요',
+                    subtitle: '아이디와 비밀번호는 저장하지 않습니다.',
+                  ),
+                  _SettingsActionRow(
+                    icon: Icons.cleaning_services_outlined,
+                    title: '세션/쿠키 정리',
+                    subtitle: '이 기기의 e-campus 로그인 정보를 삭제합니다.',
+                    onTap: () => unawaited(widget.onClearEcampusSession()),
                   ),
                 ],
               ),
@@ -1859,23 +1885,6 @@ class _SettingsPageState extends State<_SettingsPage> {
                     onTap: isLoading
                         ? null
                         : () => _pickUrgentDueDays(settings),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              const _SettingsSection(
-                title: '보안',
-                children: [
-                  _SettingsInfoRow(
-                    icon: Icons.verified_user_outlined,
-                    title: '계정 저장 정책',
-                    value: '저장 안 함',
-                    subtitle: '비밀번호는 저장하지 않음',
-                  ),
-                  _SettingsInfoRow(
-                    icon: Icons.delete_outline_rounded,
-                    title: '세션/쿠키 정리',
-                    value: '로그아웃 시',
                   ),
                 ],
               ),
@@ -3518,8 +3527,10 @@ class _SettingsInfoRow extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 4),
-          const Icon(Icons.chevron_right_rounded, color: AppTheme.muted),
+          if (onTap != null) ...[
+            const SizedBox(width: 4),
+            const Icon(Icons.chevron_right_rounded, color: AppTheme.muted),
+          ],
         ],
       ),
     );

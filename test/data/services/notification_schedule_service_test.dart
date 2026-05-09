@@ -7,17 +7,17 @@ void main() {
   final now = DateTime(2026, 5, 7, 10);
 
   group('NotificationScheduleService', () {
-    test('calculates schedule from due date, days before, and notify time', () {
+    test('calculates schedule from due date and minutes before', () {
       final schedule = service.calculate(
         task: _task(dueDate: DateTime(2026, 5, 20, 23, 59)),
-        setting: _setting(daysBeforeDue: 1, notifyTime: '09:30'),
+        setting: _setting(minutesBeforeDue: 90),
         now: now,
       );
 
       expect(schedule, isNotNull);
       expect(schedule!.taskId, 'task-1');
       expect(schedule.settingId, 'notification-1');
-      expect(schedule.scheduledAt, DateTime(2026, 5, 19, 9, 30));
+      expect(schedule.scheduledAt, DateTime(2026, 5, 20, 22, 29));
     });
 
     test('excludes completed, deleted, and excluded tasks', () {
@@ -58,30 +58,18 @@ void main() {
 
     test('excludes schedules that are already in the past', () {
       final schedule = service.calculate(
-        task: _task(dueDate: DateTime(2026, 5, 7)),
-        setting: _setting(daysBeforeDue: 1, notifyTime: '09:00'),
+        task: _task(dueDate: DateTime(2026, 5, 7, 10, 30)),
+        setting: _setting(minutesBeforeDue: 60),
         now: now,
       );
 
       expect(schedule, isNull);
     });
 
-    test('excludes invalid notify time values without throwing', () {
-      for (final notifyTime in ['9:00', '24:00', '10:60', 'abc']) {
-        final schedule = service.calculate(
-          task: _task(),
-          setting: _setting(notifyTime: notifyTime),
-          now: now,
-        );
-
-        expect(schedule, isNull);
-      }
-    });
-
-    test('excludes negative daysBeforeDue values', () {
+    test('excludes negative minutesBeforeDue values', () {
       final schedule = service.calculate(
         task: _task(),
-        setting: _setting(daysBeforeDue: -1),
+        setting: _setting(minutesBeforeDue: -1),
         now: now,
       );
 
@@ -130,14 +118,13 @@ NotificationSetting _setting({
   String id = 'notification-1',
   String taskId = 'task-1',
   bool enabled = true,
-  int daysBeforeDue = 1,
-  String notifyTime = '09:00',
+  int minutesBeforeDue = 60,
 }) {
   return NotificationSetting(
     id: id,
     taskId: taskId,
     enabled: enabled,
-    daysBeforeDue: daysBeforeDue,
-    notifyTime: notifyTime,
+    daysBeforeDue: minutesBeforeDue,
+    notifyTime: 'relative',
   );
 }

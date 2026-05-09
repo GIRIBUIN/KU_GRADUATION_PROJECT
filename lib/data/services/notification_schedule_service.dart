@@ -27,23 +27,9 @@ class NotificationScheduleService {
       return null;
     }
 
-    final time = _parseNotifyTime(setting.notifyTime);
-    if (time == null) {
-      return null;
-    }
-
     final dueDate = task.dueDate!;
-    final scheduledDate = DateTime(
-      dueDate.year,
-      dueDate.month,
-      dueDate.day,
-    ).subtract(Duration(days: setting.daysBeforeDue));
-    final scheduledAt = DateTime(
-      scheduledDate.year,
-      scheduledDate.month,
-      scheduledDate.day,
-      time.hour,
-      time.minute,
+    final scheduledAt = dueDate.subtract(
+      Duration(minutes: setting.daysBeforeDue),
     );
 
     if (scheduledAt.isBefore(now)) {
@@ -81,31 +67,4 @@ class NotificationScheduleService {
 
     return schedules;
   }
-
-  _NotifyTime? _parseNotifyTime(String value) {
-    final match = RegExp(r'^(\d{2}):(\d{2})$').firstMatch(value.trim());
-    if (match == null) {
-      return null;
-    }
-
-    final hour = int.tryParse(match.group(1)!);
-    final minute = int.tryParse(match.group(2)!);
-    if (hour == null ||
-        minute == null ||
-        hour < 0 ||
-        hour > 23 ||
-        minute < 0 ||
-        minute > 59) {
-      return null;
-    }
-
-    return _NotifyTime(hour: hour, minute: minute);
-  }
-}
-
-class _NotifyTime {
-  const _NotifyTime({required this.hour, required this.minute});
-
-  final int hour;
-  final int minute;
 }

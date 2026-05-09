@@ -22,6 +22,7 @@ import '../../../data/services/http_ecampus_auth_service.dart';
 import '../../../data/services/http_ecampus_todo_client.dart';
 import '../../../data/services/sub_task_progress.dart';
 import '../../services/in_app_webview_ecampus_cookie_store.dart';
+import '../../services/local_notification_service.dart';
 import '../login/ecampus_login_webview_screen.dart';
 import '../sync/ecampus_sync_preview_screen.dart';
 import '../task/task_create_screen.dart';
@@ -37,6 +38,7 @@ class MainShellScreen extends StatefulWidget {
     required this.settingsRepository,
     required this.tagRepository,
     required this.folderRepository,
+    required this.localNotificationService,
   });
 
   final TaskRepository taskRepository;
@@ -45,6 +47,7 @@ class MainShellScreen extends StatefulWidget {
   final SettingsRepository settingsRepository;
   final TagRepository tagRepository;
   final FolderRepository folderRepository;
+  final LocalNotificationService localNotificationService;
 
   @override
   State<MainShellScreen> createState() => _MainShellScreenState();
@@ -222,7 +225,19 @@ class _MainShellScreenState extends State<MainShellScreen> {
         ? TaskStatus.active
         : TaskStatus.completed;
 
-    await widget.taskRepository.updateTaskStatus(task.id, nextStatus);
+    final updatedTask = await widget.taskRepository.updateTaskStatus(
+      task.id,
+      nextStatus,
+    );
+    if (!mounted) {
+      return;
+    }
+
+    if (nextStatus == TaskStatus.active) {
+      await _scheduleTaskNotification(updatedTask);
+    } else {
+      await _cancelTaskNotification(task.id);
+    }
     if (!mounted) {
       return;
     }
@@ -236,6 +251,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
   Future<void> _deleteTask(Task task) async {
     await widget.taskRepository.markDeleted(task.id);
+    await _cancelTaskNotification(task.id);
     if (!mounted) {
       return;
     }
@@ -247,6 +263,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   Future<void> _deleteCompletedTasks(List<Task> tasks) async {
     for (final task in tasks) {
       await widget.taskRepository.markDeleted(task.id);
+      await _cancelTaskNotification(task.id);
     }
     if (!mounted) {
       return;
@@ -257,17 +274,22 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   Future<void> _restoreTask(Task task) async {
-    await widget.taskRepository.restoreTask(task.id);
+    final restoredTask = await widget.taskRepository.restoreTask(task.id);
     if (!mounted) {
       return;
     }
 
+    await _scheduleTaskNotification(restoredTask);
+    if (!mounted) {
+      return;
+    }
     _refreshTasks();
     _showSnackBar(context, '작업을 복구했습니다.');
   }
 
   Future<void> _deleteTaskPermanently(Task task) async {
     await widget.taskRepository.deletePermanently(task.id);
+    await _cancelTaskNotification(task.id);
     if (!mounted) {
       return;
     }
@@ -282,6 +304,23 @@ class _MainShellScreenState extends State<MainShellScreen> {
     );
   }
 
+  Future<void> _scheduleTaskNotification(Task task) async {
+    final setting = await widget.notificationRepository.getByTaskId(task.id);
+    if (setting == null) {
+      await _cancelTaskNotification(task.id);
+      return;
+    }
+
+    await widget.localNotificationService.scheduleTaskNotification(
+      task: task,
+      setting: setting,
+    );
+  }
+
+  Future<void> _cancelTaskNotification(String taskId) {
+    return widget.localNotificationService.cancelTaskNotification(taskId);
+  }
+
   Future<void> _openTaskDetail(Task task) async {
     await Navigator.of(context).push<bool>(
       MaterialPageRoute(
@@ -292,6 +331,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
           notificationRepository: widget.notificationRepository,
           tagRepository: widget.tagRepository,
           folderRepository: widget.folderRepository,
+          localNotificationService: widget.localNotificationService,
         ),
       ),
     );
@@ -310,6 +350,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
           settingsRepository: widget.settingsRepository,
           tagRepository: widget.tagRepository,
           folderRepository: widget.folderRepository,
+          localNotificationService: widget.localNotificationService,
         ),
       ),
     );
@@ -336,8 +377,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
                   autoSyncEnabled: false,
                   saveEcampusAccount: false,
                   defaultNotificationEnabled: true,
-                  defaultNotificationDays: 1,
-                  defaultNotificationTime: '09:00',
+                  defaultNotificationDays: 60,
+                  defaultNotificationTime: 'relative',
                   urgentDueDays: 3,
                 );
             return FutureBuilder<_TaskMetadataLookup>(
@@ -395,6 +436,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
                     },
                     onOpenSync: _openEcampusSync,
                     onClearEcampusSession: _clearEcampusSession,
+                    localNotificationService: widget.localNotificationService,
                   ),
                 ];
 
@@ -956,8 +998,7 @@ class _ManagementPageState extends State<_ManagementPage> {
                         icon: Icons.circle,
                         iconColor: _colorFromHex(tag.color),
                         title: tag.name,
-                        subtitle:
-                            '연결된 작업 ${_metadataTaskCountForTag(tag.id)}개',
+                        subtitle: '연결된 작업 ${_metadataTaskCountForTag(tag.id)}개',
                         onTap: () => _openTagTasks(tag),
                         onEdit: () => _editTag(tag),
                         editTooltip: '태그 편집',
@@ -1025,8 +1066,7 @@ class _ManagementPageState extends State<_ManagementPage> {
   Future<void> _openTagTasks(Tag tag) async {
     final tasks = widget.tasks
         .where(
-          (task) =>
-              !_isHiddenInMainList(task) && task.tagIds.contains(tag.id),
+          (task) => !_isHiddenInMainList(task) && task.tagIds.contains(tag.id),
         )
         .toList(growable: false);
 
@@ -1064,8 +1104,7 @@ class _ManagementPageState extends State<_ManagementPage> {
     final tasks = widget.tasks
         .where(
           (task) =>
-              !_isHiddenInMainList(task) &&
-              task.folderIds.contains(folder.id),
+              !_isHiddenInMainList(task) && task.folderIds.contains(folder.id),
         )
         .toList(growable: false);
 
@@ -1109,8 +1148,7 @@ class _ManagementPageState extends State<_ManagementPage> {
   int _metadataTaskCountForTag(String tagId) {
     return widget.tasks
         .where(
-          (task) =>
-              !_isHiddenInMainList(task) && task.tagIds.contains(tagId),
+          (task) => !_isHiddenInMainList(task) && task.tagIds.contains(tagId),
         )
         .length;
   }
@@ -1753,6 +1791,7 @@ class _SettingsPage extends StatefulWidget {
     required this.onSettingsChanged,
     required this.onOpenSync,
     required this.onClearEcampusSession,
+    required this.localNotificationService,
   });
 
   final SettingsRepository settingsRepository;
@@ -1760,6 +1799,7 @@ class _SettingsPage extends StatefulWidget {
   final VoidCallback onSettingsChanged;
   final Future<void> Function() onOpenSync;
   final Future<void> Function() onClearEcampusSession;
+  final LocalNotificationService localNotificationService;
 
   @override
   State<_SettingsPage> createState() => _SettingsPageState();
@@ -1785,6 +1825,16 @@ class _SettingsPageState extends State<_SettingsPage> {
     widget.onSettingsChanged();
   }
 
+  Future<void> _setDefaultNotificationEnabled(
+    AppSettings settings,
+    bool enabled,
+  ) async {
+    if (enabled) {
+      await widget.localNotificationService.requestPermission();
+    }
+    await _saveSettings(settings.copyWith(defaultNotificationEnabled: enabled));
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<AppSettings>(
@@ -1796,8 +1846,8 @@ class _SettingsPageState extends State<_SettingsPage> {
               autoSyncEnabled: false,
               saveEcampusAccount: false,
               defaultNotificationEnabled: true,
-              defaultNotificationDays: 1,
-              defaultNotificationTime: '09:00',
+              defaultNotificationDays: 60,
+              defaultNotificationTime: 'relative',
               urgentDueDays: 3,
             );
         final isLoading =
@@ -1842,34 +1892,25 @@ class _SettingsPageState extends State<_SettingsPage> {
                     title: '기본 알림',
                     value: settings.defaultNotificationEnabled,
                     subtitle: settings.defaultNotificationEnabled
-                        ? '${_notificationDaysLabel(settings.defaultNotificationDays)} ${settings.defaultNotificationTime}'
+                        ? _notificationOffsetLabel(
+                            settings.defaultNotificationDays,
+                          )
                         : '꺼짐',
                     onChanged: isLoading
                         ? null
-                        : (value) => _saveSettings(
-                            settings.copyWith(
-                              defaultNotificationEnabled: value,
-                            ),
-                          ),
+                        : (value) =>
+                              _setDefaultNotificationEnabled(settings, value),
                   ),
                   if (settings.defaultNotificationEnabled) ...[
                     _SettingsInfoRow(
                       icon: Icons.access_time_rounded,
                       title: '알림 시점',
-                      value: _notificationDaysLabel(
+                      value: _notificationOffsetLabel(
                         settings.defaultNotificationDays,
                       ),
                       onTap: isLoading
                           ? null
-                          : () => _pickDefaultNotificationDays(settings),
-                    ),
-                    _SettingsInfoRow(
-                      icon: Icons.schedule_rounded,
-                      title: '기본 알림 시각',
-                      value: settings.defaultNotificationTime,
-                      onTap: isLoading
-                          ? null
-                          : () => _pickNotificationTime(settings),
+                          : () => _pickDefaultNotificationOffset(settings),
                     ),
                   ],
                 ],
@@ -1895,16 +1936,18 @@ class _SettingsPageState extends State<_SettingsPage> {
     );
   }
 
-  Future<void> _pickDefaultNotificationDays(AppSettings settings) async {
-    final days = await _pickDaySlider(
+  Future<void> _pickDefaultNotificationOffset(AppSettings settings) async {
+    final minutes = await _pickNotificationOffsetMinutes(
       title: '알림 시점',
       selected: settings.defaultNotificationDays,
-      min: 0,
-      max: 7,
-      labelBuilder: _notificationDaysLabel,
     );
-    if (days != null) {
-      await _saveSettings(settings.copyWith(defaultNotificationDays: days));
+    if (minutes != null) {
+      await _saveSettings(
+        settings.copyWith(
+          defaultNotificationDays: minutes,
+          defaultNotificationTime: 'relative',
+        ),
+      );
     }
   }
 
@@ -1919,6 +1962,58 @@ class _SettingsPageState extends State<_SettingsPage> {
     if (days != null) {
       await _saveSettings(settings.copyWith(urgentDueDays: days));
     }
+  }
+
+  Future<int?> _pickNotificationOffsetMinutes({
+    required String title,
+    required int selected,
+  }) {
+    var current = _closestNotificationOffset(selected);
+    return showModalBottomSheet<int>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  for (final option in _notificationOffsetOptions)
+                    ListTile(
+                      onTap: () {
+                        setSheetState(() {
+                          current = option;
+                        });
+                      },
+                      title: Text(_notificationOffsetLabel(option)),
+                      trailing: current == option
+                          ? const Icon(Icons.check_rounded)
+                          : null,
+                    ),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () => Navigator.of(context).pop(current),
+                      child: const Text('적용'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Future<int?> _pickDaySlider({
@@ -1979,25 +2074,6 @@ class _SettingsPageState extends State<_SettingsPage> {
           );
         },
       ),
-    );
-  }
-
-  String _notificationDaysLabel(int days) {
-    if (days == 0) {
-      return '마감 당일';
-    }
-    return '마감 $days일 전';
-  }
-
-  Future<void> _pickNotificationTime(AppSettings settings) async {
-    final initial = _parseTimeOfDay(settings.defaultNotificationTime);
-    final time = await showTimePicker(context: context, initialTime: initial);
-    if (time == null) {
-      return;
-    }
-
-    await _saveSettings(
-      settings.copyWith(defaultNotificationTime: _timeLabel(time)),
     );
   }
 }
@@ -3697,9 +3773,9 @@ int _compareDeletedTasks(Task a, Task b) {
 }
 
 int _compareMetadataTasks(Task a, Task b) {
-  final status = _metadataStatusRank(a.status).compareTo(
-    _metadataStatusRank(b.status),
-  );
+  final status = _metadataStatusRank(
+    a.status,
+  ).compareTo(_metadataStatusRank(b.status));
   if (status != 0) {
     return status;
   }
@@ -3778,6 +3854,32 @@ const _metadataColorOptions = [
   '#6B7280',
 ];
 
+const _notificationOffsetOptions = [10, 30, 60, 180, 360, 720, 1440, 4320];
+
+int _closestNotificationOffset(int value) {
+  var closest = _notificationOffsetOptions.first;
+  for (final option in _notificationOffsetOptions) {
+    final currentDistance = (option - value).abs();
+    final closestDistance = (closest - value).abs();
+    if (currentDistance < closestDistance) {
+      closest = option;
+    }
+  }
+  return closest;
+}
+
+String _notificationOffsetLabel(int minutes) {
+  if (minutes < 60) {
+    return '마감 $minutes분 전';
+  }
+  if (minutes < 24 * 60) {
+    final hours = minutes ~/ 60;
+    return '마감 $hours시간 전';
+  }
+  final days = minutes ~/ (24 * 60);
+  return '마감 $days일 전';
+}
+
 Color _colorFromHex(String? value, {Color fallback = AppTheme.primaryBlue}) {
   final normalized = _normalizeHex(value);
   if (!_isValidHexColor(normalized)) {
@@ -3844,27 +3946,4 @@ String _dueLabel(DateTime date) {
 
 String _shortDateLabel(DateTime date) {
   return '${date.month}월 ${date.day}일';
-}
-
-TimeOfDay _parseTimeOfDay(String value) {
-  final parts = value.split(':');
-  if (parts.length != 2) {
-    return const TimeOfDay(hour: 9, minute: 0);
-  }
-
-  final hour = int.tryParse(parts[0]);
-  final minute = int.tryParse(parts[1]);
-  if (hour == null ||
-      minute == null ||
-      hour < 0 ||
-      hour > 23 ||
-      minute < 0 ||
-      minute > 59) {
-    return const TimeOfDay(hour: 9, minute: 0);
-  }
-  return TimeOfDay(hour: hour, minute: minute);
-}
-
-String _timeLabel(TimeOfDay time) {
-  return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
 }

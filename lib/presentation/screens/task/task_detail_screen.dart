@@ -8,6 +8,7 @@ import '../../../data/repositories/sub_task_repository.dart';
 import '../../../data/repositories/tag_repository.dart';
 import '../../../data/repositories/task_repository.dart';
 import '../../../data/services/sub_task_progress.dart';
+import '../../services/local_notification_service.dart';
 import '../../widgets/task_metadata_picker.dart';
 
 class TaskDetailScreen extends StatefulWidget {
@@ -19,6 +20,7 @@ class TaskDetailScreen extends StatefulWidget {
     required this.notificationRepository,
     required this.tagRepository,
     required this.folderRepository,
+    required this.localNotificationService,
   });
 
   final String taskId;
@@ -27,6 +29,7 @@ class TaskDetailScreen extends StatefulWidget {
   final NotificationRepository notificationRepository;
   final TagRepository tagRepository;
   final FolderRepository folderRepository;
+  final LocalNotificationService localNotificationService;
 
   @override
   State<TaskDetailScreen> createState() => _TaskDetailScreenState();
@@ -47,8 +50,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   TaskPriority? _priority;
   NotificationSetting? _notification;
   var _notificationEnabled = false;
-  var _notificationDays = 1;
-  var _notificationTime = '09:00';
+  var _notificationOffsetMinutes = 60;
   var _isLoading = true;
   var _isSaving = false;
   var _didPopAfterSave = false;
@@ -95,8 +97,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       _priority = task?.priority;
       _notification = notification;
       _notificationEnabled = notification?.enabled ?? false;
-      _notificationDays = notification?.daysBeforeDue ?? 1;
-      _notificationTime = notification?.notifyTime ?? '09:00';
+      _notificationOffsetMinutes = notification?.daysBeforeDue ?? 60;
       _isLoading = false;
     });
   }
@@ -177,10 +178,16 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                             icon: Icons.notifications_rounded,
                             title: '작업 알림',
                             subtitle: _notificationEnabled
-                                ? '${_notificationDaysLabel(_notificationDays)} $_notificationTime'
+                                ? _notificationOffsetLabel(
+                                    _notificationOffsetMinutes,
+                                  )
                                 : '꺼짐',
                             value: _notificationEnabled,
                             onChanged: (value) {
+                              if (value) {
+                                widget.localNotificationService
+                                    .requestPermission();
+                              }
                               setState(() {
                                 _notificationEnabled = value;
                               });
@@ -191,15 +198,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                             _ActionTile(
                               icon: Icons.schedule_rounded,
                               title: '알림 시점',
-                              value: _notificationDaysLabel(_notificationDays),
-                              onTap: _pickNotificationDays,
-                            ),
-                            const Divider(height: 1),
-                            _ActionTile(
-                              icon: Icons.access_time_rounded,
-                              title: '알림 시각',
-                              value: _notificationTime,
-                              onTap: _pickNotificationTime,
+                              value: _notificationOffsetLabel(
+                                _notificationOffsetMinutes,
+                              ),
+                              onTap: _pickNotificationOffset,
                             ),
                           ],
                         ],
@@ -288,15 +290,20 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     );
 
     await widget.taskRepository.updateTask(updated);
-    await widget.notificationRepository.save(
+    final notification = await widget.notificationRepository.save(
       NotificationSetting(
         id: _notification?.id ?? 'notification_${task.id}',
         taskId: task.id,
         enabled: _notificationEnabled,
-        daysBeforeDue: _notificationDays,
-        notifyTime: _notificationTime,
+        daysBeforeDue: _notificationOffsetMinutes,
+        notifyTime: 'relative',
         scheduledAt: _notification?.scheduledAt,
       ),
+    );
+    await widget.localNotificationService.scheduleTaskNotification(
+      task: updated,
+      setting: notification,
+      requestPermissionBeforeScheduling: _notificationEnabled,
     );
 
     if (!mounted) {
@@ -305,14 +312,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
     setState(() {
       _task = updated;
-      _notification = NotificationSetting(
-        id: _notification?.id ?? 'notification_${task.id}',
-        taskId: task.id,
-        enabled: _notificationEnabled,
-        daysBeforeDue: _notificationDays,
-        notifyTime: _notificationTime,
-        scheduledAt: _notification?.scheduledAt,
-      );
+      _notification = notification;
       _isSaving = false;
     });
     if (popAfterSave) {
@@ -360,30 +360,15 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     });
   }
 
-  Future<void> _pickNotificationDays() async {
-    final days = await _pickDaySlider(
+  Future<void> _pickNotificationOffset() async {
+    final minutes = await _pickNotificationOffsetMinutes(
       context: context,
       title: '알림 시점',
-      selected: _notificationDays,
-      min: 0,
-      max: 7,
-      labelBuilder: _notificationDaysLabel,
+      selected: _notificationOffsetMinutes,
     );
-    if (days != null) {
+    if (minutes != null) {
       setState(() {
-        _notificationDays = days;
-      });
-    }
-  }
-
-  Future<void> _pickNotificationTime() async {
-    final time = await showTimePicker(
-      context: context,
-      initialTime: _parseTimeOfDay(_notificationTime),
-    );
-    if (time != null) {
-      setState(() {
-        _notificationTime = _timeLabel(time);
+        _notificationOffsetMinutes = minutes;
       });
     }
   }
@@ -827,15 +812,12 @@ String _dateTimeLabel(DateTime date) {
   return '${date.month}.${date.day} $hour:$minute';
 }
 
-Future<int?> _pickDaySlider({
+Future<int?> _pickNotificationOffsetMinutes({
   required BuildContext context,
   required String title,
   required int selected,
-  required int min,
-  required int max,
-  required String Function(int days) labelBuilder,
 }) {
-  var current = selected.clamp(min, max);
+  var current = _closestNotificationOffset(selected);
   return showModalBottomSheet<int>(
     context: context,
     builder: (context) => StatefulBuilder(
@@ -855,41 +837,18 @@ Future<int?> _pickDaySlider({
                   ),
                 ),
                 const SizedBox(height: 16),
-                Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 9,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryBlue.withValues(alpha: 0.09),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: AppTheme.primaryBlue.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Text(
-                      labelBuilder(current),
-                      style: const TextStyle(
-                        color: AppTheme.primaryBlue,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
+                for (final option in _notificationOffsetOptions)
+                  ListTile(
+                    onTap: () {
+                      setSheetState(() {
+                        current = option;
+                      });
+                    },
+                    title: Text(_notificationOffsetLabel(option)),
+                    trailing: current == option
+                        ? const Icon(Icons.check_rounded)
+                        : null,
                   ),
-                ),
-                Slider(
-                  value: current.toDouble(),
-                  min: min.toDouble(),
-                  max: max.toDouble(),
-                  divisions: max - min,
-                  label: labelBuilder(current),
-                  onChanged: (value) {
-                    setSheetState(() {
-                      current = value.round();
-                    });
-                  },
-                ),
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
@@ -906,33 +865,30 @@ Future<int?> _pickDaySlider({
   );
 }
 
-String _notificationDaysLabel(int days) {
-  if (days == 0) {
-    return '마감 당일';
+const _notificationOffsetOptions = [10, 30, 60, 180, 360, 720, 1440, 4320];
+
+int _closestNotificationOffset(int value) {
+  var closest = _notificationOffsetOptions.first;
+  for (final option in _notificationOffsetOptions) {
+    final currentDistance = (option - value).abs();
+    final closestDistance = (closest - value).abs();
+    if (currentDistance < closestDistance) {
+      closest = option;
+    }
   }
+  return closest;
+}
+
+String _notificationOffsetLabel(int minutes) {
+  if (minutes < 60) {
+    return '마감 $minutes분 전';
+  }
+  if (minutes < 24 * 60) {
+    final hours = minutes ~/ 60;
+    return '마감 $hours시간 전';
+  }
+  final days = minutes ~/ (24 * 60);
   return '마감 $days일 전';
-}
-
-TimeOfDay _parseTimeOfDay(String value) {
-  final parts = value.split(':');
-  if (parts.length != 2) {
-    return const TimeOfDay(hour: 9, minute: 0);
-  }
-  final hour = int.tryParse(parts[0]);
-  final minute = int.tryParse(parts[1]);
-  if (hour == null ||
-      minute == null ||
-      hour < 0 ||
-      hour > 23 ||
-      minute < 0 ||
-      minute > 59) {
-    return const TimeOfDay(hour: 9, minute: 0);
-  }
-  return TimeOfDay(hour: hour, minute: minute);
-}
-
-String _timeLabel(TimeOfDay time) {
-  return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
 }
 
 void _showSnackBar(BuildContext context, String message) {

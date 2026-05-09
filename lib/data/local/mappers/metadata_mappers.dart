@@ -4,6 +4,21 @@ import '../../models/task_models.dart' as models;
 import '../../repositories/settings_repository.dart' as settings_model;
 import '../app_database.dart' as db;
 
+int _normalizeNotificationOffsetMinutes(int? value, String? notifyTime) {
+  if (value == null) {
+    return 60;
+  }
+  if (notifyTime == null || notifyTime == 'relative') {
+    return value;
+  }
+  if (RegExp(r'^\d{2}:\d{2}$').hasMatch(notifyTime.trim()) &&
+      value >= 0 &&
+      value <= 7) {
+    return value * 24 * 60;
+  }
+  return value;
+}
+
 class TagMapper {
   const TagMapper();
 
@@ -64,7 +79,10 @@ class NotificationSettingMapper {
       id: row.id,
       taskId: row.taskId,
       enabled: row.enabled,
-      daysBeforeDue: row.daysBeforeDue,
+      daysBeforeDue: _normalizeNotificationOffsetMinutes(
+        row.daysBeforeDue,
+        row.notifyTime,
+      ),
       notifyTime: row.notifyTime,
       scheduledAt: row.scheduledAt,
     );
@@ -100,9 +118,11 @@ class AppSettingsMapper {
       saveEcampusAccount: _parseBool(values[saveEcampusAccountKey]) ?? false,
       defaultNotificationEnabled:
           _parseBool(values[defaultNotificationEnabledKey]) ?? true,
-      defaultNotificationDays:
-          int.tryParse(values[defaultNotificationDaysKey] ?? '') ?? 1,
-      defaultNotificationTime: values[defaultNotificationTimeKey] ?? '09:00',
+      defaultNotificationDays: _normalizeNotificationOffsetMinutes(
+        int.tryParse(values[defaultNotificationDaysKey] ?? ''),
+        values[defaultNotificationTimeKey],
+      ),
+      defaultNotificationTime: values[defaultNotificationTimeKey] ?? 'relative',
       urgentDueDays: int.tryParse(values[urgentDueDaysKey] ?? '') ?? 3,
     );
   }

@@ -9,6 +9,7 @@ import 'data/repositories/drift_sub_task_repository.dart';
 import 'data/repositories/drift_tag_repository.dart';
 import 'data/repositories/drift_task_repository.dart';
 import 'presentation/screens/main/main_shell_screen.dart';
+import 'presentation/services/local_notification_service.dart';
 
 class KuTaskApp extends StatefulWidget {
   const KuTaskApp({super.key});
@@ -25,6 +26,7 @@ class _KuTaskAppState extends State<KuTaskApp> {
   late final DriftSettingsRepository _settingsRepository;
   late final DriftTagRepository _tagRepository;
   late final DriftFolderRepository _folderRepository;
+  late final LocalNotificationService _localNotificationService;
 
   @override
   void initState() {
@@ -36,6 +38,7 @@ class _KuTaskAppState extends State<KuTaskApp> {
     _settingsRepository = DriftSettingsRepository(database: _database);
     _tagRepository = DriftTagRepository(database: _database);
     _folderRepository = DriftFolderRepository(database: _database);
+    _localNotificationService = LocalNotificationService();
   }
 
   @override
@@ -57,6 +60,7 @@ class _KuTaskAppState extends State<KuTaskApp> {
         settingsRepository: _settingsRepository,
         tagRepository: _tagRepository,
         folderRepository: _folderRepository,
+        localNotificationService: _localNotificationService,
       ),
     );
   }

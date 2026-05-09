@@ -126,8 +126,8 @@ void main() {
       expect(defaults.autoSyncEnabled, isFalse);
       expect(defaults.saveEcampusAccount, isFalse);
       expect(defaults.defaultNotificationEnabled, isTrue);
-      expect(defaults.defaultNotificationDays, 1);
-      expect(defaults.defaultNotificationTime, '09:00');
+      expect(defaults.defaultNotificationDays, 60);
+      expect(defaults.defaultNotificationTime, 'relative');
       expect(defaults.urgentDueDays, 3);
 
       final saved = await settingsRepository.saveSettings(
@@ -135,8 +135,8 @@ void main() {
           autoSyncEnabled: true,
           saveEcampusAccount: false,
           defaultNotificationEnabled: false,
-          defaultNotificationDays: 2,
-          defaultNotificationTime: '10:30',
+          defaultNotificationDays: 180,
+          defaultNotificationTime: 'relative',
           urgentDueDays: 7,
         ),
       );
@@ -144,8 +144,8 @@ void main() {
       expect(saved.autoSyncEnabled, isTrue);
       expect(saved.saveEcampusAccount, isFalse);
       expect(saved.defaultNotificationEnabled, isFalse);
-      expect(saved.defaultNotificationDays, 2);
-      expect(saved.defaultNotificationTime, '10:30');
+      expect(saved.defaultNotificationDays, 180);
+      expect(saved.defaultNotificationTime, 'relative');
       expect(saved.urgentDueDays, 7);
       expect((await database.select(database.appSettings).get()).length, 6);
     });
@@ -183,7 +183,7 @@ NotificationSetting _notification({required String id, int daysBeforeDue = 1}) {
     taskId: 'task-1',
     enabled: true,
     daysBeforeDue: daysBeforeDue,
-    notifyTime: '09:00',
+    notifyTime: 'relative',
     scheduledAt: DateTime(2026, 5, 19, 9),
   );
 }

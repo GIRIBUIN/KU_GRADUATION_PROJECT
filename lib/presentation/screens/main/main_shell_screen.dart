@@ -901,9 +901,6 @@ class _ManagementPageState extends State<_ManagementPage> {
     final deletedCount = widget.tasks
         .where((task) => task.status == TaskStatus.deleted)
         .length;
-    final excludedCount = widget.tasks
-        .where((task) => task.status == TaskStatus.excluded)
-        .length;
 
     return SafeArea(
       child: ListView(
@@ -992,12 +989,6 @@ class _ManagementPageState extends State<_ManagementPage> {
                 title: '삭제된 작업',
                 trailing: '$deletedCount',
                 onTap: _openDeletedTasks,
-              ),
-              _ManagementRow(
-                icon: Icons.block_rounded,
-                iconColor: AppTheme.muted,
-                title: '가져오지 않을 e-campus 항목',
-                trailing: '$excludedCount',
               ),
             ],
           ),

@@ -5,7 +5,9 @@ import '../models/ecampus_models.dart';
 import '../models/task_models.dart';
 
 class EcampusTodoParser {
-  const EcampusTodoParser();
+  const EcampusTodoParser({DateTime Function()? now}) : _now = now;
+
+  final DateTime Function()? _now;
 
   EcampusTodoParseResult parse(String html) {
     final document = html_parser.parse(html);
@@ -32,13 +34,23 @@ class EcampusTodoParser {
     final title = item.querySelector('.todo_title')?.text.trim() ?? '';
     final course = item.querySelector('.todo_subjt')?.text.trim() ?? '';
     final dDayText = item.querySelector('.todo_d_day')?.text.trim();
-    final dueLabel = item.querySelector('div.todo_date span.todo_date')?.text.trim();
+    final rawDueLabel = item
+        .querySelector('div.todo_date span.todo_date')
+        ?.text
+        .trim();
+    final dDay = _parseDday(dDayText);
+    final dueDate = _parseDueDate(dueLabel: rawDueLabel, dDay: dDay);
+    final dueLabel = _dueLabelFallback(rawDueLabel, dueDate);
 
     final goLectureArgs = _parseGoLectureArgs(item.attributes['onclick']);
-    final hiddenLectureId =
-        item.querySelector('input[id^="kj_"]')?.attributes['value']?.trim();
-    final hiddenType =
-        item.querySelector('input[id^="gubun_"]')?.attributes['value']?.trim();
+    final hiddenLectureId = item
+        .querySelector('input[id^="kj_"]')
+        ?.attributes['value']
+        ?.trim();
+    final hiddenType = item
+        .querySelector('input[id^="gubun_"]')
+        ?.attributes['value']
+        ?.trim();
 
     final rawLectureId = _firstNonEmpty([
       goLectureArgs.elementAtOrNull(0),
@@ -82,8 +94,9 @@ class EcampusTodoParser {
         title: title,
         course: course,
         type: parseEcampusTaskType(type),
+        dueDate: dueDate,
         dueLabel: dueLabel,
-        dDay: _parseDday(dDayText),
+        dDay: dDay,
         rawLectureId: lectureId,
         rawItemId: itemId,
         rawType: type,
@@ -131,6 +144,88 @@ class EcampusTodoParser {
     final value = int.parse(match.group(2)!);
     return match.group(1) == '+' ? -value : value;
   }
+
+  DateTime? _parseDueDate({required String? dueLabel, required int? dDay}) {
+    final labelParts = _parseDueLabelParts(dueLabel);
+    final now = _now?.call() ?? DateTime.now();
+
+    DateTime? dueDay;
+    if (dDay != null) {
+      final today = DateTime(now.year, now.month, now.day);
+      dueDay = today.add(Duration(days: dDay));
+    } else if (labelParts != null) {
+      dueDay = _dateFromLabel(
+        now: now,
+        month: labelParts.month,
+        day: labelParts.day,
+      );
+    }
+
+    if (dueDay == null) {
+      return null;
+    }
+
+    final hour = labelParts?.hour ?? 23;
+    final minute = labelParts?.minute ?? 59;
+    return DateTime(dueDay.year, dueDay.month, dueDay.day, hour, minute);
+  }
+
+  _DueLabelParts? _parseDueLabelParts(String? text) {
+    if (text == null) {
+      return null;
+    }
+
+    final match = RegExp(
+      r'(\d{1,2})\s*월\s*(\d{1,2})\s*일(?:[^\d]*(\d{1,2})\s*:\s*(\d{2}))?',
+    ).firstMatch(text);
+    if (match == null) {
+      return null;
+    }
+
+    return _DueLabelParts(
+      month: int.parse(match.group(1)!),
+      day: int.parse(match.group(2)!),
+      hour: match.group(3) == null ? null : int.parse(match.group(3)!),
+      minute: match.group(4) == null ? null : int.parse(match.group(4)!),
+    );
+  }
+
+  DateTime _dateFromLabel({
+    required DateTime now,
+    required int month,
+    required int day,
+  }) {
+    final candidate = DateTime(now.year, month, day);
+    final today = DateTime(now.year, now.month, now.day);
+    if (candidate.difference(today).inDays < -180) {
+      return DateTime(now.year + 1, month, day);
+    }
+    return candidate;
+  }
+
+  String? _dueLabelFallback(String? dueLabel, DateTime? dueDate) {
+    if (dueLabel != null && dueLabel.trim().isNotEmpty) {
+      return dueLabel;
+    }
+    if (dueDate == null) {
+      return null;
+    }
+    return '${dueDate.month}월 ${dueDate.day}일';
+  }
+}
+
+class _DueLabelParts {
+  const _DueLabelParts({
+    required this.month,
+    required this.day,
+    this.hour,
+    this.minute,
+  });
+
+  final int month;
+  final int day;
+  final int? hour;
+  final int? minute;
 }
 
 EcampusTaskType parseEcampusTaskType(String rawType) {

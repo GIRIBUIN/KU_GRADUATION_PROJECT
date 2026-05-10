@@ -38,14 +38,11 @@ void main() {
         syncedAt: syncedAt,
       );
 
-      expect(
-        result.items.map((item) => item.kind),
-        [
-          SyncItemKind.completed,
-          SyncItemKind.deleted,
-          SyncItemKind.excluded,
-        ],
-      );
+      expect(result.items.map((item) => item.kind), [
+        SyncItemKind.completed,
+        SyncItemKind.deleted,
+        SyncItemKind.excluded,
+      ]);
       expect(result.ignoredItems.length, 3);
     });
 
@@ -88,6 +85,46 @@ void main() {
 
       expect(result.items.single.kind, SyncItemKind.updateCandidate);
       expect(result.importCandidates.length, 1);
+    });
+
+    test('classifies due date changes as updateCandidate', () {
+      final parsedTask = _parsedTask(
+        sourceKey: 'due-changed',
+        dueDate: DateTime(2026, 5, 20, 23, 59),
+      );
+      final existingTask = _task(
+        sourceKey: 'due-changed',
+        status: TaskStatus.active,
+        sourceDueDate: DateTime(2026, 5, 19, 23, 59),
+      );
+
+      final result = classifier.classify(
+        parsedTasks: [parsedTask],
+        existingTasks: [existingTask],
+        syncedAt: syncedAt,
+      );
+
+      expect(result.items.single.kind, SyncItemKind.updateCandidate);
+    });
+
+    test('keeps same due date as alreadyImported', () {
+      final parsedTask = _parsedTask(
+        sourceKey: 'due-same',
+        dueDate: DateTime(2026, 5, 20, 23, 59),
+      );
+      final existingTask = _task(
+        sourceKey: 'due-same',
+        status: TaskStatus.active,
+        sourceDueDate: DateTime(2026, 5, 20, 23, 59),
+      );
+
+      final result = classifier.classify(
+        parsedTasks: [parsedTask],
+        existingTasks: [existingTask],
+        syncedAt: syncedAt,
+      );
+
+      expect(result.items.single.kind, SyncItemKind.alreadyImported);
     });
 
     test('classifies empty sourceKey as error', () {

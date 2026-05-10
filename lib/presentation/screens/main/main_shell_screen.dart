@@ -12,6 +12,7 @@ import '../../../data/repositories/sub_task_repository.dart';
 import '../../../data/repositories/tag_repository.dart';
 import '../../../data/services/ecampus_auth_service.dart';
 import '../../../data/repositories/task_repository.dart';
+import '../../../data/services/home_task_summary.dart';
 import '../../../data/services/http_ecampus_auth_service.dart';
 import '../../../data/services/sub_task_progress.dart';
 import '../../services/in_app_webview_ecampus_cookie_store.dart';
@@ -61,11 +62,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
     _tasksFuture = _loadTasks();
     _settingsFuture = widget.settingsRepository.getSettings();
     _metadataFuture = _loadMetadata();
-    _clockRefreshTimer = Timer.periodic(const Duration(minutes: 1), (_) {
-      if (mounted) {
-        setState(() {});
-      }
-    });
+    _scheduleClockRefresh();
   }
 
   @override
@@ -76,6 +73,24 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
   Future<List<Task>> _loadTasks() {
     return widget.taskRepository.getTasks(includeArchived: true);
+  }
+
+  void _scheduleClockRefresh() {
+    final now = DateTime.now();
+    final nextMinute = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      now.hour,
+      now.minute + 1,
+    );
+    _clockRefreshTimer = Timer(nextMinute.difference(now), () {
+      if (!mounted) {
+        return;
+      }
+      setState(() {});
+      _scheduleClockRefresh();
+    });
   }
 
   void _refreshTasks() {
@@ -492,13 +507,12 @@ class _HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeTasks = tasks
-        .where((task) => task.status == TaskStatus.active)
-        .toList(growable: false);
-    final todayTasks = activeTasks.where(_isDueToday).toList(growable: false);
-    final urgentTasks = activeTasks
-        .where((task) => _isUrgent(task, urgentDueDays))
-        .toList(growable: false);
+    final now = DateTime.now();
+    final summary = HomeTaskSummary.fromTasks(
+      tasks: tasks,
+      now: now,
+      urgentDueDays: urgentDueDays,
+    );
 
     return SafeArea(
       child: RefreshIndicator(
@@ -510,7 +524,7 @@ class _HomePage extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    _todayLabel(DateTime.now()),
+                    _todayLabel(now),
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w900,
                       color: AppTheme.ink,
@@ -538,33 +552,39 @@ class _HomePage extends StatelessWidget {
                 _SummaryItem(
                   icon: Icons.event_available_rounded,
                   label: '오늘 할 일',
-                  value: '${todayTasks.length}',
+                  value: '${summary.todayTasks.length}',
                   color: AppTheme.successGreen,
+                ),
+                _SummaryItem(
+                  icon: Icons.warning_amber_rounded,
+                  label: '마감 지남',
+                  value: '${summary.overdueTasks.length}',
+                  color: AppTheme.dangerRed,
                 ),
                 _SummaryItem(
                   icon: Icons.schedule_rounded,
                   label: '마감 임박',
-                  value: '${urgentTasks.length}',
+                  value: '${summary.urgentTasks.length}',
                   color: AppTheme.warningOrange,
                 ),
                 _SummaryItem(
                   icon: Icons.assignment_outlined,
                   label: '미완료',
-                  value: '${activeTasks.length}',
+                  value: '${summary.activeTasks.length}',
                   color: AppTheme.primaryBlue,
                 ),
               ],
             ),
             const SizedBox(height: 32),
-            _SectionHeader(title: '오늘 할 일', count: todayTasks.length),
+            _SectionHeader(title: '오늘 할 일', count: summary.todayTasks.length),
             const SizedBox(height: 12),
             if (isLoading)
               const _LoadingBlock()
-            else if (todayTasks.isEmpty)
+            else if (summary.todayTasks.isEmpty)
               const _EmptyBlock(message: '오늘 마감인 일정이 없습니다.')
             else
               _TaskSectionCard(
-                tasks: todayTasks.take(3).toList(growable: false),
+                tasks: summary.todayTasks.take(3).toList(growable: false),
                 onToggleTask: onToggleTask,
                 onDeleteTask: onDeleteTask,
                 onOpenTaskDetail: onOpenTaskDetail,
@@ -574,13 +594,29 @@ class _HomePage extends StatelessWidget {
                 metadata: metadata,
               ),
             const SizedBox(height: 20),
-            _SectionHeader(title: '마감 임박', count: urgentTasks.length),
+            _SectionHeader(title: '마감 지남', count: summary.overdueTasks.length),
             const SizedBox(height: 12),
-            if (urgentTasks.isEmpty)
+            if (summary.overdueTasks.isEmpty)
+              const _EmptyBlock(message: '마감이 지난 일정이 없습니다.')
+            else
+              _TaskSectionCard(
+                tasks: summary.overdueTasks.take(4).toList(growable: false),
+                onToggleTask: onToggleTask,
+                onDeleteTask: onDeleteTask,
+                onOpenTaskDetail: onOpenTaskDetail,
+                subTaskRepository: subTaskRepository,
+                onReorderTasks: onReorderTasks,
+                enableReorder: false,
+                metadata: metadata,
+              ),
+            const SizedBox(height: 20),
+            _SectionHeader(title: '마감 임박', count: summary.urgentTasks.length),
+            const SizedBox(height: 12),
+            if (summary.urgentTasks.isEmpty)
               const _EmptyBlock(message: '가까운 마감 일정이 없습니다.')
             else
               _TaskSectionCard(
-                tasks: urgentTasks.take(4).toList(growable: false),
+                tasks: summary.urgentTasks.take(4).toList(growable: false),
                 onToggleTask: onToggleTask,
                 onDeleteTask: onDeleteTask,
                 onOpenTaskDetail: onOpenTaskDetail,
@@ -3867,31 +3903,10 @@ enum _TaskSort {
   final String label;
 }
 
-bool _isDueToday(Task task) {
-  final dueDate = task.dueDate;
-  if (dueDate == null) {
-    return false;
-  }
-  final now = DateTime.now();
-  return dueDate.year == now.year &&
-      dueDate.month == now.month &&
-      dueDate.day == now.day;
-}
-
-bool _isUrgent(Task task, int urgentDueDays) {
-  final dueDate = task.dueDate;
-  if (dueDate == null) {
-    return false;
-  }
-  final now = DateTime.now();
-  final startOfToday = DateTime(now.year, now.month, now.day);
-  final dueDay = DateTime(dueDate.year, dueDate.month, dueDate.day);
-  final days = dueDay.difference(startOfToday).inDays;
-  return days >= 0 && days <= urgentDueDays && !_isDueToday(task);
-}
+bool _isDueToday(Task task) => isTaskDueToday(task, now: DateTime.now());
 
 bool _isOverdue(DateTime dueDate) {
-  return dueDate.isBefore(DateTime.now());
+  return isDueDateOverdue(dueDate, now: DateTime.now());
 }
 
 int _compareDueDate(Task a, Task b) {

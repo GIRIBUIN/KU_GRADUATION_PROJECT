@@ -163,6 +163,11 @@ class _MainShellScreenState extends State<MainShellScreen> {
       } else {
         await authService.logout(session);
       }
+    } on EcampusLogoutException {
+      if (mounted) {
+        _showSnackBar(context, 'e-campus 로그아웃 요청에 실패했습니다.');
+      }
+      return;
     } finally {
       httpClient.close();
     }
@@ -393,8 +398,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
                   ),
                   _SettingsPage(
                     settingsRepository: widget.settingsRepository,
-                    isEcampusLoggedIn:
-                        _ecampusSession?.hasSessionCookie == true,
+                    ecampusSession: _ecampusSession,
+                    lastEcampusSyncedAt: _lastEcampusSyncedAt(tasks),
                     onSettingsChanged: () {
                       setState(() {
                         _settingsFuture = widget.settingsRepository
@@ -1979,7 +1984,8 @@ class _ExcludedEcampusTaskTile extends StatelessWidget {
 class _SettingsPage extends StatefulWidget {
   const _SettingsPage({
     required this.settingsRepository,
-    required this.isEcampusLoggedIn,
+    required this.ecampusSession,
+    required this.lastEcampusSyncedAt,
     required this.onSettingsChanged,
     required this.onOpenSync,
     required this.onClearEcampusSession,
@@ -1987,7 +1993,8 @@ class _SettingsPage extends StatefulWidget {
   });
 
   final SettingsRepository settingsRepository;
-  final bool isEcampusLoggedIn;
+  final EcampusSession? ecampusSession;
+  final DateTime? lastEcampusSyncedAt;
   final VoidCallback onSettingsChanged;
   final Future<void> Function() onOpenSync;
   final Future<void> Function() onClearEcampusSession;
@@ -2045,6 +2052,7 @@ class _SettingsPageState extends State<_SettingsPage> {
         final isLoading =
             snapshot.connectionState == ConnectionState.waiting &&
             !snapshot.hasData;
+        final session = widget.ecampusSession;
 
         return SafeArea(
           child: ListView(
@@ -2064,8 +2072,18 @@ class _SettingsPageState extends State<_SettingsPage> {
                   _SettingsInfoRow(
                     icon: Icons.lock_outline_rounded,
                     title: '로그인 세션',
-                    value: widget.isEcampusLoggedIn ? '로그인됨' : '로그인 필요',
-                    subtitle: '아이디와 비밀번호는 저장하지 않습니다.',
+                    value: session?.hasSessionCookie == true ? '로그인됨' : '없음',
+                    subtitle: session == null
+                        ? '아이디와 비밀번호는 저장하지 않습니다.'
+                        : '생성 ${_dateTimeLabel(session.createdAt)}',
+                  ),
+                  _SettingsInfoRow(
+                    icon: Icons.schedule_rounded,
+                    title: '마지막 동기화',
+                    value: widget.lastEcampusSyncedAt == null
+                        ? '없음'
+                        : _dateTimeLabel(widget.lastEcampusSyncedAt!),
+                    subtitle: '가져온 e-campus 항목 기준',
                   ),
                   _SettingsActionRow(
                     icon: Icons.cleaning_services_outlined,
@@ -4092,6 +4110,26 @@ String _folderSubtitle(Folder folder, List<Folder> folders) {
 String _todayLabel(DateTime date) {
   const weekdays = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
   return '${date.month}월 ${date.day}일 ${weekdays[date.weekday - 1]}';
+}
+
+DateTime? _lastEcampusSyncedAt(List<Task> tasks) {
+  DateTime? latest;
+  for (final task in tasks) {
+    final syncedAt = task.ecampus?.lastSyncedAt;
+    if (syncedAt == null) {
+      continue;
+    }
+    if (latest == null || syncedAt.isAfter(latest)) {
+      latest = syncedAt;
+    }
+  }
+  return latest;
+}
+
+String _dateTimeLabel(DateTime date) {
+  final hour = date.hour.toString().padLeft(2, '0');
+  final minute = date.minute.toString().padLeft(2, '0');
+  return '${date.month}월 ${date.day}일 $hour:$minute';
 }
 
 void _showSnackBar(BuildContext context, String message) {

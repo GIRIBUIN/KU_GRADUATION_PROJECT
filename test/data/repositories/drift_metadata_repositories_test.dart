@@ -132,7 +132,7 @@ void main() {
 
       final saved = await settingsRepository.saveSettings(
         const AppSettings(
-          autoSyncEnabled: true,
+          autoSyncEnabled: false,
           saveEcampusAccount: false,
           defaultNotificationEnabled: false,
           defaultNotificationDays: 180,
@@ -141,13 +141,23 @@ void main() {
         ),
       );
 
-      expect(saved.autoSyncEnabled, isTrue);
+      expect(saved.autoSyncEnabled, isFalse);
       expect(saved.saveEcampusAccount, isFalse);
       expect(saved.defaultNotificationEnabled, isFalse);
       expect(saved.defaultNotificationDays, 180);
       expect(saved.defaultNotificationTime, 'relative');
       expect(saved.urgentDueDays, 7);
       expect((await database.select(database.appSettings).get()).length, 6);
+
+      final restartedRepository = DriftSettingsRepository(database: database);
+      final persisted = await restartedRepository.getSettings();
+
+      expect(persisted.autoSyncEnabled, isFalse);
+      expect(persisted.saveEcampusAccount, isFalse);
+      expect(persisted.defaultNotificationEnabled, isFalse);
+      expect(persisted.defaultNotificationDays, 180);
+      expect(persisted.defaultNotificationTime, 'relative');
+      expect(persisted.urgentDueDays, 7);
     });
   });
 }

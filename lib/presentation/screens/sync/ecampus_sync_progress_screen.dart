@@ -38,6 +38,7 @@ class _EcampusSyncProgressScreenState extends State<EcampusSyncProgressScreen> {
   EcampusSession? _session;
   _SyncStep _currentStep = _SyncStep.login;
   String? _errorMessage;
+  var _isSyncing = false;
 
   @override
   void initState() {
@@ -142,7 +143,7 @@ class _EcampusSyncProgressScreenState extends State<EcampusSyncProgressScreen> {
                       Text(_errorMessage!),
                       const SizedBox(height: 12),
                       FilledButton.icon(
-                        onPressed: _startSync,
+                        onPressed: _isSyncing ? null : _startSync,
                         icon: const Icon(Icons.refresh_rounded),
                         label: const Text('다시 시도'),
                       ),
@@ -158,7 +159,12 @@ class _EcampusSyncProgressScreenState extends State<EcampusSyncProgressScreen> {
   }
 
   Future<void> _startSync() async {
+    if (_isSyncing) {
+      return;
+    }
+
     setState(() {
+      _isSyncing = true;
       _errorMessage = null;
       _currentStep = _SyncStep.login;
     });
@@ -178,6 +184,7 @@ class _EcampusSyncProgressScreenState extends State<EcampusSyncProgressScreen> {
 
       if (session == null) {
         setState(() {
+          _isSyncing = false;
           _errorMessage = '로그인이 취소되었습니다.';
         });
         return;
@@ -200,7 +207,7 @@ class _EcampusSyncProgressScreenState extends State<EcampusSyncProgressScreen> {
         _currentStep = _SyncStep.compare;
       });
 
-      final didImport = await Navigator.of(context).push<bool>(
+      final didChange = await Navigator.of(context).push<bool>(
         MaterialPageRoute(
           builder: (_) => EcampusSyncPreviewScreen(
             syncResult: result,
@@ -211,13 +218,14 @@ class _EcampusSyncProgressScreenState extends State<EcampusSyncProgressScreen> {
       if (!mounted) {
         return;
       }
-      Navigator.of(context).pop(didImport == true);
+      Navigator.of(context).pop(didChange == true);
     } catch (error) {
       if (!mounted) {
         return;
       }
 
       setState(() {
+        _isSyncing = false;
         _errorMessage = error.toString();
         if (error is EcampusSessionExpiredException) {
           _session = null;

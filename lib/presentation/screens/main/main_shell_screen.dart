@@ -12,19 +12,11 @@ import '../../../data/repositories/sub_task_repository.dart';
 import '../../../data/repositories/tag_repository.dart';
 import '../../../data/services/ecampus_auth_service.dart';
 import '../../../data/repositories/task_repository.dart';
-import '../../../data/services/default_ecampus_sync_service.dart';
-import '../../../data/services/default_ecampus_todo_service.dart';
-import '../../../data/services/ecampus_sync_apply_service.dart';
-import '../../../data/services/ecampus_sync_classifier.dart';
-import '../../../data/services/ecampus_sync_flow_service.dart';
-import '../../../data/services/ecampus_todo_parser.dart';
 import '../../../data/services/http_ecampus_auth_service.dart';
-import '../../../data/services/http_ecampus_todo_client.dart';
 import '../../../data/services/sub_task_progress.dart';
 import '../../services/in_app_webview_ecampus_cookie_store.dart';
 import '../../services/local_notification_service.dart';
-import '../login/ecampus_login_webview_screen.dart';
-import '../sync/ecampus_sync_preview_screen.dart';
+import '../sync/ecampus_sync_progress_screen.dart';
 import '../task/task_create_screen.dart';
 import '../task/task_detail_screen.dart';
 import '../../widgets/task_metadata_picker.dart' as metadata_picker;
@@ -61,6 +53,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   late Future<AppSettings> _settingsFuture;
   late Future<_TaskMetadataLookup> _metadataFuture;
   var _metadataVersion = 0;
+  var _isEcampusSyncing = false;
 
   @override
   void initState() {
@@ -113,96 +106,46 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   Future<void> _openEcampusSync() async {
-    var session = _ecampusSession;
-    session ??= await Navigator.of(context).push<EcampusSession>(
-      MaterialPageRoute(
-        builder: (_) => const EcampusLoginWebViewScreen(),
-        fullscreenDialog: true,
-      ),
-    );
-    if (!mounted || session == null) {
+    if (_isEcampusSyncing) {
+      _showSnackBar(context, 'e-campus 동기화가 이미 진행 중입니다.');
       return;
     }
 
-    _ecampusSession = session;
-
-    final httpClient = http.Client();
-    final syncFlowService = _buildEcampusSyncFlowService(httpClient);
-    var loadingDialogOpen = false;
-
+    setState(() {
+      _isEcampusSyncing = true;
+    });
     try {
-      loadingDialogOpen = true;
-      unawaited(
-        showDialog<void>(
-          context: context,
-          barrierDismissible: false,
-          builder: (_) => const _SyncLoadingDialog(),
-        ).then((_) {
-          loadingDialogOpen = false;
-        }),
-      );
-
-      final result = await syncFlowService.preview(session: session);
-
-      if (!mounted) {
-        return;
-      }
-      if (loadingDialogOpen) {
-        Navigator.of(context, rootNavigator: true).pop();
-        loadingDialogOpen = false;
-      }
-
-      final didImport = await Navigator.of(context).push<bool>(
+      final didChange = await Navigator.of(context).push<bool>(
         MaterialPageRoute(
-          builder: (_) => EcampusSyncPreviewScreen(
-            syncResult: result,
-            syncFlowService: syncFlowService,
+          builder: (_) => EcampusSyncProgressScreen(
+            taskRepository: widget.taskRepository,
+            initialSession: _ecampusSession,
+            onSessionChanged: (session) {
+              if (!mounted) {
+                return;
+              }
+              setState(() {
+                _ecampusSession = session;
+              });
+            },
           ),
+          fullscreenDialog: true,
         ),
       );
 
       if (!mounted) {
         return;
       }
-      if (didImport == true) {
+      if (didChange == true) {
         _refreshTasksAndMetadata();
-      } else {
-        _refreshTasks();
       }
-    } on EcampusSessionExpiredException catch (_) {
-      _ecampusSession = null;
-      if (!mounted) {
-        return;
-      }
-      _showSnackBar(context, '로그인 세션이 만료되었습니다. 다시 로그인해주세요.');
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      _showSnackBar(context, '동기화에 실패했습니다: $error');
     } finally {
-      if (mounted && loadingDialogOpen) {
-        Navigator.of(context, rootNavigator: true).pop();
+      if (mounted) {
+        setState(() {
+          _isEcampusSyncing = false;
+        });
       }
-      httpClient.close();
     }
-  }
-
-  EcampusSyncFlowService _buildEcampusSyncFlowService(http.Client httpClient) {
-    final todoService = DefaultEcampusTodoService(
-      client: HttpEcampusTodoClient(httpClient: httpClient),
-      parser: const EcampusTodoParser(),
-    );
-    return DefaultEcampusSyncFlowService(
-      taskRepository: widget.taskRepository,
-      syncService: DefaultEcampusSyncService(
-        todoService: todoService,
-        classifier: const EcampusSyncClassifier(),
-      ),
-      applyService: DefaultEcampusSyncApplyService(
-        taskRepository: widget.taskRepository,
-      ),
-    );
   }
 
   Future<void> _clearEcampusSession() async {
@@ -2420,48 +2363,6 @@ class _SummaryItem {
   final String label;
   final String value;
   final Color color;
-}
-
-class _SyncLoadingDialog extends StatelessWidget {
-  const _SyncLoadingDialog();
-
-  @override
-  Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      child: AlertDialog(
-        content: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            children: [
-              const SizedBox.square(
-                dimension: 26,
-                child: CircularProgressIndicator(strokeWidth: 3),
-              ),
-              const SizedBox(width: 18),
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      'e-campus 동기화 중',
-                      style: TextStyle(fontWeight: FontWeight.w900),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'todo를 가져와 기존 작업과 비교하고 있습니다.',
-                      style: TextStyle(color: AppTheme.muted, fontSize: 13),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _TaskListTile extends StatelessWidget {

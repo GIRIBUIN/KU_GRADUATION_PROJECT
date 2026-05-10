@@ -907,8 +907,10 @@ bool _isHiddenInMainList(Task task) {
 }
 
 bool _isExcludedEcampusTask(Task task) {
+  final sourceKey = task.ecampus?.sourceKey.trim();
   return task.status == TaskStatus.excluded &&
-      task.origin == TaskOrigin.ecampus;
+      sourceKey != null &&
+      sourceKey.isNotEmpty;
 }
 
 class _TaskMetadataLookup {

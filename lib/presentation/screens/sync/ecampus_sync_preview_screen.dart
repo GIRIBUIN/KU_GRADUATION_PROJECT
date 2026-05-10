@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/ecampus_models.dart';
+import '../../../data/models/task_models.dart';
 import '../../../data/services/ecampus_sync_flow_service.dart';
 
 class EcampusSyncPreviewScreen extends StatefulWidget {
@@ -21,7 +22,16 @@ class EcampusSyncPreviewScreen extends StatefulWidget {
 
 class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
   late final Set<String> _selectedKeys;
+  final Set<String> _savedExcludeKeys = {};
+  final Set<String> _allowedExcludeKeys = {};
+  final Set<String> _importedKeys = {};
+  final Map<String, Task> _excludedTasksByKey = {};
+  final Map<String, SyncItem> _savedExcludedItemsByKey = {};
+  final Map<String, SyncItem> _importedItemsByKey = {};
   var _isSaving = false;
+  var _isExcluding = false;
+  var _isAllowing = false;
+  var _hasChanges = false;
 
   @override
   void initState() {
@@ -33,8 +43,20 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final importCandidates = widget.syncResult.importCandidates;
     final ignoredItems = widget.syncResult.ignoredItems;
+    final visibleImportCandidates = _visibleImportCandidates();
+    final excludedItems = [
+      ...ignoredItems.where(
+        (item) =>
+            item.kind == SyncItemKind.excluded &&
+            !_allowedExcludeKeys.contains(_itemKey(item)),
+      ),
+      ..._savedExcludedItemsByKey.values,
+    ];
+    final importedItems = [
+      ...ignoredItems.where((item) => item.kind != SyncItemKind.excluded),
+      ..._importedItemsByKey.values,
+    ];
     final errorItems = widget.syncResult.errorItems;
     final newCount = widget.syncResult.items
         .where((item) => item.kind == SyncItemKind.newItem)
@@ -79,17 +101,17 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
             const SizedBox(height: 24),
             _SectionTitle(
               title: '가져올 항목',
-              count: importCandidates.length,
+              count: visibleImportCandidates.length,
               trailing: TextButton(
-                onPressed: importCandidates.isEmpty ? null : _selectAll,
+                onPressed: visibleImportCandidates.isEmpty ? null : _selectAll,
                 child: const Text('모두 선택'),
               ),
             ),
             const SizedBox(height: 10),
-            if (importCandidates.isEmpty)
+            if (visibleImportCandidates.isEmpty)
               const _EmptyPreviewCard(message: '새로 가져올 항목이 없습니다.')
             else
-              for (final item in importCandidates) ...[
+              for (final item in visibleImportCandidates) ...[
                 _SyncItemCard(
                   item: item,
                   selected: _selectedKeys.contains(_itemKey(item)),
@@ -98,18 +120,40 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
                 const SizedBox(height: 10),
               ],
             const SizedBox(height: 24),
-            _SectionTitle(title: '제외된 항목', count: ignoredItems.length),
+            _SectionTitle(title: '제외된 항목', count: excludedItems.length),
             const SizedBox(height: 10),
-            if (ignoredItems.isEmpty)
+            if (excludedItems.isEmpty)
               const _EmptyPreviewCard(message: '제외된 항목이 없습니다.')
             else
               Card(
                 clipBehavior: Clip.antiAlias,
                 child: Column(
                   children: [
-                    for (var i = 0; i < ignoredItems.length; i++) ...[
-                      _IgnoredItemTile(item: ignoredItems[i]),
-                      if (i != ignoredItems.length - 1)
+                    for (var i = 0; i < excludedItems.length; i++) ...[
+                      _ExcludedPreviewItemTile(
+                        item: excludedItems[i],
+                        isBusy: _isAllowing,
+                        onMoveToImport: () => _moveToImport(excludedItems[i]),
+                      ),
+                      if (i != excludedItems.length - 1)
+                        const Divider(height: 1, indent: 60),
+                    ],
+                  ],
+                ),
+              ),
+            const SizedBox(height: 24),
+            _SectionTitle(title: '가져온 항목', count: importedItems.length),
+            const SizedBox(height: 10),
+            if (importedItems.isEmpty)
+              const _EmptyPreviewCard(message: '이미 가져온 항목이 없습니다.')
+            else
+              Card(
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    for (var i = 0; i < importedItems.length; i++) ...[
+                      _IgnoredItemTile(item: importedItems[i]),
+                      if (i != importedItems.length - 1)
                         const Divider(height: 1, indent: 60),
                     ],
                   ],
@@ -140,19 +184,43 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
       ),
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(20, 10, 20, 18),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('취소'),
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _isBusy
+                        ? null
+                        : () => Navigator.of(
+                            context,
+                          ).pop(_hasChanges ? true : null),
+                    child: const Text('닫기'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _selectedKeys.isEmpty || _isBusy
+                        ? null
+                        : _excludeSelectedItems,
+                    icon: _isExcluding
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.block_rounded, size: 18),
+                    label: const Text('선택 제외'),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              flex: 2,
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
               child: FilledButton(
-                onPressed: _selectedKeys.isEmpty || _isSaving
+                onPressed: _selectedKeys.isEmpty || _isBusy
                     ? null
                     : _importSelectedItems,
                 child: _isSaving
@@ -160,13 +228,20 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
                         dimension: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : Text('선택 항목 ${_selectedKeys.length}개 가져오기'),
+                    : Text('가져오기 (${_selectedKeys.length})'),
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  bool get _isBusy => _isSaving || _isExcluding || _isAllowing;
+
+  bool _isMovedFromImportSection(SyncItem item) {
+    final key = _itemKey(item);
+    return _savedExcludeKeys.contains(key) || _importedKeys.contains(key);
   }
 
   void _toggle(SyncItem item, bool selected) {
@@ -184,12 +259,17 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
     setState(() {
       _selectedKeys
         ..clear()
-        ..addAll(widget.syncResult.importCandidates.map(_itemKey));
+        ..addAll(
+          widget.syncResult.importCandidates
+              .followedBy(_allowedImportCandidates())
+              .where((item) => !_isMovedFromImportSection(item))
+              .map(_itemKey),
+        );
     });
   }
 
   Future<void> _importSelectedItems() async {
-    final selectedItems = widget.syncResult.importCandidates
+    final selectedItems = _visibleImportCandidates()
         .where((item) => _selectedKeys.contains(_itemKey(item)))
         .toList(growable: false);
 
@@ -226,7 +306,16 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
       );
 
       if (mounted) {
-        Navigator.of(context).pop(true);
+        setState(() {
+          for (final item in selectedItems) {
+            final key = _itemKey(item);
+            _importedKeys.add(key);
+            _importedItemsByKey[key] = item;
+            _selectedKeys.remove(key);
+          }
+          _isSaving = false;
+          _hasChanges = true;
+        });
       }
     } catch (error) {
       if (!mounted) {
@@ -240,6 +329,131 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text('가져오기에 실패했습니다: $error')));
     }
+  }
+
+  Future<void> _excludeSelectedItems() async {
+    final selectedItems = _visibleImportCandidates()
+        .where(
+          (item) =>
+              _selectedKeys.contains(_itemKey(item)) &&
+              !_isMovedFromImportSection(item),
+        )
+        .toList(growable: false);
+
+    if (selectedItems.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _isExcluding = true;
+    });
+
+    try {
+      final excludedTasks = await widget.syncFlowService.excludeItems(
+        selectedItems,
+        syncedAt: widget.syncResult.syncedAt,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        for (final task in excludedTasks) {
+          final sourceKey = task.ecampus?.sourceKey;
+          if (sourceKey != null && sourceKey.isNotEmpty) {
+            _excludedTasksByKey[sourceKey] = task;
+          }
+        }
+        for (final item in selectedItems) {
+          final key = _itemKey(item);
+          _savedExcludeKeys.add(key);
+          _savedExcludedItemsByKey[key] = item;
+          _allowedExcludeKeys.remove(key);
+          _selectedKeys.remove(key);
+        }
+        _isExcluding = false;
+        _hasChanges = true;
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isExcluding = false;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('제외에 실패했습니다: $error')));
+    }
+  }
+
+  Future<void> _moveToImport(SyncItem item) async {
+    final key = _itemKey(item);
+    final excludedTask = item.existingTask ?? _excludedTasksByKey[key];
+    if (excludedTask == null) {
+      return;
+    }
+
+    setState(() {
+      _isAllowing = true;
+    });
+
+    try {
+      await widget.syncFlowService.allowExcludedTasks([excludedTask]);
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _savedExcludeKeys.remove(key);
+        _allowedExcludeKeys.add(key);
+        _excludedTasksByKey.remove(key);
+        _savedExcludedItemsByKey.remove(key);
+        _isAllowing = false;
+        _hasChanges = true;
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isAllowing = false;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('다시 가져오기에 실패했습니다: $error')));
+    }
+  }
+
+  SyncItem? _copyAsImportCandidate(SyncItem item) {
+    final parsedTask = item.parsedTask;
+    if (parsedTask == null) {
+      return null;
+    }
+    return SyncItem(kind: SyncItemKind.newItem, parsedTask: parsedTask);
+  }
+
+  List<SyncItem> _visibleImportCandidates() {
+    return widget.syncResult.importCandidates
+        .where((item) => !_isMovedFromImportSection(item))
+        .followedBy(_allowedImportCandidates())
+        .toList(growable: false);
+  }
+
+  List<SyncItem> _allowedImportCandidates() {
+    return widget.syncResult.ignoredItems
+        .where(
+          (item) =>
+              item.kind == SyncItemKind.excluded &&
+              _allowedExcludeKeys.contains(_itemKey(item)) &&
+              !_importedKeys.contains(_itemKey(item)),
+        )
+        .map(_copyAsImportCandidate)
+        .whereType<SyncItem>()
+        .toList(growable: false);
   }
 }
 
@@ -295,7 +509,11 @@ class _SyncItemCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 10),
-                        _MiniChip(label: badge, color: badgeColor, filled: true),
+                        _MiniChip(
+                          label: badge,
+                          color: badgeColor,
+                          filled: true,
+                        ),
                       ],
                     ),
                     const SizedBox(height: 6),
@@ -356,6 +574,35 @@ class _IgnoredItemTile extends StatelessWidget {
       ),
       subtitle: Text(parsedTask?.course ?? 'e-campus'),
       trailing: _MiniChip(label: _kindLabel(item.kind), color: AppTheme.muted),
+    );
+  }
+}
+
+class _ExcludedPreviewItemTile extends StatelessWidget {
+  const _ExcludedPreviewItemTile({
+    required this.item,
+    required this.isBusy,
+    required this.onMoveToImport,
+  });
+
+  final SyncItem item;
+  final bool isBusy;
+  final VoidCallback onMoveToImport;
+
+  @override
+  Widget build(BuildContext context) {
+    final parsedTask = item.parsedTask;
+    return ListTile(
+      leading: const Icon(Icons.block_rounded, color: AppTheme.warningOrange),
+      title: Text(
+        parsedTask?.title ?? item.existingTask?.title ?? '항목 없음',
+        style: const TextStyle(fontWeight: FontWeight.w800),
+      ),
+      subtitle: Text(parsedTask?.course ?? 'e-campus'),
+      trailing: TextButton(
+        onPressed: isBusy ? null : onMoveToImport,
+        child: const Text('다시 가져오기'),
+      ),
     );
   }
 }

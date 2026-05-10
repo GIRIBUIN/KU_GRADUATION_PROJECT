@@ -20,6 +20,8 @@ abstract class EcampusSyncFlowService {
     Iterable<SyncItem> items, {
     DateTime? syncedAt,
   });
+
+  Future<void> allowExcludedTasks(Iterable<Task> tasks);
 }
 
 class DefaultEcampusSyncFlowService implements EcampusSyncFlowService {
@@ -66,5 +68,19 @@ class DefaultEcampusSyncFlowService implements EcampusSyncFlowService {
     DateTime? syncedAt,
   }) {
     return _applyService.excludeItems(items, syncedAt: syncedAt);
+  }
+
+  @override
+  Future<void> allowExcludedTasks(Iterable<Task> tasks) async {
+    for (final task in tasks) {
+      final sourceKey = task.ecampus?.sourceKey.trim();
+      if (task.status != TaskStatus.excluded ||
+          sourceKey == null ||
+          sourceKey.isEmpty) {
+        continue;
+      }
+
+      await _taskRepository.deletePermanently(task.id);
+    }
   }
 }

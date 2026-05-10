@@ -83,6 +83,19 @@ void main() {
       expect(applyService.lastExcludeItems, items);
       expect(applyService.lastExcludeSyncedAt, syncedAt);
     });
+
+    test(
+      'allows excluded e-campus tasks by deleting exclude markers',
+      () async {
+        final excludedTask = _task(id: 'excluded', status: TaskStatus.excluded);
+        final activeTask = _task(id: 'active', status: TaskStatus.active);
+        taskRepository.tasks.addAll([excludedTask, activeTask]);
+
+        await flowService.allowExcludedTasks([excludedTask, activeTask]);
+
+        expect(taskRepository.deletedIds, ['excluded']);
+      },
+    );
   });
 }
 
@@ -121,6 +134,7 @@ Task _task({
 
 class _FakeTaskRepository implements TaskRepository {
   final tasks = <Task>[];
+  final deletedIds = <String>[];
 
   TaskStatus? lastStatus;
   TaskOrigin? lastOrigin;
@@ -158,8 +172,9 @@ class _FakeTaskRepository implements TaskRepository {
   }
 
   @override
-  Future<void> deletePermanently(String id) {
-    throw UnimplementedError();
+  Future<void> deletePermanently(String id) async {
+    deletedIds.add(id);
+    tasks.removeWhere((task) => task.id == id);
   }
 
   @override

@@ -66,6 +66,16 @@ void main() {
       expect(schedule, isNull);
     });
 
+    test('excludes schedules that are exactly now', () {
+      final schedule = service.calculate(
+        task: _task(dueDate: now),
+        setting: _setting(minutesBeforeDue: 0),
+        now: now,
+      );
+
+      expect(schedule, isNull);
+    });
+
     test('excludes negative minutesBeforeDue values', () {
       final schedule = service.calculate(
         task: _task(),

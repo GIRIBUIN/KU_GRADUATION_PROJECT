@@ -32,7 +32,7 @@ class NotificationScheduleService {
       Duration(minutes: setting.daysBeforeDue),
     );
 
-    if (scheduledAt.isBefore(now)) {
+    if (!scheduledAt.isAfter(now)) {
       return null;
     }
 

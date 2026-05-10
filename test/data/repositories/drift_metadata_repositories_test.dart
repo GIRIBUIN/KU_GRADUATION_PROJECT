@@ -117,6 +117,37 @@ void main() {
 
       expect(await notificationRepository.getByTaskId('task-1'), isNull);
     });
+
+    test('lists saved notifications for restart rescheduling', () async {
+      await database
+          .into(database.tasks)
+          .insert(
+            TasksCompanion.insert(
+              id: 'task-2',
+              origin: TaskOrigin.personal.name,
+              status: TaskStatus.active.name,
+              title: '운영체제 과제',
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+
+      await notificationRepository.save(_notification(id: 'notification-1'));
+      await notificationRepository.save(
+        _notification(
+          id: 'notification-2',
+          taskId: 'task-2',
+          daysBeforeDue: 30,
+        ),
+      );
+
+      final notifications = await notificationRepository.getAll();
+
+      expect(notifications.map((notification) => notification.taskId), [
+        'task-1',
+        'task-2',
+      ]);
+    });
   });
 
   group('DriftSettingsRepository', () {
@@ -187,10 +218,14 @@ Folder _folder({required String id, required String name}) {
   );
 }
 
-NotificationSetting _notification({required String id, int daysBeforeDue = 1}) {
+NotificationSetting _notification({
+  required String id,
+  String taskId = 'task-1',
+  int daysBeforeDue = 1,
+}) {
   return NotificationSetting(
     id: id,
-    taskId: 'task-1',
+    taskId: taskId,
     enabled: true,
     daysBeforeDue: daysBeforeDue,
     notifyTime: 'relative',

@@ -115,6 +115,7 @@ class LocalNotificationService {
       }
     }
 
+    final androidScheduleMode = await _androidScheduleMode();
     await _plugin.zonedSchedule(
       id: notificationIdForTask(task.id),
       title: 'KU Todo',
@@ -131,7 +132,7 @@ class LocalNotificationService {
         iOS: DarwinNotificationDetails(),
         macOS: DarwinNotificationDetails(),
       ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      androidScheduleMode: androidScheduleMode,
       payload: task.id,
     );
   }
@@ -147,5 +148,21 @@ class LocalNotificationService {
       hash = (hash * 31 + codeUnit) & 0x7fffffff;
     }
     return hash == 0 ? 1 : hash;
+  }
+
+  Future<AndroidScheduleMode> _androidScheduleMode() async {
+    final androidPlugin = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    if (androidPlugin == null) {
+      return AndroidScheduleMode.exactAllowWhileIdle;
+    }
+
+    final canScheduleExact = await androidPlugin
+        .canScheduleExactNotifications();
+    return (canScheduleExact ?? true)
+        ? AndroidScheduleMode.exactAllowWhileIdle
+        : AndroidScheduleMode.inexactAllowWhileIdle;
   }
 }

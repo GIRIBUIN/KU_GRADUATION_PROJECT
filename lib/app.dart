@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'core/theme/app_theme.dart';
 import 'data/local/app_database.dart';
+import 'data/models/task_models.dart';
 import 'data/repositories/drift_folder_repository.dart';
 import 'data/repositories/drift_notification_repository.dart';
 import 'data/repositories/drift_settings_repository.dart';
@@ -39,12 +40,32 @@ class _KuTaskAppState extends State<KuTaskApp> {
     _tagRepository = DriftTagRepository(database: _database);
     _folderRepository = DriftFolderRepository(database: _database);
     _localNotificationService = LocalNotificationService();
+    _rescheduleNotificationsAfterRestart();
   }
 
   @override
   void dispose() {
     _database.close();
     super.dispose();
+  }
+
+  Future<void> _rescheduleNotificationsAfterRestart() async {
+    final tasks = await _taskRepository.getTasks(includeArchived: true);
+    final settings = await _notificationRepository.getAll();
+    final tasksById = {for (final task in tasks) task.id: task};
+
+    for (final setting in settings) {
+      final task = tasksById[setting.taskId];
+      if (task == null || task.status != TaskStatus.active) {
+        await _localNotificationService.cancelTaskNotification(setting.taskId);
+        continue;
+      }
+
+      await _localNotificationService.scheduleTaskNotification(
+        task: task,
+        setting: setting,
+      );
+    }
   }
 
   @override

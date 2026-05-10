@@ -1,3 +1,5 @@
+import 'package:drift/drift.dart';
+
 import '../local/app_database.dart' as db;
 import '../local/mappers/metadata_mappers.dart';
 import '../models/task_models.dart';
@@ -19,6 +21,14 @@ class DriftNotificationRepository implements NotificationRepository {
       _database.notificationSettings,
     )..where((table) => table.taskId.equals(taskId))).getSingleOrNull();
     return row == null ? null : _mapper.fromRow(row);
+  }
+
+  @override
+  Future<List<NotificationSetting>> getAll() async {
+    final query = _database.select(_database.notificationSettings)
+      ..orderBy([(table) => OrderingTerm(expression: table.taskId)]);
+    final rows = await query.get();
+    return rows.map(_mapper.fromRow).toList(growable: false);
   }
 
   @override

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 
 import '../../models/task_models.dart' as models;
@@ -53,6 +55,7 @@ class FolderMapper {
       color: row.color,
       icon: row.icon,
       parentFolderId: row.parentFolderId,
+      sortOrder: row.sortOrder,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     );
@@ -65,6 +68,7 @@ class FolderMapper {
       color: Value(folder.color),
       icon: Value(folder.icon),
       parentFolderId: Value(folder.parentFolderId),
+      sortOrder: Value(folder.sortOrder),
       createdAt: Value(folder.createdAt),
       updatedAt: Value(folder.updatedAt),
     );
@@ -112,6 +116,10 @@ class AppSettingsMapper {
   static const defaultNotificationTimeKey = 'defaultNotificationTime';
   static const urgentDueDaysKey = 'urgentDueDays';
   static const homeSelectedTagIdKey = 'homeSelectedTagId';
+  static const hiddenTagIdsKey = 'hiddenTagIds';
+  static const hiddenFolderIdsKey = 'hiddenFolderIds';
+  static const tagFolderIdsKey = 'tagFolderIds';
+  static const tagSortOrdersKey = 'tagSortOrders';
 
   settings_model.AppSettings fromMap(Map<String, String> values) {
     return settings_model.AppSettings(
@@ -126,6 +134,10 @@ class AppSettingsMapper {
       defaultNotificationTime: values[defaultNotificationTimeKey] ?? 'relative',
       urgentDueDays: int.tryParse(values[urgentDueDaysKey] ?? '') ?? 3,
       homeSelectedTagId: _emptyToNull(values[homeSelectedTagIdKey]),
+      hiddenTagIds: _parseStringSet(values[hiddenTagIdsKey]),
+      hiddenFolderIds: _parseStringSet(values[hiddenFolderIdsKey]),
+      tagFolderIds: _parseStringMap(values[tagFolderIdsKey]),
+      tagSortOrders: _parseIntMap(values[tagSortOrdersKey]),
     );
   }
 
@@ -139,6 +151,10 @@ class AppSettingsMapper {
       defaultNotificationTimeKey: settings.defaultNotificationTime,
       urgentDueDaysKey: settings.urgentDueDays.toString(),
       homeSelectedTagIdKey: settings.homeSelectedTagId ?? '',
+      hiddenTagIdsKey: _encodeStringSet(settings.hiddenTagIds),
+      hiddenFolderIdsKey: _encodeStringSet(settings.hiddenFolderIds),
+      tagFolderIdsKey: _encodeStringMap(settings.tagFolderIds),
+      tagSortOrdersKey: _encodeIntMap(settings.tagSortOrders),
     };
   }
 
@@ -153,5 +169,94 @@ class AppSettingsMapper {
   String? _emptyToNull(String? value) {
     final trimmed = value?.trim();
     return trimmed == null || trimmed.isEmpty ? null : trimmed;
+  }
+
+  Set<String> _parseStringSet(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return const <String>{};
+    }
+    try {
+      final decoded = jsonDecode(trimmed);
+      if (decoded is List) {
+        return decoded
+            .whereType<String>()
+            .map((id) => id.trim())
+            .where((id) => id.isNotEmpty)
+            .toSet();
+      }
+    } on FormatException {
+      return const <String>{};
+    }
+    return const <String>{};
+  }
+
+  String _encodeStringSet(Set<String> ids) {
+    final sorted = ids.toList(growable: false)..sort();
+    return jsonEncode(sorted);
+  }
+
+  Map<String, String> _parseStringMap(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return const <String, String>{};
+    }
+    try {
+      final decoded = jsonDecode(trimmed);
+      if (decoded is Map) {
+        return decoded.map((key, value) {
+          return MapEntry(key.toString(), value.toString());
+        })..removeWhere(
+          (key, value) => key.trim().isEmpty || value.trim().isEmpty,
+        );
+      }
+    } on FormatException {
+      return const <String, String>{};
+    }
+    return const <String, String>{};
+  }
+
+  String _encodeStringMap(Map<String, String> values) {
+    final sortedEntries = values.entries.toList(growable: false)
+      ..sort((a, b) => a.key.compareTo(b.key));
+    return jsonEncode({
+      for (final entry in sortedEntries)
+        if (entry.key.trim().isNotEmpty && entry.value.trim().isNotEmpty)
+          entry.key: entry.value,
+    });
+  }
+
+  Map<String, int> _parseIntMap(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return const <String, int>{};
+    }
+    try {
+      final decoded = jsonDecode(trimmed);
+      if (decoded is Map) {
+        final result = <String, int>{};
+        for (final entry in decoded.entries) {
+          final key = entry.key.toString().trim();
+          final value = entry.value;
+          final order = value is int ? value : int.tryParse(value.toString());
+          if (key.isNotEmpty && order != null) {
+            result[key] = order;
+          }
+        }
+        return result;
+      }
+    } on FormatException {
+      return const <String, int>{};
+    }
+    return const <String, int>{};
+  }
+
+  String _encodeIntMap(Map<String, int> values) {
+    final sortedEntries = values.entries.toList(growable: false)
+      ..sort((a, b) => a.key.compareTo(b.key));
+    return jsonEncode({
+      for (final entry in sortedEntries)
+        if (entry.key.trim().isNotEmpty) entry.key: entry.value,
+    });
   }
 }

@@ -89,6 +89,7 @@ void main() {
         final folders = await folderRepository.getFolders();
 
         expect(updated.name, '이번 주 집중');
+        expect(updated.sortOrder, 0);
         expect(folders.map((folder) => folder.id), ['folder-1']);
 
         await folderRepository.deleteFolder('folder-1');
@@ -97,6 +98,27 @@ void main() {
         expect(await database.select(database.taskFolders).get(), isEmpty);
       },
     );
+
+    test('stores folder order within the same parent', () async {
+      await folderRepository.createFolder(
+        _folder(id: 'folder-1', name: 'B', sortOrder: -1),
+      );
+      await folderRepository.createFolder(
+        _folder(id: 'folder-2', name: 'A', sortOrder: -1),
+      );
+
+      expect((await folderRepository.getFolders()).map((folder) => folder.id), [
+        'folder-1',
+        'folder-2',
+      ]);
+
+      await folderRepository.updateFolderOrder(['folder-2', 'folder-1']);
+
+      expect((await folderRepository.getFolders()).map((folder) => folder.id), [
+        'folder-2',
+        'folder-1',
+      ]);
+    });
   });
 
   group('DriftNotificationRepository', () {
@@ -161,6 +183,10 @@ void main() {
       expect(defaults.defaultNotificationTime, 'relative');
       expect(defaults.urgentDueDays, 3);
       expect(defaults.homeSelectedTagId, isNull);
+      expect(defaults.hiddenTagIds, isEmpty);
+      expect(defaults.hiddenFolderIds, isEmpty);
+      expect(defaults.tagFolderIds, isEmpty);
+      expect(defaults.tagSortOrders, isEmpty);
 
       final saved = await settingsRepository.saveSettings(
         const AppSettings(
@@ -171,6 +197,10 @@ void main() {
           defaultNotificationTime: 'relative',
           urgentDueDays: 7,
           homeSelectedTagId: 'tag-1',
+          hiddenTagIds: {'tag-2'},
+          hiddenFolderIds: {'folder-1'},
+          tagFolderIds: {'tag-2': 'folder-1'},
+          tagSortOrders: {'tag-2': 1},
         ),
       );
 
@@ -181,7 +211,11 @@ void main() {
       expect(saved.defaultNotificationTime, 'relative');
       expect(saved.urgentDueDays, 7);
       expect(saved.homeSelectedTagId, 'tag-1');
-      expect((await database.select(database.appSettings).get()).length, 7);
+      expect(saved.hiddenTagIds, {'tag-2'});
+      expect(saved.hiddenFolderIds, {'folder-1'});
+      expect(saved.tagFolderIds, {'tag-2': 'folder-1'});
+      expect(saved.tagSortOrders, {'tag-2': 1});
+      expect((await database.select(database.appSettings).get()).length, 11);
 
       final restartedRepository = DriftSettingsRepository(database: database);
       final persisted = await restartedRepository.getSettings();
@@ -193,12 +227,26 @@ void main() {
       expect(persisted.defaultNotificationTime, 'relative');
       expect(persisted.urgentDueDays, 7);
       expect(persisted.homeSelectedTagId, 'tag-1');
+      expect(persisted.hiddenTagIds, {'tag-2'});
+      expect(persisted.hiddenFolderIds, {'folder-1'});
+      expect(persisted.tagFolderIds, {'tag-2': 'folder-1'});
+      expect(persisted.tagSortOrders, {'tag-2': 1});
 
       final cleared = await restartedRepository.saveSettings(
-        persisted.copyWith(homeSelectedTagId: null),
+        persisted.copyWith(
+          homeSelectedTagId: null,
+          hiddenTagIds: const <String>{},
+          hiddenFolderIds: const <String>{},
+          tagFolderIds: const <String, String>{},
+          tagSortOrders: const <String, int>{},
+        ),
       );
 
       expect(cleared.homeSelectedTagId, isNull);
+      expect(cleared.hiddenTagIds, isEmpty);
+      expect(cleared.hiddenFolderIds, isEmpty);
+      expect(cleared.tagFolderIds, isEmpty);
+      expect(cleared.tagSortOrders, isEmpty);
     });
   });
 }
@@ -215,7 +263,7 @@ Tag _tag({required String id, required String name}) {
   );
 }
 
-Folder _folder({required String id, required String name}) {
+Folder _folder({required String id, required String name, int sortOrder = 0}) {
   final now = DateTime(2026, 5, 7, 10);
 
   return Folder(
@@ -223,6 +271,7 @@ Folder _folder({required String id, required String name}) {
     name: name,
     color: '#139A50',
     icon: 'folder',
+    sortOrder: sortOrder,
     createdAt: now,
     updatedAt: now,
   );

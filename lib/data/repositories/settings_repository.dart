@@ -7,6 +7,10 @@ class AppSettings {
     required this.defaultNotificationTime,
     required this.urgentDueDays,
     this.homeSelectedTagId,
+    this.hiddenTagIds = const <String>{},
+    this.hiddenFolderIds = const <String>{},
+    this.tagFolderIds = const <String, String>{},
+    this.tagSortOrders = const <String, int>{},
   });
 
   final bool autoSyncEnabled;
@@ -16,6 +20,10 @@ class AppSettings {
   final String defaultNotificationTime;
   final int urgentDueDays;
   final String? homeSelectedTagId;
+  final Set<String> hiddenTagIds;
+  final Set<String> hiddenFolderIds;
+  final Map<String, String> tagFolderIds;
+  final Map<String, int> tagSortOrders;
 
   AppSettings copyWith({
     bool? autoSyncEnabled,
@@ -25,6 +33,10 @@ class AppSettings {
     String? defaultNotificationTime,
     int? urgentDueDays,
     Object? homeSelectedTagId = _appSettingsUnset,
+    Set<String>? hiddenTagIds,
+    Set<String>? hiddenFolderIds,
+    Map<String, String>? tagFolderIds,
+    Map<String, int>? tagSortOrders,
   }) {
     return AppSettings(
       autoSyncEnabled: autoSyncEnabled ?? this.autoSyncEnabled,
@@ -39,6 +51,10 @@ class AppSettings {
       homeSelectedTagId: homeSelectedTagId == _appSettingsUnset
           ? this.homeSelectedTagId
           : homeSelectedTagId as String?,
+      hiddenTagIds: hiddenTagIds ?? this.hiddenTagIds,
+      hiddenFolderIds: hiddenFolderIds ?? this.hiddenFolderIds,
+      tagFolderIds: tagFolderIds ?? this.tagFolderIds,
+      tagSortOrders: tagSortOrders ?? this.tagSortOrders,
     );
   }
 }

@@ -94,6 +94,7 @@ class Folder {
     this.color,
     this.icon,
     this.parentFolderId,
+    this.sortOrder = 0,
   });
 
   final String id;
@@ -101,6 +102,7 @@ class Folder {
   final String? color;
   final String? icon;
   final String? parentFolderId;
+  final int sortOrder;
   final DateTime createdAt;
   final DateTime updatedAt;
 }

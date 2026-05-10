@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/task_models.dart';
-import '../../../data/repositories/folder_repository.dart';
 import '../../../data/repositories/notification_repository.dart';
 import '../../../data/repositories/sub_task_repository.dart';
 import '../../../data/repositories/tag_repository.dart';
@@ -19,7 +18,6 @@ class TaskDetailScreen extends StatefulWidget {
     required this.subTaskRepository,
     required this.notificationRepository,
     required this.tagRepository,
-    required this.folderRepository,
     required this.localNotificationService,
   });
 
@@ -28,7 +26,6 @@ class TaskDetailScreen extends StatefulWidget {
   final SubTaskRepository subTaskRepository;
   final NotificationRepository notificationRepository;
   final TagRepository tagRepository;
-  final FolderRepository folderRepository;
   final LocalNotificationService localNotificationService;
 
   @override
@@ -43,9 +40,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   Task? _task;
   List<SubTask> _subTasks = const [];
   List<Tag> _tags = const [];
-  List<Folder> _folders = const [];
   final Set<String> _selectedTagIds = {};
-  String? _selectedFolderId;
   DateTime? _dueDate;
   TaskPriority? _priority;
   NotificationSetting? _notification;
@@ -76,7 +71,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       widget.taskId,
     );
     final tags = await widget.tagRepository.getTags();
-    final folders = await widget.folderRepository.getFolders();
 
     if (!mounted) {
       return;
@@ -86,11 +80,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       _task = task;
       _subTasks = subTasks;
       _tags = tags;
-      _folders = folders;
       _selectedTagIds
         ..clear()
         ..addAll(task?.tagIds ?? const []);
-      _selectedFolderId = task?.folderIds.firstOrNull;
       _titleController.text = task?.title ?? '';
       _memoController.text = task?.memo ?? '';
       _dueDate = task?.dueDate;
@@ -223,13 +215,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                       onAdd: _createTag,
                     ),
                     const SizedBox(height: 22),
-                    FolderPickerSection(
-                      folders: _folders,
-                      selectedId: _selectedFolderId,
-                      onSelect: _selectFolder,
-                      onAdd: _createFolder,
-                    ),
-                    const SizedBox(height: 22),
                     TextField(
                       controller: _memoController,
                       minLines: 3,
@@ -288,7 +273,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           : _memoController.text.trim(),
       parentTaskId: task.parentTaskId,
       tagIds: _selectedTagIds.toList(growable: false),
-      folderIds: _selectedFolderId == null ? const [] : [_selectedFolderId!],
+      folderIds: task.folderIds,
       ecampus: task.ecampus,
       sortOrder: task.sortOrder,
       createdAt: task.createdAt,
@@ -504,12 +489,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     });
   }
 
-  void _selectFolder(Folder? folder) {
-    setState(() {
-      _selectedFolderId = folder?.id;
-    });
-  }
-
   Future<void> _createTag() async {
     final draft = await showTagCreateDialog(context);
     if (draft == null || !mounted) {
@@ -532,34 +511,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     setState(() {
       _tags = [..._tags, tag]..sort((a, b) => a.name.compareTo(b.name));
       _selectedTagIds.add(tag.id);
-    });
-  }
-
-  Future<void> _createFolder() async {
-    final draft = await showFolderCreateDialog(context, folders: _folders);
-    if (draft == null || !mounted) {
-      return;
-    }
-
-    final now = DateTime.now();
-    final folder = await widget.folderRepository.createFolder(
-      Folder(
-        id: 'folder_${now.microsecondsSinceEpoch}',
-        name: draft.name,
-        color: draft.color,
-        icon: 'folder',
-        parentFolderId: draft.parentFolderId,
-        createdAt: now,
-        updatedAt: now,
-      ),
-    );
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _folders = [..._folders, folder]
-        ..sort((a, b) => a.name.compareTo(b.name));
-      _selectedFolderId = folder.id;
     });
   }
 }

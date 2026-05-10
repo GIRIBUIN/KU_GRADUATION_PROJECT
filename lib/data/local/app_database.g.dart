@@ -1933,6 +1933,18 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, Folder> {
       'REFERENCES folders (id)',
     ),
   );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1962,6 +1974,7 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, Folder> {
     color,
     icon,
     parentFolderId,
+    sortOrder,
     createdAt,
     updatedAt,
   ];
@@ -2011,6 +2024,12 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, Folder> {
         ),
       );
     }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -2056,6 +2075,10 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, Folder> {
         DriftSqlType.string,
         data['${effectivePrefix}parent_folder_id'],
       ),
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -2079,6 +2102,7 @@ class Folder extends DataClass implements Insertable<Folder> {
   final String? color;
   final String? icon;
   final String? parentFolderId;
+  final int sortOrder;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Folder({
@@ -2087,6 +2111,7 @@ class Folder extends DataClass implements Insertable<Folder> {
     this.color,
     this.icon,
     this.parentFolderId,
+    required this.sortOrder,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -2104,6 +2129,7 @@ class Folder extends DataClass implements Insertable<Folder> {
     if (!nullToAbsent || parentFolderId != null) {
       map['parent_folder_id'] = Variable<String>(parentFolderId);
     }
+    map['sort_order'] = Variable<int>(sortOrder);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -2120,6 +2146,7 @@ class Folder extends DataClass implements Insertable<Folder> {
       parentFolderId: parentFolderId == null && nullToAbsent
           ? const Value.absent()
           : Value(parentFolderId),
+      sortOrder: Value(sortOrder),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -2136,6 +2163,7 @@ class Folder extends DataClass implements Insertable<Folder> {
       color: serializer.fromJson<String?>(json['color']),
       icon: serializer.fromJson<String?>(json['icon']),
       parentFolderId: serializer.fromJson<String?>(json['parentFolderId']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -2149,6 +2177,7 @@ class Folder extends DataClass implements Insertable<Folder> {
       'color': serializer.toJson<String?>(color),
       'icon': serializer.toJson<String?>(icon),
       'parentFolderId': serializer.toJson<String?>(parentFolderId),
+      'sortOrder': serializer.toJson<int>(sortOrder),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -2160,6 +2189,7 @@ class Folder extends DataClass implements Insertable<Folder> {
     Value<String?> color = const Value.absent(),
     Value<String?> icon = const Value.absent(),
     Value<String?> parentFolderId = const Value.absent(),
+    int? sortOrder,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Folder(
@@ -2170,6 +2200,7 @@ class Folder extends DataClass implements Insertable<Folder> {
     parentFolderId: parentFolderId.present
         ? parentFolderId.value
         : this.parentFolderId,
+    sortOrder: sortOrder ?? this.sortOrder,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -2182,6 +2213,7 @@ class Folder extends DataClass implements Insertable<Folder> {
       parentFolderId: data.parentFolderId.present
           ? data.parentFolderId.value
           : this.parentFolderId,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -2195,6 +2227,7 @@ class Folder extends DataClass implements Insertable<Folder> {
           ..write('color: $color, ')
           ..write('icon: $icon, ')
           ..write('parentFolderId: $parentFolderId, ')
+          ..write('sortOrder: $sortOrder, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -2202,8 +2235,16 @@ class Folder extends DataClass implements Insertable<Folder> {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, name, color, icon, parentFolderId, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    color,
+    icon,
+    parentFolderId,
+    sortOrder,
+    createdAt,
+    updatedAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2213,6 +2254,7 @@ class Folder extends DataClass implements Insertable<Folder> {
           other.color == this.color &&
           other.icon == this.icon &&
           other.parentFolderId == this.parentFolderId &&
+          other.sortOrder == this.sortOrder &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -2223,6 +2265,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
   final Value<String?> color;
   final Value<String?> icon;
   final Value<String?> parentFolderId;
+  final Value<int> sortOrder;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -2232,6 +2275,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
     this.color = const Value.absent(),
     this.icon = const Value.absent(),
     this.parentFolderId = const Value.absent(),
+    this.sortOrder = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -2242,6 +2286,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
     this.color = const Value.absent(),
     this.icon = const Value.absent(),
     this.parentFolderId = const Value.absent(),
+    this.sortOrder = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
@@ -2255,6 +2300,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
     Expression<String>? color,
     Expression<String>? icon,
     Expression<String>? parentFolderId,
+    Expression<int>? sortOrder,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -2265,6 +2311,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
       if (color != null) 'color': color,
       if (icon != null) 'icon': icon,
       if (parentFolderId != null) 'parent_folder_id': parentFolderId,
+      if (sortOrder != null) 'sort_order': sortOrder,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -2277,6 +2324,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
     Value<String?>? color,
     Value<String?>? icon,
     Value<String?>? parentFolderId,
+    Value<int>? sortOrder,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -2287,6 +2335,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
       color: color ?? this.color,
       icon: icon ?? this.icon,
       parentFolderId: parentFolderId ?? this.parentFolderId,
+      sortOrder: sortOrder ?? this.sortOrder,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -2311,6 +2360,9 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
     if (parentFolderId.present) {
       map['parent_folder_id'] = Variable<String>(parentFolderId.value);
     }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -2331,6 +2383,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
           ..write('color: $color, ')
           ..write('icon: $icon, ')
           ..write('parentFolderId: $parentFolderId, ')
+          ..write('sortOrder: $sortOrder, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -5002,6 +5055,7 @@ typedef $$FoldersTableCreateCompanionBuilder =
       Value<String?> color,
       Value<String?> icon,
       Value<String?> parentFolderId,
+      Value<int> sortOrder,
       required DateTime createdAt,
       required DateTime updatedAt,
       Value<int> rowid,
@@ -5013,6 +5067,7 @@ typedef $$FoldersTableUpdateCompanionBuilder =
       Value<String?> color,
       Value<String?> icon,
       Value<String?> parentFolderId,
+      Value<int> sortOrder,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -5086,6 +5141,11 @@ class $$FoldersTableFilterComposer
 
   ColumnFilters<String> get icon => $composableBuilder(
     column: $table.icon,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5177,6 +5237,11 @@ class $$FoldersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -5231,6 +5296,9 @@ class $$FoldersTableAnnotationComposer
 
   GeneratedColumn<String> get icon =>
       $composableBuilder(column: $table.icon, builder: (column) => column);
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -5320,6 +5388,7 @@ class $$FoldersTableTableManager
                 Value<String?> color = const Value.absent(),
                 Value<String?> icon = const Value.absent(),
                 Value<String?> parentFolderId = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -5329,6 +5398,7 @@ class $$FoldersTableTableManager
                 color: color,
                 icon: icon,
                 parentFolderId: parentFolderId,
+                sortOrder: sortOrder,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -5340,6 +5410,7 @@ class $$FoldersTableTableManager
                 Value<String?> color = const Value.absent(),
                 Value<String?> icon = const Value.absent(),
                 Value<String?> parentFolderId = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<int> rowid = const Value.absent(),
@@ -5349,6 +5420,7 @@ class $$FoldersTableTableManager
                 color: color,
                 icon: icon,
                 parentFolderId: parentFolderId,
+                sortOrder: sortOrder,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,

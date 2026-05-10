@@ -9,5 +9,7 @@ abstract class FolderRepository {
 
   Future<Folder> updateFolder(Folder folder);
 
+  Future<void> updateFolderOrder(List<String> folderIds);
+
   Future<void> deleteFolder(String id);
 }

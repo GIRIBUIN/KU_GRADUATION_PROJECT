@@ -58,6 +58,7 @@ class Folders extends Table {
   TextColumn get color => text().nullable()();
   TextColumn get icon => text().nullable()();
   TextColumn get parentFolderId => text().nullable().references(Folders, #id)();
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 
@@ -120,7 +121,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.defaults() : super(driftDatabase(name: 'ku_task_management'));
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -149,6 +150,9 @@ SELECT id, name, color, created_at, updated_at FROM tags
         await customStatement('DROP TABLE tags');
         await customStatement('ALTER TABLE tags_new RENAME TO tags');
         await customStatement('PRAGMA foreign_keys = ON');
+      }
+      if (from < 5) {
+        await migrator.addColumn(folders, folders.sortOrder);
       }
     },
   );

@@ -17,9 +17,13 @@ class DriftFolderRepository implements FolderRepository {
 
   @override
   Future<List<Folder>> getFolders() async {
-    final rows = await (_database.select(
-      _database.folders,
-    )..orderBy([(table) => OrderingTerm(expression: table.name)])).get();
+    final rows =
+        await (_database.select(_database.folders)..orderBy([
+              (table) => OrderingTerm(expression: table.parentFolderId),
+              (table) => OrderingTerm(expression: table.sortOrder),
+              (table) => OrderingTerm(expression: table.name),
+            ]))
+            .get();
     return rows.map(_mapper.fromRow).toList(growable: false);
   }
 
@@ -33,7 +37,15 @@ class DriftFolderRepository implements FolderRepository {
 
   @override
   Future<Folder> createFolder(Folder folder) async {
-    await _database.into(_database.folders).insert(_mapper.toCompanion(folder));
+    final folderToCreate = folder.sortOrder < 0
+        ? _copyFolderWithSortOrder(
+            folder,
+            await _nextSortOrder(folder.parentFolderId),
+          )
+        : folder;
+    await _database
+        .into(_database.folders)
+        .insert(_mapper.toCompanion(folderToCreate));
     return (await getFolderById(folder.id))!;
   }
 
@@ -46,6 +58,17 @@ class DriftFolderRepository implements FolderRepository {
   }
 
   @override
+  Future<void> updateFolderOrder(List<String> folderIds) async {
+    await _database.transaction(() async {
+      for (var index = 0; index < folderIds.length; index++) {
+        await (_database.update(_database.folders)
+              ..where((table) => table.id.equals(folderIds[index])))
+            .write(db.FoldersCompanion(sortOrder: Value(index)));
+      }
+    });
+  }
+
+  @override
   Future<void> deleteFolder(String id) async {
     await _database.transaction(() async {
       await (_database.delete(
@@ -55,5 +78,37 @@ class DriftFolderRepository implements FolderRepository {
         _database.folders,
       )..where((table) => table.id.equals(id))).go();
     });
+  }
+
+  Future<int> _nextSortOrder(String? parentFolderId) async {
+    final query = _database.select(_database.folders)
+      ..orderBy([
+        (table) =>
+            OrderingTerm(expression: table.sortOrder, mode: OrderingMode.desc),
+      ])
+      ..limit(1);
+    if (parentFolderId == null) {
+      query.where((table) => table.parentFolderId.isNull());
+    } else {
+      query.where((table) => table.parentFolderId.equals(parentFolderId));
+    }
+    final rows = await query.get();
+    if (rows.isEmpty) {
+      return 0;
+    }
+    return rows.first.sortOrder + 1;
+  }
+
+  Folder _copyFolderWithSortOrder(Folder folder, int sortOrder) {
+    return Folder(
+      id: folder.id,
+      name: folder.name,
+      color: folder.color,
+      icon: folder.icon,
+      parentFolderId: folder.parentFolderId,
+      sortOrder: sortOrder,
+      createdAt: folder.createdAt,
+      updatedAt: folder.updatedAt,
+    );
   }
 }

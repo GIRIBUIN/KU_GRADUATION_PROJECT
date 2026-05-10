@@ -184,6 +184,14 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                 : '꺼짐',
                             value: _notificationEnabled,
                             onChanged: (value) {
+                              if (value &&
+                                  _isCurrentNotificationSchedulePast()) {
+                                _showSnackBar(
+                                  context,
+                                  '지난 마감일에는 알림을 켤 수 없습니다.',
+                                );
+                                return;
+                              }
                               if (value) {
                                 widget.localNotificationService
                                     .requestPermission();
@@ -290,11 +298,12 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     );
 
     await widget.taskRepository.updateTask(updated);
+    final notificationEnabled = _effectiveNotificationEnabled(now);
     final notification = await widget.notificationRepository.save(
       NotificationSetting(
         id: _notification?.id ?? 'notification_${task.id}',
         taskId: task.id,
-        enabled: _notificationEnabled,
+        enabled: notificationEnabled,
         daysBeforeDue: _notificationOffsetMinutes,
         notifyTime: 'relative',
         scheduledAt: _notification?.scheduledAt,
@@ -303,7 +312,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     await widget.localNotificationService.scheduleTaskNotification(
       task: updated,
       setting: notification,
-      requestPermissionBeforeScheduling: _notificationEnabled,
+      requestPermissionBeforeScheduling: notificationEnabled,
     );
 
     if (!mounted) {
@@ -313,6 +322,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     setState(() {
       _task = updated;
       _notification = notification;
+      _notificationEnabled = notificationEnabled;
       _isSaving = false;
     });
     if (popAfterSave) {
@@ -349,15 +359,29 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       return;
     }
 
+    final selectedDueDate = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time?.hour ?? 23,
+      time?.minute ?? 59,
+    );
+    final disabledNotification =
+        _notificationEnabled &&
+        _isNotificationSchedulePast(
+          dueDate: selectedDueDate,
+          offsetMinutes: _notificationOffsetMinutes,
+          now: DateTime.now(),
+        );
     setState(() {
-      _dueDate = DateTime(
-        date.year,
-        date.month,
-        date.day,
-        time?.hour ?? 23,
-        time?.minute ?? 59,
-      );
+      _dueDate = selectedDueDate;
+      if (disabledNotification) {
+        _notificationEnabled = false;
+      }
     });
+    if (disabledNotification && mounted) {
+      _showSnackBar(context, '지난 마감일이라 알림을 껐습니다.');
+    }
   }
 
   Future<void> _pickNotificationOffset() async {
@@ -367,10 +391,40 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       selected: _notificationOffsetMinutes,
     );
     if (minutes != null) {
+      final disabledNotification =
+          _notificationEnabled &&
+          _isNotificationSchedulePast(
+            dueDate: _dueDate,
+            offsetMinutes: minutes,
+            now: DateTime.now(),
+          );
       setState(() {
         _notificationOffsetMinutes = minutes;
+        if (disabledNotification) {
+          _notificationEnabled = false;
+        }
       });
+      if (disabledNotification && mounted) {
+        _showSnackBar(context, '지난 알림 시점이라 알림을 껐습니다.');
+      }
     }
+  }
+
+  bool _effectiveNotificationEnabled(DateTime now) {
+    return _notificationEnabled &&
+        !_isNotificationSchedulePast(
+          dueDate: _dueDate,
+          offsetMinutes: _notificationOffsetMinutes,
+          now: now,
+        );
+  }
+
+  bool _isCurrentNotificationSchedulePast() {
+    return _isNotificationSchedulePast(
+      dueDate: _dueDate,
+      offsetMinutes: _notificationOffsetMinutes,
+      now: DateTime.now(),
+    );
   }
 
   Future<void> _addSubTask() async {
@@ -918,6 +972,18 @@ String _notificationOffsetLabel(int minutes) {
   }
   final days = minutes ~/ (24 * 60);
   return '마감 $days일 전';
+}
+
+bool _isNotificationSchedulePast({
+  required DateTime? dueDate,
+  required int offsetMinutes,
+  required DateTime now,
+}) {
+  if (dueDate == null) {
+    return false;
+  }
+  final scheduledAt = dueDate.subtract(Duration(minutes: offsetMinutes));
+  return !scheduledAt.isAfter(now);
 }
 
 void _showSnackBar(BuildContext context, String message) {

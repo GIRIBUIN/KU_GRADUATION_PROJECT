@@ -47,3 +47,5 @@ app.*.map.json
 # Local legacy/test code
 /ignore/
 
+AGENTS.md
+COMMIT.md

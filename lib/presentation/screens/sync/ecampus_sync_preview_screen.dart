@@ -65,179 +65,193 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
         .where((item) => item.kind == SyncItemKind.updateCandidate)
         .length;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('동기화 미리보기')),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 110),
-          children: [
-            Card(
-              color: AppTheme.successGreen.withValues(alpha: 0.06),
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Row(
-                  children: [
-                    const CircleAvatar(
-                      backgroundColor: Color(0xFFE8F6EE),
-                      child: Icon(
-                        Icons.sync_rounded,
-                        color: AppTheme.successGreen,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Text(
-                        '새 항목 $newCount개, 업데이트 후보 $updateCount개 감지',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 17,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) {
+          return;
+        }
+        _closePreview();
+      },
+      child: Scaffold(
+        appBar: AppBar(title: const Text('동기화 미리보기')),
+        body: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 110),
+            children: [
+              Card(
+                color: AppTheme.successGreen.withValues(alpha: 0.06),
+                child: Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Row(
+                    children: [
+                      const CircleAvatar(
+                        backgroundColor: Color(0xFFE8F6EE),
+                        child: Icon(
+                          Icons.sync_rounded,
+                          color: AppTheme.successGreen,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            _SectionTitle(
-              title: '가져올 항목',
-              count: visibleImportCandidates.length,
-              trailing: TextButton(
-                onPressed: visibleImportCandidates.isEmpty ? null : _selectAll,
-                child: const Text('모두 선택'),
-              ),
-            ),
-            const SizedBox(height: 10),
-            if (visibleImportCandidates.isEmpty)
-              const _EmptyPreviewCard(message: '새로 가져올 항목이 없습니다.')
-            else
-              for (final item in visibleImportCandidates) ...[
-                _SyncItemCard(
-                  item: item,
-                  selected: _selectedKeys.contains(_itemKey(item)),
-                  onChanged: (selected) => _toggle(item, selected),
-                ),
-                const SizedBox(height: 10),
-              ],
-            const SizedBox(height: 24),
-            _SectionTitle(title: '제외된 항목', count: excludedItems.length),
-            const SizedBox(height: 10),
-            if (excludedItems.isEmpty)
-              const _EmptyPreviewCard(message: '제외된 항목이 없습니다.')
-            else
-              Card(
-                clipBehavior: Clip.antiAlias,
-                child: Column(
-                  children: [
-                    for (var i = 0; i < excludedItems.length; i++) ...[
-                      _ExcludedPreviewItemTile(
-                        item: excludedItems[i],
-                        isBusy: _isAllowing,
-                        onMoveToImport: () => _moveToImport(excludedItems[i]),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          '새 항목 $newCount개, 업데이트 후보 $updateCount개 감지',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 17,
+                          ),
+                        ),
                       ),
-                      if (i != excludedItems.length - 1)
-                        const Divider(height: 1, indent: 60),
                     ],
-                  ],
+                  ),
                 ),
               ),
-            const SizedBox(height: 24),
-            _SectionTitle(title: '가져온 항목', count: importedItems.length),
-            const SizedBox(height: 10),
-            if (importedItems.isEmpty)
-              const _EmptyPreviewCard(message: '이미 가져온 항목이 없습니다.')
-            else
-              Card(
-                clipBehavior: Clip.antiAlias,
-                child: Column(
-                  children: [
-                    for (var i = 0; i < importedItems.length; i++) ...[
-                      _IgnoredItemTile(item: importedItems[i]),
-                      if (i != importedItems.length - 1)
-                        const Divider(height: 1, indent: 60),
-                    ],
-                  ],
-                ),
-              ),
-            if (errorItems.isNotEmpty) ...[
               const SizedBox(height: 24),
-              _SectionTitle(title: '파싱 실패', count: errorItems.length),
+              _SectionTitle(
+                title: '가져올 항목',
+                count: visibleImportCandidates.length,
+                trailing: TextButton(
+                  onPressed: visibleImportCandidates.isEmpty
+                      ? null
+                      : _selectAll,
+                  child: const Text('모두 선택'),
+                ),
+              ),
               const SizedBox(height: 10),
-              Card(
-                color: AppTheme.dangerRed.withValues(alpha: 0.06),
-                child: Column(
-                  children: [
-                    for (final item in errorItems)
-                      ListTile(
-                        leading: const Icon(
-                          Icons.error_outline_rounded,
-                          color: AppTheme.dangerRed,
+              if (visibleImportCandidates.isEmpty)
+                const _EmptyPreviewCard(message: '새로 가져올 항목이 없습니다.')
+              else
+                for (final item in visibleImportCandidates) ...[
+                  _SyncItemCard(
+                    item: item,
+                    selected: _selectedKeys.contains(_itemKey(item)),
+                    onChanged: (selected) => _toggle(item, selected),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+              const SizedBox(height: 24),
+              _SectionTitle(title: '제외된 항목', count: excludedItems.length),
+              const SizedBox(height: 10),
+              if (excludedItems.isEmpty)
+                const _EmptyPreviewCard(message: '제외된 항목이 없습니다.')
+              else
+                Card(
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    children: [
+                      for (var i = 0; i < excludedItems.length; i++) ...[
+                        _ExcludedPreviewItemTile(
+                          item: excludedItems[i],
+                          isBusy: _isAllowing,
+                          onMoveToImport: () => _moveToImport(excludedItems[i]),
                         ),
-                        title: Text(item.errorMessage ?? '알 수 없는 오류'),
-                      ),
-                  ],
+                        if (i != excludedItems.length - 1)
+                          const Divider(height: 1, indent: 60),
+                      ],
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 24),
+              _SectionTitle(title: '가져온 항목', count: importedItems.length),
+              const SizedBox(height: 10),
+              if (importedItems.isEmpty)
+                const _EmptyPreviewCard(message: '이미 가져온 항목이 없습니다.')
+              else
+                Card(
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    children: [
+                      for (var i = 0; i < importedItems.length; i++) ...[
+                        _IgnoredItemTile(item: importedItems[i]),
+                        if (i != importedItems.length - 1)
+                          const Divider(height: 1, indent: 60),
+                      ],
+                    ],
+                  ),
+                ),
+              if (errorItems.isNotEmpty) ...[
+                const SizedBox(height: 24),
+                _SectionTitle(title: '파싱 실패', count: errorItems.length),
+                const SizedBox(height: 10),
+                Card(
+                  color: AppTheme.dangerRed.withValues(alpha: 0.06),
+                  child: Column(
+                    children: [
+                      for (final item in errorItems)
+                        ListTile(
+                          leading: const Icon(
+                            Icons.error_outline_rounded,
+                            color: AppTheme.dangerRed,
+                          ),
+                          title: Text(item.errorMessage ?? '알 수 없는 오류'),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        bottomNavigationBar: SafeArea(
+          minimum: const EdgeInsets.fromLTRB(20, 10, 20, 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _isBusy ? null : _closePreview,
+                      child: const Text('닫기'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _selectedKeys.isEmpty || _isBusy
+                          ? null
+                          : _excludeSelectedItems,
+                      icon: _isExcluding
+                          ? const SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.block_rounded, size: 18),
+                      label: const Text('선택 제외'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _selectedKeys.isEmpty || _isBusy
+                      ? null
+                      : _importSelectedItems,
+                  child: _isSaving
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text('가져오기 (${_selectedKeys.length})'),
                 ),
               ),
             ],
-          ],
-        ),
-      ),
-      bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.fromLTRB(20, 10, 20, 18),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: _isBusy
-                        ? null
-                        : () => Navigator.of(
-                            context,
-                          ).pop(_hasChanges ? true : null),
-                    child: const Text('닫기'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _selectedKeys.isEmpty || _isBusy
-                        ? null
-                        : _excludeSelectedItems,
-                    icon: _isExcluding
-                        ? const SizedBox.square(
-                            dimension: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.block_rounded, size: 18),
-                    label: const Text('선택 제외'),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: _selectedKeys.isEmpty || _isBusy
-                    ? null
-                    : _importSelectedItems,
-                child: _isSaving
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text('가져오기 (${_selectedKeys.length})'),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
   bool get _isBusy => _isSaving || _isExcluding || _isAllowing;
+
+  void _closePreview() {
+    if (_isBusy) {
+      return;
+    }
+    Navigator.of(context).pop(_hasChanges ? true : null);
+  }
 
   bool _isMovedFromImportSection(SyncItem item) {
     final key = _itemKey(item);

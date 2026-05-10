@@ -111,6 +111,7 @@ class AppSettingsMapper {
   static const defaultNotificationDaysKey = 'defaultNotificationDays';
   static const defaultNotificationTimeKey = 'defaultNotificationTime';
   static const urgentDueDaysKey = 'urgentDueDays';
+  static const homeSelectedTagIdKey = 'homeSelectedTagId';
 
   settings_model.AppSettings fromMap(Map<String, String> values) {
     return settings_model.AppSettings(
@@ -124,6 +125,7 @@ class AppSettingsMapper {
       ),
       defaultNotificationTime: values[defaultNotificationTimeKey] ?? 'relative',
       urgentDueDays: int.tryParse(values[urgentDueDaysKey] ?? '') ?? 3,
+      homeSelectedTagId: _emptyToNull(values[homeSelectedTagIdKey]),
     );
   }
 
@@ -136,6 +138,7 @@ class AppSettingsMapper {
       defaultNotificationDaysKey: settings.defaultNotificationDays.toString(),
       defaultNotificationTimeKey: settings.defaultNotificationTime,
       urgentDueDaysKey: settings.urgentDueDays.toString(),
+      homeSelectedTagIdKey: settings.homeSelectedTagId ?? '',
     };
   }
 
@@ -145,5 +148,10 @@ class AppSettingsMapper {
       'false' => false,
       _ => null,
     };
+  }
+
+  String? _emptyToNull(String? value) {
+    final trimmed = value?.trim();
+    return trimmed == null || trimmed.isEmpty ? null : trimmed;
   }
 }

@@ -160,6 +160,7 @@ void main() {
       expect(defaults.defaultNotificationDays, 60);
       expect(defaults.defaultNotificationTime, 'relative');
       expect(defaults.urgentDueDays, 3);
+      expect(defaults.homeSelectedTagId, isNull);
 
       final saved = await settingsRepository.saveSettings(
         const AppSettings(
@@ -169,6 +170,7 @@ void main() {
           defaultNotificationDays: 180,
           defaultNotificationTime: 'relative',
           urgentDueDays: 7,
+          homeSelectedTagId: 'tag-1',
         ),
       );
 
@@ -178,7 +180,8 @@ void main() {
       expect(saved.defaultNotificationDays, 180);
       expect(saved.defaultNotificationTime, 'relative');
       expect(saved.urgentDueDays, 7);
-      expect((await database.select(database.appSettings).get()).length, 6);
+      expect(saved.homeSelectedTagId, 'tag-1');
+      expect((await database.select(database.appSettings).get()).length, 7);
 
       final restartedRepository = DriftSettingsRepository(database: database);
       final persisted = await restartedRepository.getSettings();
@@ -189,6 +192,13 @@ void main() {
       expect(persisted.defaultNotificationDays, 180);
       expect(persisted.defaultNotificationTime, 'relative');
       expect(persisted.urgentDueDays, 7);
+      expect(persisted.homeSelectedTagId, 'tag-1');
+
+      final cleared = await restartedRepository.saveSettings(
+        persisted.copyWith(homeSelectedTagId: null),
+      );
+
+      expect(cleared.homeSelectedTagId, isNull);
     });
   });
 }

@@ -377,15 +377,26 @@ class _MainShellScreenState extends State<MainShellScreen> {
                     tasks: tasks,
                     isLoading: isLoading,
                     urgentDueDays: settings.urgentDueDays,
+                    selectedTagId: settings.homeSelectedTagId,
                     metadata: metadata,
                     onRefresh: _refreshTasks,
                     onOpenSync: _openEcampusSync,
                     onOpenSettings: () => setState(() => _selectedIndex = 3),
+                    onSelectedTagChanged: (tagId) async {
+                      final saved = await widget.settingsRepository
+                          .saveSettings(
+                            settings.copyWith(homeSelectedTagId: tagId),
+                          );
+                      if (!mounted) {
+                        return;
+                      }
+                      setState(() {
+                        _settingsFuture = Future.value(saved);
+                      });
+                    },
                     onToggleTask: _toggleTaskCompletion,
                     onDeleteTask: _deleteTask,
-                    onReorderTasks: _reorderTasks,
                     onOpenTaskDetail: _openTaskDetail,
-                    subTaskRepository: widget.subTaskRepository,
                   ),
                   _TaskListPage(
                     tasks: tasks,
@@ -476,49 +487,80 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 }
 
-class _HomePage extends StatelessWidget {
+class _HomePage extends StatefulWidget {
   const _HomePage({
     required this.tasks,
     required this.isLoading,
     required this.urgentDueDays,
+    required this.selectedTagId,
     required this.metadata,
     required this.onRefresh,
     required this.onOpenSync,
     required this.onOpenSettings,
+    required this.onSelectedTagChanged,
     required this.onToggleTask,
     required this.onDeleteTask,
-    required this.onReorderTasks,
     required this.onOpenTaskDetail,
-    required this.subTaskRepository,
   });
 
   final List<Task> tasks;
   final bool isLoading;
   final int urgentDueDays;
+  final String? selectedTagId;
   final _TaskMetadataLookup metadata;
   final VoidCallback onRefresh;
   final Future<void> Function() onOpenSync;
   final VoidCallback onOpenSettings;
+  final ValueChanged<String?> onSelectedTagChanged;
   final ValueChanged<Task> onToggleTask;
   final ValueChanged<Task> onDeleteTask;
-  final Future<void> Function(List<Task> orderedTasks) onReorderTasks;
   final ValueChanged<Task> onOpenTaskDetail;
-  final SubTaskRepository subTaskRepository;
+
+  @override
+  State<_HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<_HomePage> {
+  String? _selectedTagId;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedTagId = widget.selectedTagId;
+  }
+
+  @override
+  void didUpdateWidget(_HomePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedTagId != widget.selectedTagId &&
+        _selectedTagId != widget.selectedTagId) {
+      _selectedTagId = widget.selectedTagId;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
     final summary = HomeTaskSummary.fromTasks(
-      tasks: tasks,
+      tasks: widget.tasks,
       now: now,
-      urgentDueDays: urgentDueDays,
+      urgentDueDays: widget.urgentDueDays,
     );
+    final selectedTag = widget.metadata.tagById(_selectedTagId);
+    final effectiveSelectedTagId = selectedTag?.id;
+    final selectedTagTasks = selectedTag == null
+        ? <Task>[]
+        : (List<Task>.of(
+            summary.activeTasks.where(
+              (task) => task.tagIds.contains(selectedTag.id),
+            ),
+          )..sort(_compareDueDate));
 
     return SafeArea(
       child: RefreshIndicator(
-        onRefresh: () async => onRefresh(),
+        onRefresh: () async => widget.onRefresh(),
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 96),
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 84),
           children: [
             Row(
               children: [
@@ -534,14 +576,14 @@ class _HomePage extends StatelessWidget {
                 _IconAction(
                   icon: Icons.sync_rounded,
                   color: AppTheme.primaryBlue,
-                  onTap: onOpenSync,
+                  onTap: widget.onOpenSync,
                   tooltip: 'e-campus 동기화',
                 ),
                 const SizedBox(width: 10),
                 _IconAction(
                   icon: Icons.settings_rounded,
                   color: AppTheme.ink,
-                  onTap: onOpenSettings,
+                  onTap: widget.onOpenSettings,
                   tooltip: '설정',
                 ),
               ],
@@ -556,12 +598,6 @@ class _HomePage extends StatelessWidget {
                   color: AppTheme.successGreen,
                 ),
                 _SummaryItem(
-                  icon: Icons.warning_amber_rounded,
-                  label: '마감 지남',
-                  value: '${summary.overdueTasks.length}',
-                  color: AppTheme.dangerRed,
-                ),
-                _SummaryItem(
                   icon: Icons.schedule_rounded,
                   label: '마감 임박',
                   value: '${summary.urgentTasks.length}',
@@ -573,41 +609,27 @@ class _HomePage extends StatelessWidget {
                   value: '${summary.activeTasks.length}',
                   color: AppTheme.primaryBlue,
                 ),
+                _SummaryItem(
+                  icon: Icons.warning_amber_rounded,
+                  label: '마감 지남',
+                  value: '${summary.overdueTasks.length}',
+                  color: AppTheme.dangerRed,
+                ),
               ],
             ),
             const SizedBox(height: 32),
             _SectionHeader(title: '오늘 할 일', count: summary.todayTasks.length),
             const SizedBox(height: 12),
-            if (isLoading)
+            if (widget.isLoading)
               const _LoadingBlock()
             else if (summary.todayTasks.isEmpty)
               const _EmptyBlock(message: '오늘 마감인 일정이 없습니다.')
             else
-              _TaskSectionCard(
+              _HomeTaskSectionCard(
                 tasks: summary.todayTasks.take(3).toList(growable: false),
-                onToggleTask: onToggleTask,
-                onDeleteTask: onDeleteTask,
-                onOpenTaskDetail: onOpenTaskDetail,
-                subTaskRepository: subTaskRepository,
-                onReorderTasks: onReorderTasks,
-                enableReorder: true,
-                metadata: metadata,
-              ),
-            const SizedBox(height: 20),
-            _SectionHeader(title: '마감 지남', count: summary.overdueTasks.length),
-            const SizedBox(height: 12),
-            if (summary.overdueTasks.isEmpty)
-              const _EmptyBlock(message: '마감이 지난 일정이 없습니다.')
-            else
-              _TaskSectionCard(
-                tasks: summary.overdueTasks.take(4).toList(growable: false),
-                onToggleTask: onToggleTask,
-                onDeleteTask: onDeleteTask,
-                onOpenTaskDetail: onOpenTaskDetail,
-                subTaskRepository: subTaskRepository,
-                onReorderTasks: onReorderTasks,
-                enableReorder: false,
-                metadata: metadata,
+                onToggleTask: widget.onToggleTask,
+                onDeleteTask: widget.onDeleteTask,
+                onOpenTaskDetail: widget.onOpenTaskDetail,
               ),
             const SizedBox(height: 20),
             _SectionHeader(title: '마감 임박', count: summary.urgentTasks.length),
@@ -615,24 +637,40 @@ class _HomePage extends StatelessWidget {
             if (summary.urgentTasks.isEmpty)
               const _EmptyBlock(message: '가까운 마감 일정이 없습니다.')
             else
-              _TaskSectionCard(
+              _HomeTaskSectionCard(
                 tasks: summary.urgentTasks.take(4).toList(growable: false),
-                onToggleTask: onToggleTask,
-                onDeleteTask: onDeleteTask,
-                onOpenTaskDetail: onOpenTaskDetail,
-                subTaskRepository: subTaskRepository,
-                onReorderTasks: onReorderTasks,
-                enableReorder: true,
-                metadata: metadata,
+                onToggleTask: widget.onToggleTask,
+                onDeleteTask: widget.onDeleteTask,
+                onOpenTaskDetail: widget.onOpenTaskDetail,
               ),
-            const SizedBox(height: 24),
-            Center(
-              child: TextButton.icon(
-                onPressed: onOpenSync,
-                icon: const Icon(Icons.sync_rounded),
-                label: const Text('마지막 동기화 확인'),
-              ),
+            const SizedBox(height: 20),
+            _HomeTagSection(
+              tags: widget.metadata.tags,
+              selectedTagId: effectiveSelectedTagId,
+              selectedTasks: selectedTagTasks,
+              onTagChanged: (tagId) {
+                setState(() {
+                  _selectedTagId = tagId;
+                });
+                widget.onSelectedTagChanged(tagId);
+              },
+              onToggleTask: widget.onToggleTask,
+              onDeleteTask: widget.onDeleteTask,
+              onOpenTaskDetail: widget.onOpenTaskDetail,
             ),
+            const SizedBox(height: 20),
+            _SectionHeader(title: '마감 지남', count: summary.overdueTasks.length),
+            const SizedBox(height: 12),
+            if (summary.overdueTasks.isEmpty)
+              const _EmptyBlock(message: '마감이 지난 일정이 없습니다.')
+            else
+              _HomeTaskSectionCard(
+                tasks: summary.overdueTasks.take(4).toList(growable: false),
+                onToggleTask: widget.onToggleTask,
+                onDeleteTask: widget.onDeleteTask,
+                onOpenTaskDetail: widget.onOpenTaskDetail,
+                showToggle: false,
+              ),
           ],
         ),
       ),
@@ -908,6 +946,15 @@ class _TaskMetadataLookup {
 
   final List<Tag> _tags;
   final List<Folder> _folders;
+
+  List<Tag> get tags => _tags;
+
+  Tag? tagById(String? id) {
+    if (id == null) {
+      return null;
+    }
+    return _tags.where((tag) => tag.id == id).firstOrNull;
+  }
 
   List<Tag> tagsFor(Task task) {
     final ids = task.tagIds.toSet();
@@ -2346,21 +2393,44 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final topItems = items.take(2).toList(growable: false);
+    final bottomItems = items.skip(2).take(2).toList(growable: false);
+
     return Card(
-      child: SizedBox(
-        height: 92,
-        child: Row(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Column(
           children: [
-            for (var i = 0; i < items.length; i++) ...[
-              Expanded(child: _SummaryCell(item: items[i])),
-              if (i != items.length - 1)
-                const SizedBox(
-                  height: 56,
-                  child: VerticalDivider(width: 1, color: AppTheme.line),
-                ),
-            ],
+            _SummaryRow(items: topItems),
+            const Divider(height: 1, color: AppTheme.line),
+            _SummaryRow(items: bottomItems),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SummaryRow extends StatelessWidget {
+  const _SummaryRow({required this.items});
+
+  final List<_SummaryItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 58,
+      child: Row(
+        children: [
+          for (var i = 0; i < items.length; i++) ...[
+            Expanded(child: _SummaryCell(item: items[i])),
+            if (i != items.length - 1)
+              const SizedBox(
+                height: 34,
+                child: VerticalDivider(width: 1, color: AppTheme.line),
+              ),
+          ],
+        ],
       ),
     );
   }
@@ -2376,28 +2446,39 @@ class _SummaryCell extends StatelessWidget {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(item.icon, size: 18, color: item.color),
-            const SizedBox(width: 6),
-            Text(
-              item.label,
-              style: const TextStyle(
-                color: AppTheme.muted,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(item.icon, size: 16, color: item.color),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  item.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppTheme.muted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    height: 1.1,
+                  ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         Text(
           item.value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: item.color,
-            fontSize: 30,
+            fontSize: 22,
             fontWeight: FontWeight.w900,
+            height: 1.05,
           ),
         ),
       ],
@@ -2417,6 +2498,177 @@ class _SummaryItem {
   final String label;
   final String value;
   final Color color;
+}
+
+class _HomeTagSection extends StatelessWidget {
+  const _HomeTagSection({
+    required this.tags,
+    required this.selectedTagId,
+    required this.selectedTasks,
+    required this.onTagChanged,
+    required this.onToggleTask,
+    required this.onDeleteTask,
+    required this.onOpenTaskDetail,
+  });
+
+  final List<Tag> tags;
+  final String? selectedTagId;
+  final List<Task> selectedTasks;
+  final ValueChanged<String?> onTagChanged;
+  final ValueChanged<Task> onToggleTask;
+  final ValueChanged<Task> onDeleteTask;
+  final ValueChanged<Task> onOpenTaskDetail;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionHeader(title: '선택 태그', count: selectedTasks.length),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<String?>(
+          initialValue: selectedTagId,
+          decoration: const InputDecoration(
+            isDense: true,
+            labelText: '태그',
+            prefixIcon: Icon(Icons.sell_outlined),
+          ),
+          items: [
+            const DropdownMenuItem<String?>(
+              value: null,
+              child: Text('태그 선택 안 함'),
+            ),
+            for (final tag in tags)
+              DropdownMenuItem<String?>(
+                value: tag.id,
+                child: Text(tag.name, overflow: TextOverflow.ellipsis),
+              ),
+          ],
+          onChanged: onTagChanged,
+        ),
+        const SizedBox(height: 12),
+        if (selectedTagId == null)
+          const _EmptyBlock(message: '태그를 선택하면 관련 할 일을 볼 수 있습니다.')
+        else if (selectedTasks.isEmpty)
+          const _EmptyBlock(message: '선택한 태그의 할 일이 없습니다.')
+        else
+          _HomeTaskSectionCard(
+            tasks: selectedTasks.take(4).toList(growable: false),
+            onToggleTask: onToggleTask,
+            onDeleteTask: onDeleteTask,
+            onOpenTaskDetail: onOpenTaskDetail,
+          ),
+      ],
+    );
+  }
+}
+
+class _HomeTaskSectionCard extends StatelessWidget {
+  const _HomeTaskSectionCard({
+    required this.tasks,
+    required this.onToggleTask,
+    required this.onDeleteTask,
+    required this.onOpenTaskDetail,
+    this.showToggle = true,
+  });
+
+  final List<Task> tasks;
+  final ValueChanged<Task> onToggleTask;
+  final ValueChanged<Task> onDeleteTask;
+  final ValueChanged<Task> onOpenTaskDetail;
+  final bool showToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (var i = 0; i < tasks.length; i++) ...[
+            _HomeTaskListTile(
+              task: tasks[i],
+              onToggle: () => onToggleTask(tasks[i]),
+              onDelete: () => onDeleteTask(tasks[i]),
+              onOpenDetail: () => onOpenTaskDetail(tasks[i]),
+              showToggle: showToggle,
+            ),
+            if (i != tasks.length - 1) const Divider(height: 1),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _HomeTaskListTile extends StatelessWidget {
+  const _HomeTaskListTile({
+    required this.task,
+    required this.onToggle,
+    required this.onDelete,
+    required this.onOpenDetail,
+    required this.showToggle,
+  });
+
+  final Task task;
+  final VoidCallback onToggle;
+  final VoidCallback onDelete;
+  final VoidCallback onOpenDetail;
+  final bool showToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final isOverdue = task.dueDate != null && _isOverdue(task.dueDate!);
+
+    return InkWell(
+      onTap: onOpenDetail,
+      child: Stack(
+        children: [
+          if (isOverdue)
+            Positioned.fill(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Container(width: 3, color: AppTheme.dangerRed),
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+            child: Row(
+              children: [
+                if (showToggle) ...[
+                  _StatusCheckbox(task: task, onTap: onToggle),
+                  const SizedBox(width: 10),
+                ],
+                Expanded(
+                  child: Text(
+                    task.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppTheme.ink,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      height: 1.2,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox.square(
+                  dimension: 32,
+                  child: IconButton(
+                    onPressed: onDelete,
+                    icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                    color: AppTheme.muted,
+                    tooltip: '삭제',
+                    padding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _TaskListTile extends StatelessWidget {

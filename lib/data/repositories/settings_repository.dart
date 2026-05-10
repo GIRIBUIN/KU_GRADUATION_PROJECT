@@ -6,6 +6,7 @@ class AppSettings {
     required this.defaultNotificationDays,
     required this.defaultNotificationTime,
     required this.urgentDueDays,
+    this.homeSelectedTagId,
   });
 
   final bool autoSyncEnabled;
@@ -14,6 +15,7 @@ class AppSettings {
   final int defaultNotificationDays;
   final String defaultNotificationTime;
   final int urgentDueDays;
+  final String? homeSelectedTagId;
 
   AppSettings copyWith({
     bool? autoSyncEnabled,
@@ -22,6 +24,7 @@ class AppSettings {
     int? defaultNotificationDays,
     String? defaultNotificationTime,
     int? urgentDueDays,
+    Object? homeSelectedTagId = _appSettingsUnset,
   }) {
     return AppSettings(
       autoSyncEnabled: autoSyncEnabled ?? this.autoSyncEnabled,
@@ -33,9 +36,14 @@ class AppSettings {
       defaultNotificationTime:
           defaultNotificationTime ?? this.defaultNotificationTime,
       urgentDueDays: urgentDueDays ?? this.urgentDueDays,
+      homeSelectedTagId: homeSelectedTagId == _appSettingsUnset
+          ? this.homeSelectedTagId
+          : homeSelectedTagId as String?,
     );
   }
 }
+
+const _appSettingsUnset = Object();
 
 abstract class SettingsRepository {
   Future<AppSettings> getSettings();

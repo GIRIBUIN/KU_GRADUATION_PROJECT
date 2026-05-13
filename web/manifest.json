@@ -1,6 +1,6 @@
 {
-    "name": "ku_task_management",
-    "short_name": "ku_task_management",
+    "name": "KU Todo",
+    "short_name": "KU Todo",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

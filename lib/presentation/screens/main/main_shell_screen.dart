@@ -1,0 +1,5068 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
+import '../../../core/theme/app_theme.dart';
+import '../../../data/models/task_models.dart';
+import '../../../data/repositories/folder_repository.dart';
+import '../../../data/repositories/notification_repository.dart';
+import '../../../data/repositories/settings_repository.dart';
+import '../../../data/repositories/sub_task_repository.dart';
+import '../../../data/repositories/tag_repository.dart';
+import '../../../data/services/ecampus_auth_service.dart';
+import '../../../data/repositories/task_repository.dart';
+import '../../../data/services/home_task_summary.dart';
+import '../../../data/services/http_ecampus_auth_service.dart';
+import '../../../data/services/sub_task_progress.dart';
+import '../../services/in_app_webview_ecampus_cookie_store.dart';
+import '../../services/local_notification_service.dart';
+import '../sync/ecampus_sync_progress_screen.dart';
+import '../task/task_create_screen.dart';
+import '../task/task_detail_screen.dart';
+import '../../widgets/task_metadata_picker.dart' as metadata_picker;
+
+class MainShellScreen extends StatefulWidget {
+  const MainShellScreen({
+    super.key,
+    required this.taskRepository,
+    required this.subTaskRepository,
+    required this.notificationRepository,
+    required this.settingsRepository,
+    required this.tagRepository,
+    required this.folderRepository,
+    required this.localNotificationService,
+  });
+
+  final TaskRepository taskRepository;
+  final SubTaskRepository subTaskRepository;
+  final NotificationRepository notificationRepository;
+  final SettingsRepository settingsRepository;
+  final TagRepository tagRepository;
+  final FolderRepository folderRepository;
+  final LocalNotificationService localNotificationService;
+
+  @override
+  State<MainShellScreen> createState() => _MainShellScreenState();
+}
+
+class _MainShellScreenState extends State<MainShellScreen> {
+  var _selectedIndex = 0;
+  EcampusSession? _ecampusSession;
+  Timer? _clockRefreshTimer;
+  late Future<List<Task>> _tasksFuture;
+  late Future<AppSettings> _settingsFuture;
+  late Future<_TaskMetadataLookup> _metadataFuture;
+  var _metadataVersion = 0;
+  var _isEcampusSyncing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tasksFuture = _loadTasks();
+    _settingsFuture = widget.settingsRepository.getSettings();
+    _metadataFuture = _loadMetadata();
+    _scheduleClockRefresh();
+  }
+
+  @override
+  void dispose() {
+    _clockRefreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<List<Task>> _loadTasks() {
+    return widget.taskRepository.getTasks(includeArchived: true);
+  }
+
+  void _scheduleClockRefresh() {
+    final now = DateTime.now();
+    final nextMinute = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      now.hour,
+      now.minute + 1,
+    );
+    _clockRefreshTimer = Timer(nextMinute.difference(now), () {
+      if (!mounted) {
+        return;
+      }
+      setState(() {});
+      _scheduleClockRefresh();
+    });
+  }
+
+  void _refreshTasks() {
+    setState(() {
+      _tasksFuture = _loadTasks();
+    });
+  }
+
+  Future<_TaskMetadataLookup> _loadMetadata() async {
+    final tags = await widget.tagRepository.getTags();
+    return _TaskMetadataLookup(tags: tags);
+  }
+
+  void _refreshMetadata() {
+    setState(() {
+      _metadataFuture = _loadMetadata();
+      _metadataVersion++;
+    });
+  }
+
+  void _refreshTasksAndMetadata() {
+    setState(() {
+      _tasksFuture = _loadTasks();
+      _metadataFuture = _loadMetadata();
+      _metadataVersion++;
+    });
+  }
+
+  Future<void> _openEcampusSync() async {
+    if (_isEcampusSyncing) {
+      _showSnackBar(context, 'e-campus 동기화가 이미 진행 중입니다.');
+      return;
+    }
+
+    setState(() {
+      _isEcampusSyncing = true;
+    });
+    try {
+      final didChange = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => EcampusSyncProgressScreen(
+            taskRepository: widget.taskRepository,
+            initialSession: _ecampusSession,
+            onSessionChanged: (session) {
+              if (!mounted) {
+                return;
+              }
+              setState(() {
+                _ecampusSession = session;
+              });
+            },
+          ),
+          fullscreenDialog: true,
+        ),
+      );
+
+      if (!mounted) {
+        return;
+      }
+      if (didChange == true) {
+        _refreshTasksAndMetadata();
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isEcampusSyncing = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _clearEcampusSession() async {
+    final httpClient = http.Client();
+    final cookieStore = const InAppWebViewEcampusCookieStore();
+    final authService = HttpEcampusAuthService(
+      httpClient: httpClient,
+      cookieStore: cookieStore,
+    );
+
+    try {
+      final session = _ecampusSession;
+      if (session == null) {
+        await authService.clearSession();
+      } else {
+        await authService.logout(session);
+      }
+    } on EcampusLogoutException {
+      if (mounted) {
+        _showSnackBar(context, 'e-campus 로그아웃 요청에 실패했습니다.');
+      }
+      return;
+    } finally {
+      httpClient.close();
+    }
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _ecampusSession = null;
+    });
+    _showSnackBar(context, 'e-campus 세션과 쿠키를 정리했습니다.');
+  }
+
+  Future<void> _toggleTaskCompletion(Task task) async {
+    final nextStatus = task.status == TaskStatus.completed
+        ? TaskStatus.active
+        : TaskStatus.completed;
+
+    final updatedTask = await widget.taskRepository.updateTaskStatus(
+      task.id,
+      nextStatus,
+    );
+    if (!mounted) {
+      return;
+    }
+
+    if (nextStatus == TaskStatus.active) {
+      await _scheduleTaskNotification(updatedTask);
+    } else {
+      await _cancelTaskNotification(task.id);
+    }
+    if (!mounted) {
+      return;
+    }
+
+    _refreshTasks();
+    _showSnackBar(
+      context,
+      nextStatus == TaskStatus.completed ? '완료 처리했습니다.' : '미완료로 되돌렸습니다.',
+    );
+  }
+
+  Future<void> _deleteTask(Task task) async {
+    await widget.taskRepository.markDeleted(task.id);
+    await _cancelTaskNotification(task.id);
+    if (!mounted) {
+      return;
+    }
+
+    _refreshTasks();
+    _showSnackBar(context, '삭제된 작업으로 이동했습니다.');
+  }
+
+  Future<void> _deleteCompletedTasks(List<Task> tasks) async {
+    for (final task in tasks) {
+      await widget.taskRepository.markDeleted(task.id);
+      await _cancelTaskNotification(task.id);
+    }
+    if (!mounted) {
+      return;
+    }
+
+    _refreshTasks();
+    _showSnackBar(context, '완료된 작업을 삭제된 작업으로 이동했습니다.');
+  }
+
+  Future<void> _restoreTask(Task task) async {
+    final restoredTask = await widget.taskRepository.restoreTask(task.id);
+    if (!mounted) {
+      return;
+    }
+
+    await _scheduleTaskNotification(restoredTask);
+    if (!mounted) {
+      return;
+    }
+    _refreshTasks();
+    _showSnackBar(context, '작업을 복구했습니다.');
+  }
+
+  Future<void> _allowExcludedTaskSync(Task task) async {
+    await widget.taskRepository.deletePermanently(task.id);
+    await _cancelTaskNotification(task.id);
+    if (!mounted) {
+      return;
+    }
+
+    _refreshTasks();
+    _showSnackBar(context, '다음 동기화부터 다시 가져올 수 있습니다.');
+  }
+
+  Future<void> _deleteTaskPermanently(Task task) async {
+    await widget.taskRepository.deletePermanently(task.id);
+    await _cancelTaskNotification(task.id);
+    if (!mounted) {
+      return;
+    }
+
+    _refreshTasks();
+    _showSnackBar(context, '작업을 영구 삭제했습니다.');
+  }
+
+  Future<void> _reorderTasks(List<Task> orderedTasks) async {
+    await widget.taskRepository.updateTaskOrder(
+      orderedTasks.map((task) => task.id).toList(growable: false),
+    );
+  }
+
+  Future<void> _scheduleTaskNotification(Task task) async {
+    final setting = await widget.notificationRepository.getByTaskId(task.id);
+    if (setting == null) {
+      await _cancelTaskNotification(task.id);
+      return;
+    }
+
+    await widget.localNotificationService.scheduleTaskNotification(
+      task: task,
+      setting: setting,
+    );
+  }
+
+  Future<void> _cancelTaskNotification(String taskId) {
+    return widget.localNotificationService.cancelTaskNotification(taskId);
+  }
+
+  Future<void> _openTaskDetail(Task task) async {
+    await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => TaskDetailScreen(
+          taskId: task.id,
+          taskRepository: widget.taskRepository,
+          subTaskRepository: widget.subTaskRepository,
+          notificationRepository: widget.notificationRepository,
+          tagRepository: widget.tagRepository,
+          localNotificationService: widget.localNotificationService,
+        ),
+      ),
+    );
+    if (mounted) {
+      _refreshTasksAndMetadata();
+    }
+  }
+
+  Future<void> _openTaskCreate() async {
+    await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => TaskCreateScreen(
+          taskRepository: widget.taskRepository,
+          subTaskRepository: widget.subTaskRepository,
+          notificationRepository: widget.notificationRepository,
+          settingsRepository: widget.settingsRepository,
+          tagRepository: widget.tagRepository,
+          localNotificationService: widget.localNotificationService,
+        ),
+      ),
+    );
+    if (mounted) {
+      _refreshTasksAndMetadata();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<Task>>(
+      future: _tasksFuture,
+      builder: (context, snapshot) {
+        final tasks = snapshot.data ?? const <Task>[];
+        final isLoading =
+            snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData;
+        return FutureBuilder<AppSettings>(
+          future: _settingsFuture,
+          builder: (context, settingsSnapshot) {
+            final settings =
+                settingsSnapshot.data ??
+                const AppSettings(
+                  autoSyncEnabled: false,
+                  saveEcampusAccount: false,
+                  defaultNotificationEnabled: true,
+                  defaultNotificationDays: 60,
+                  defaultNotificationTime: 'relative',
+                  urgentDueDays: 3,
+                );
+            return FutureBuilder<_TaskMetadataLookup>(
+              future: _metadataFuture,
+              builder: (context, metadataSnapshot) {
+                final metadata =
+                    metadataSnapshot.data ?? const _TaskMetadataLookup.empty();
+                final pages = [
+                  _HomePage(
+                    tasks: tasks,
+                    isLoading: isLoading,
+                    urgentDueDays: settings.urgentDueDays,
+                    selectedTagId: settings.homeSelectedTagId,
+                    metadata: metadata,
+                    onRefresh: _refreshTasks,
+                    onOpenSync: _openEcampusSync,
+                    onOpenSettings: () => setState(() => _selectedIndex = 3),
+                    onSelectedTagChanged: (tagId) async {
+                      final saved = await widget.settingsRepository
+                          .saveSettings(
+                            settings.copyWith(homeSelectedTagId: tagId),
+                          );
+                      if (!mounted) {
+                        return;
+                      }
+                      setState(() {
+                        _settingsFuture = Future.value(saved);
+                      });
+                    },
+                    onToggleTask: _toggleTaskCompletion,
+                    onDeleteTask: _deleteTask,
+                    onOpenTaskDetail: _openTaskDetail,
+                  ),
+                  _TaskListPage(
+                    tasks: tasks,
+                    isLoading: isLoading,
+                    metadata: metadata,
+                    onRefresh: _refreshTasks,
+                    onToggleTask: _toggleTaskCompletion,
+                    onDeleteTask: _deleteTask,
+                    onDeleteCompletedTasks: _deleteCompletedTasks,
+                    onRestoreTask: _restoreTask,
+                    onReorderTasks: _reorderTasks,
+                    onOpenTaskDetail: _openTaskDetail,
+                    subTaskRepository: widget.subTaskRepository,
+                  ),
+                  _ManagementPage(
+                    tasks: tasks,
+                    loadTasks: _loadTasks,
+                    settings: settings,
+                    tagRepository: widget.tagRepository,
+                    folderRepository: widget.folderRepository,
+                    metadataVersion: _metadataVersion,
+                    onMetadataChanged: _refreshMetadata,
+                    onSettingsChanged: (updatedSettings) async {
+                      final saved = await widget.settingsRepository
+                          .saveSettings(updatedSettings);
+                      if (!mounted) {
+                        return;
+                      }
+                      setState(() {
+                        _settingsFuture = Future.value(saved);
+                      });
+                    },
+                    onOpenTaskDetail: _openTaskDetail,
+                    onRestoreTask: _restoreTask,
+                    onAllowExcludedTaskSync: _allowExcludedTaskSync,
+                    onDeletePermanently: _deleteTaskPermanently,
+                  ),
+                  _SettingsPage(
+                    settingsRepository: widget.settingsRepository,
+                    ecampusSession: _ecampusSession,
+                    lastEcampusSyncedAt: _lastEcampusSyncedAt(tasks),
+                    onSettingsChanged: () {
+                      setState(() {
+                        _settingsFuture = widget.settingsRepository
+                            .getSettings();
+                      });
+                    },
+                    onOpenSync: _openEcampusSync,
+                    onClearEcampusSession: _clearEcampusSession,
+                    localNotificationService: widget.localNotificationService,
+                  ),
+                ];
+
+                return Scaffold(
+                  body: IndexedStack(index: _selectedIndex, children: pages),
+                  bottomNavigationBar: NavigationBar(
+                    selectedIndex: _selectedIndex,
+                    onDestinationSelected: (index) {
+                      setState(() {
+                        _selectedIndex = index;
+                      });
+                    },
+                    destinations: const [
+                      NavigationDestination(
+                        icon: Icon(Icons.home_outlined),
+                        selectedIcon: Icon(Icons.home_rounded),
+                        label: '홈',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.format_list_bulleted_rounded),
+                        selectedIcon: Icon(Icons.format_list_bulleted_rounded),
+                        label: '목록',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.folder_outlined),
+                        selectedIcon: Icon(Icons.folder_rounded),
+                        label: '관리',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.settings_outlined),
+                        selectedIcon: Icon(Icons.settings_rounded),
+                        label: '설정',
+                      ),
+                    ],
+                  ),
+                  floatingActionButton:
+                      _selectedIndex == 0 || _selectedIndex == 1
+                      ? FloatingActionButton(
+                          onPressed: _openTaskCreate,
+                          child: const Icon(Icons.add_rounded),
+                        )
+                      : null,
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _HomePage extends StatefulWidget {
+  const _HomePage({
+    required this.tasks,
+    required this.isLoading,
+    required this.urgentDueDays,
+    required this.selectedTagId,
+    required this.metadata,
+    required this.onRefresh,
+    required this.onOpenSync,
+    required this.onOpenSettings,
+    required this.onSelectedTagChanged,
+    required this.onToggleTask,
+    required this.onDeleteTask,
+    required this.onOpenTaskDetail,
+  });
+
+  final List<Task> tasks;
+  final bool isLoading;
+  final int urgentDueDays;
+  final String? selectedTagId;
+  final _TaskMetadataLookup metadata;
+  final VoidCallback onRefresh;
+  final Future<void> Function() onOpenSync;
+  final VoidCallback onOpenSettings;
+  final ValueChanged<String?> onSelectedTagChanged;
+  final ValueChanged<Task> onToggleTask;
+  final ValueChanged<Task> onDeleteTask;
+  final ValueChanged<Task> onOpenTaskDetail;
+
+  @override
+  State<_HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<_HomePage> {
+  String? _selectedTagId;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedTagId = widget.selectedTagId;
+  }
+
+  @override
+  void didUpdateWidget(_HomePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedTagId != widget.selectedTagId &&
+        _selectedTagId != widget.selectedTagId) {
+      _selectedTagId = widget.selectedTagId;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final summary = HomeTaskSummary.fromTasks(
+      tasks: widget.tasks,
+      now: now,
+      urgentDueDays: widget.urgentDueDays,
+    );
+    final selectedTag = widget.metadata.tagById(_selectedTagId);
+    final effectiveSelectedTagId = selectedTag?.id;
+    final selectedTagTasks = selectedTag == null
+        ? <Task>[]
+        : (List<Task>.of(
+            summary.activeTasks.where(
+              (task) => task.tagIds.contains(selectedTag.id),
+            ),
+          )..sort(_compareDueDate));
+
+    return SafeArea(
+      child: RefreshIndicator(
+        onRefresh: () async => widget.onRefresh(),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 84),
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _todayLabel(now),
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: AppTheme.ink,
+                    ),
+                  ),
+                ),
+                _IconAction(
+                  icon: Icons.sync_rounded,
+                  color: AppTheme.primaryBlue,
+                  onTap: widget.onOpenSync,
+                  tooltip: 'e-campus 동기화',
+                ),
+                const SizedBox(width: 10),
+                _IconAction(
+                  icon: Icons.settings_rounded,
+                  color: AppTheme.ink,
+                  onTap: widget.onOpenSettings,
+                  tooltip: '설정',
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            _SummaryCard(
+              items: [
+                _SummaryItem(
+                  icon: Icons.event_available_rounded,
+                  label: '오늘 할 일',
+                  value: '${summary.todayTasks.length}',
+                  color: AppTheme.successGreen,
+                ),
+                _SummaryItem(
+                  icon: Icons.schedule_rounded,
+                  label: '마감 임박',
+                  value: '${summary.urgentTasks.length}',
+                  color: AppTheme.warningOrange,
+                ),
+                _SummaryItem(
+                  icon: Icons.assignment_outlined,
+                  label: '미완료',
+                  value: '${summary.activeTasks.length}',
+                  color: AppTheme.primaryBlue,
+                ),
+                _SummaryItem(
+                  icon: Icons.warning_amber_rounded,
+                  label: '마감 지남',
+                  value: '${summary.overdueTasks.length}',
+                  color: AppTheme.dangerRed,
+                ),
+              ],
+            ),
+            const SizedBox(height: 32),
+            _SectionHeader(title: '오늘 할 일', count: summary.todayTasks.length),
+            const SizedBox(height: 12),
+            if (widget.isLoading)
+              const _LoadingBlock()
+            else if (summary.todayTasks.isEmpty)
+              const _EmptyBlock(message: '오늘 마감인 일정이 없습니다.')
+            else
+              _HomeTaskSectionCard(
+                tasks: summary.todayTasks.take(3).toList(growable: false),
+                onToggleTask: widget.onToggleTask,
+                onDeleteTask: widget.onDeleteTask,
+                onOpenTaskDetail: widget.onOpenTaskDetail,
+              ),
+            const SizedBox(height: 20),
+            _SectionHeader(title: '마감 임박', count: summary.urgentTasks.length),
+            const SizedBox(height: 12),
+            if (summary.urgentTasks.isEmpty)
+              const _EmptyBlock(message: '가까운 마감 일정이 없습니다.')
+            else
+              _HomeTaskSectionCard(
+                tasks: summary.urgentTasks.take(4).toList(growable: false),
+                onToggleTask: widget.onToggleTask,
+                onDeleteTask: widget.onDeleteTask,
+                onOpenTaskDetail: widget.onOpenTaskDetail,
+              ),
+            const SizedBox(height: 20),
+            _HomeTagSection(
+              tags: widget.metadata.tags,
+              selectedTagId: effectiveSelectedTagId,
+              selectedTasks: selectedTagTasks,
+              onTagChanged: (tagId) {
+                setState(() {
+                  _selectedTagId = tagId;
+                });
+                widget.onSelectedTagChanged(tagId);
+              },
+              onToggleTask: widget.onToggleTask,
+              onDeleteTask: widget.onDeleteTask,
+              onOpenTaskDetail: widget.onOpenTaskDetail,
+            ),
+            const SizedBox(height: 20),
+            _SectionHeader(title: '마감 지남', count: summary.overdueTasks.length),
+            const SizedBox(height: 12),
+            if (summary.overdueTasks.isEmpty)
+              const _EmptyBlock(message: '마감이 지난 일정이 없습니다.')
+            else
+              _HomeTaskSectionCard(
+                tasks: summary.overdueTasks.take(4).toList(growable: false),
+                onToggleTask: widget.onToggleTask,
+                onDeleteTask: widget.onDeleteTask,
+                onOpenTaskDetail: widget.onOpenTaskDetail,
+                showToggle: false,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TaskListPage extends StatefulWidget {
+  const _TaskListPage({
+    required this.tasks,
+    required this.isLoading,
+    required this.metadata,
+    required this.onRefresh,
+    required this.onToggleTask,
+    required this.onDeleteTask,
+    required this.onDeleteCompletedTasks,
+    required this.onRestoreTask,
+    required this.onReorderTasks,
+    required this.onOpenTaskDetail,
+    required this.subTaskRepository,
+  });
+
+  final List<Task> tasks;
+  final bool isLoading;
+  final _TaskMetadataLookup metadata;
+  final VoidCallback onRefresh;
+  final ValueChanged<Task> onToggleTask;
+  final ValueChanged<Task> onDeleteTask;
+  final Future<void> Function(List<Task> tasks) onDeleteCompletedTasks;
+  final ValueChanged<Task> onRestoreTask;
+  final Future<void> Function(List<Task> orderedTasks) onReorderTasks;
+  final ValueChanged<Task> onOpenTaskDetail;
+  final SubTaskRepository subTaskRepository;
+
+  @override
+  State<_TaskListPage> createState() => _TaskListPageState();
+}
+
+class _TaskListPageState extends State<_TaskListPage> {
+  var _filter = _TaskFilter.all;
+  var _sort = _TaskSort.userOrder;
+  final Map<String, int> _localSortOrders = {};
+
+  @override
+  Widget build(BuildContext context) {
+    final visibleTasks = _visibleTasks();
+
+    return SafeArea(
+      child: RefreshIndicator(
+        onRefresh: () async => widget.onRefresh(),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 96),
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '목록',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                _SortSelector(
+                  value: _sort,
+                  onChanged: (sort) {
+                    setState(() {
+                      _sort = sort;
+                    });
+                  },
+                ),
+                _FilterSelector(
+                  value: _filter,
+                  onChanged: (filter) {
+                    setState(() {
+                      _filter = filter;
+                    });
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            if (widget.isLoading)
+              const _LoadingBlock()
+            else if (visibleTasks.isEmpty)
+              _EmptyBlock(message: _emptyMessage())
+            else
+              ..._buildTaskSections(visibleTasks),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Task> _visibleTasks() {
+    final tasks = widget.tasks
+        .map(_taskWithLocalSortOrder)
+        .where(_matchesFilter)
+        .toList();
+    tasks.sort(_compareTasksBySort(_sort));
+    return tasks;
+  }
+
+  Task _taskWithLocalSortOrder(Task task) {
+    final sortOrder = _localSortOrders[task.id];
+    if (sortOrder == null || sortOrder == task.sortOrder) {
+      return task;
+    }
+    return _copyTaskWithSortOrder(task, sortOrder);
+  }
+
+  bool _matchesFilter(Task task) {
+    return switch (_filter) {
+      _TaskFilter.all => !_isHiddenInMainList(task),
+      _TaskFilter.ecampus =>
+        task.origin == TaskOrigin.ecampus && !_isHiddenInMainList(task),
+      _TaskFilter.personal =>
+        task.origin == TaskOrigin.personal && !_isHiddenInMainList(task),
+      _TaskFilter.incomplete => task.status == TaskStatus.active,
+      _TaskFilter.completed => task.status == TaskStatus.completed,
+      _TaskFilter.overdue =>
+        task.status == TaskStatus.active &&
+            task.dueDate != null &&
+            _isOverdue(task.dueDate!),
+      _TaskFilter.deleted => task.status == TaskStatus.deleted,
+    };
+  }
+
+  String _emptyMessage() {
+    return switch (_filter) {
+      _TaskFilter.overdue => '마감이 지난 작업이 없습니다.',
+      _TaskFilter.deleted => '삭제된 작업이 없습니다.',
+      _TaskFilter.completed => '완료된 작업이 없습니다.',
+      _TaskFilter.incomplete => '해야 할 작업이 없습니다.',
+      _TaskFilter.ecampus => 'e-campus 작업이 없습니다.',
+      _TaskFilter.personal => '개인 작업이 없습니다.',
+      _TaskFilter.all => '표시할 일정이 없습니다.',
+    };
+  }
+
+  Future<void> _handleReorderTasks(List<Task> orderedTasks) async {
+    final reorderedTasks = _tasksWithSequentialSortOrder(orderedTasks);
+    setState(() {
+      for (final task in reorderedTasks) {
+        _localSortOrders[task.id] = task.sortOrder;
+      }
+    });
+
+    await widget.onReorderTasks(reorderedTasks);
+  }
+
+  Future<void> _confirmDeleteCompletedTasks(List<Task> tasks) async {
+    if (tasks.isEmpty) {
+      return;
+    }
+
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('완료 작업 전체 삭제'),
+        content: Text('완료된 작업 ${tasks.length}개를 삭제된 작업으로 이동할까요?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    );
+    if (shouldDelete == true && mounted) {
+      await widget.onDeleteCompletedTasks(tasks);
+    }
+  }
+
+  List<Widget> _buildTaskSections(List<Task> tasks) {
+    if (_filter == _TaskFilter.deleted) {
+      return [
+        _DeletedTaskList(tasks: tasks, onRestoreTask: widget.onRestoreTask),
+      ];
+    }
+
+    if (_filter == _TaskFilter.incomplete ||
+        _filter == _TaskFilter.completed ||
+        _filter == _TaskFilter.overdue) {
+      return [
+        if (_filter == _TaskFilter.completed) ...[
+          _CompletedBulkDeleteButton(
+            count: tasks.length,
+            onPressed: () => _confirmDeleteCompletedTasks(tasks),
+          ),
+          const SizedBox(height: 10),
+        ],
+        _TaskSectionCard(
+          tasks: tasks,
+          onToggleTask: widget.onToggleTask,
+          onDeleteTask: widget.onDeleteTask,
+          onOpenTaskDetail: widget.onOpenTaskDetail,
+          subTaskRepository: widget.subTaskRepository,
+          onReorderTasks: _handleReorderTasks,
+          enableReorder: _sort == _TaskSort.userOrder,
+          metadata: widget.metadata,
+        ),
+      ];
+    }
+
+    final incompleteTasks = tasks
+        .where((task) => task.status == TaskStatus.active)
+        .toList(growable: false);
+    final completedTasks = tasks
+        .where((task) => task.status == TaskStatus.completed)
+        .toList(growable: false);
+
+    return [
+      _ListSectionHeader(title: '미완료', count: incompleteTasks.length),
+      const SizedBox(height: 10),
+      if (incompleteTasks.isEmpty)
+        const _EmptyBlock(message: '해야 할 작업이 없습니다.')
+      else
+        _TaskSectionCard(
+          tasks: incompleteTasks,
+          onToggleTask: widget.onToggleTask,
+          onDeleteTask: widget.onDeleteTask,
+          onOpenTaskDetail: widget.onOpenTaskDetail,
+          subTaskRepository: widget.subTaskRepository,
+          onReorderTasks: _handleReorderTasks,
+          enableReorder: _sort == _TaskSort.userOrder,
+          metadata: widget.metadata,
+        ),
+      const SizedBox(height: 24),
+      _ListSectionHeader(title: '완료', count: completedTasks.length),
+      const SizedBox(height: 10),
+      if (completedTasks.isEmpty)
+        const _EmptyBlock(message: '완료된 작업이 없습니다.')
+      else
+        _TaskSectionCard(
+          tasks: completedTasks,
+          onToggleTask: widget.onToggleTask,
+          onDeleteTask: widget.onDeleteTask,
+          onOpenTaskDetail: widget.onOpenTaskDetail,
+          subTaskRepository: widget.subTaskRepository,
+          onReorderTasks: _handleReorderTasks,
+          enableReorder: _sort == _TaskSort.userOrder,
+          metadata: widget.metadata,
+        ),
+    ];
+  }
+}
+
+bool _isHiddenInMainList(Task task) {
+  return task.status == TaskStatus.deleted ||
+      task.status == TaskStatus.excluded;
+}
+
+bool _isExcludedEcampusTask(Task task) {
+  final sourceKey = task.ecampus?.sourceKey.trim();
+  return task.status == TaskStatus.excluded &&
+      sourceKey != null &&
+      sourceKey.isNotEmpty;
+}
+
+class _TaskMetadataLookup {
+  const _TaskMetadataLookup({required List<Tag> tags}) : _tags = tags;
+
+  const _TaskMetadataLookup.empty() : _tags = const [];
+
+  final List<Tag> _tags;
+
+  List<Tag> get tags => _tags;
+
+  Tag? tagById(String? id) {
+    if (id == null) {
+      return null;
+    }
+    return _tags.where((tag) => tag.id == id).firstOrNull;
+  }
+
+  List<Tag> tagsFor(Task task) {
+    final ids = task.tagIds.toSet();
+    return _tags.where((tag) => ids.contains(tag.id)).toList(growable: false);
+  }
+}
+
+class _ManagementPage extends StatefulWidget {
+  const _ManagementPage({
+    required this.tasks,
+    required this.loadTasks,
+    required this.settings,
+    required this.tagRepository,
+    required this.folderRepository,
+    required this.metadataVersion,
+    required this.onMetadataChanged,
+    required this.onSettingsChanged,
+    required this.onOpenTaskDetail,
+    required this.onRestoreTask,
+    required this.onAllowExcludedTaskSync,
+    required this.onDeletePermanently,
+  });
+
+  final List<Task> tasks;
+  final Future<List<Task>> Function() loadTasks;
+  final AppSettings settings;
+  final TagRepository tagRepository;
+  final FolderRepository folderRepository;
+  final int metadataVersion;
+  final VoidCallback onMetadataChanged;
+  final Future<void> Function(AppSettings settings) onSettingsChanged;
+  final Future<void> Function(Task task) onOpenTaskDetail;
+  final Future<void> Function(Task task) onRestoreTask;
+  final Future<void> Function(Task task) onAllowExcludedTaskSync;
+  final Future<void> Function(Task task) onDeletePermanently;
+
+  @override
+  State<_ManagementPage> createState() => _ManagementPageState();
+}
+
+class _ManagementPageState extends State<_ManagementPage> {
+  late Future<List<Tag>> _tagsFuture;
+  late Future<List<Folder>> _foldersFuture;
+  final Set<String> _expandedFolderIds = {};
+  var _showHiddenMetadata = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tagsFuture = widget.tagRepository.getTags();
+    _foldersFuture = widget.folderRepository.getFolders();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ManagementPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.metadataVersion != widget.metadataVersion) {
+      _reloadMetadataOnly();
+    }
+  }
+
+  void _reloadMetadataOnly() {
+    setState(() {
+      _tagsFuture = widget.tagRepository.getTags();
+      _foldersFuture = widget.folderRepository.getFolders();
+    });
+  }
+
+  void _refreshMetadata() {
+    _reloadMetadataOnly();
+    widget.onMetadataChanged();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final deletedCount = widget.tasks
+        .where((task) => task.status == TaskStatus.deleted)
+        .length;
+    final excludedCount = widget.tasks.where(_isExcludedEcampusTask).length;
+
+    return SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 96),
+        children: [
+          _PageTitle(title: '관리'),
+          const SizedBox(height: 28),
+          FutureBuilder<List<Tag>>(
+            future: _tagsFuture,
+            builder: (context, tagSnapshot) {
+              return FutureBuilder<List<Folder>>(
+                future: _foldersFuture,
+                builder: (context, folderSnapshot) {
+                  final tags = tagSnapshot.data ?? const <Tag>[];
+                  final folders = folderSnapshot.data ?? const <Folder>[];
+                  final rootFolders = _rootFoldersOf(folders);
+                  final treeRows = [
+                    ..._folderTreeRows(rootFolders, folders, tags),
+                    ..._rootTagRows(tags, folders),
+                  ];
+                  final isLoading =
+                      (tagSnapshot.connectionState == ConnectionState.waiting &&
+                          !tagSnapshot.hasData) ||
+                      (folderSnapshot.connectionState ==
+                              ConnectionState.waiting &&
+                          !folderSnapshot.hasData);
+
+                  return _ManagementSection(
+                    title: '메타데이터',
+                    action: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton.filledTonal(
+                          onPressed: () {
+                            setState(() {
+                              _showHiddenMetadata = !_showHiddenMetadata;
+                            });
+                          },
+                          icon: Icon(
+                            _showHiddenMetadata
+                                ? Icons.visibility_rounded
+                                : Icons.visibility_off_outlined,
+                          ),
+                          tooltip: _showHiddenMetadata ? '숨김 가리기' : '숨김 보기',
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton.filledTonal(
+                          onPressed: () => _createFolder(folders),
+                          icon: const Icon(Icons.create_new_folder_rounded),
+                          tooltip: '폴더 추가',
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton.filledTonal(
+                          onPressed: () => _createTag(folders),
+                          icon: const Icon(Icons.new_label_rounded),
+                          tooltip: '태그 추가',
+                        ),
+                      ],
+                    ),
+                    children: [
+                      if (isLoading)
+                        const _ManagementLoadingRow()
+                      else if (treeRows.isEmpty)
+                        const _ManagementEmptyRow(message: '항목이 없습니다.')
+                      else
+                        ...treeRows,
+                    ],
+                  );
+                },
+              );
+            },
+          ),
+          const SizedBox(height: 24),
+          _ManagementSection(
+            title: '정리',
+            children: [
+              _ManagementRow(
+                icon: Icons.delete_outline_rounded,
+                iconColor: AppTheme.muted,
+                title: '삭제된 작업',
+                trailing: '$deletedCount',
+                onTap: _openDeletedTasks,
+              ),
+              _ManagementRow(
+                icon: Icons.block_rounded,
+                iconColor: AppTheme.warningOrange,
+                title: '제외된 e-campus 항목',
+                trailing: '$excludedCount',
+                onTap: _openExcludedTasks,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openTagTasks(Tag tag) async {
+    final tasks = widget.tasks
+        .where(
+          (task) => !_isHiddenInMainList(task) && task.tagIds.contains(tag.id),
+        )
+        .toList(growable: false);
+
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => _MetadataTaskListScreen(
+          title: tag.name,
+          subtitle: '태그 작업',
+          icon: Icons.circle,
+          iconColor: _colorFromHex(tag.color),
+          tasks: tasks,
+          reloadTasks: widget.loadTasks,
+          taskFilter: (task) =>
+              !_isHiddenInMainList(task) && task.tagIds.contains(tag.id),
+          onOpenTaskDetail: widget.onOpenTaskDetail,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openDeletedTasks() async {
+    final deletedTasks = widget.tasks
+        .where((task) => task.status == TaskStatus.deleted)
+        .toList(growable: false);
+
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => _DeletedTasksManagementScreen(
+          tasks: deletedTasks,
+          onRestoreTask: widget.onRestoreTask,
+          onDeletePermanently: widget.onDeletePermanently,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openExcludedTasks() async {
+    final excludedTasks = widget.tasks
+        .where(_isExcludedEcampusTask)
+        .toList(growable: false);
+
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => _ExcludedEcampusTasksManagementScreen(
+          tasks: excludedTasks,
+          onAllowSync: widget.onAllowExcludedTaskSync,
+        ),
+      ),
+    );
+  }
+
+  List<Folder> _rootFoldersOf(List<Folder> folders) {
+    final roots = folders
+        .where((folder) => folder.parentFolderId == null)
+        .toList(growable: false);
+    roots.sort(_compareMetadataFolders);
+    return roots;
+  }
+
+  List<Widget> _folderTreeRows(
+    List<Folder> roots,
+    List<Folder> folders,
+    List<Tag> tags,
+  ) {
+    final rows = <Widget>[];
+    for (final folder in roots) {
+      rows.addAll(_folderTreeRowsFrom(folder, folders, tags: tags, depth: 0));
+    }
+    return rows;
+  }
+
+  List<Widget> _rootTagRows(List<Tag> tags, List<Folder> folders) {
+    final sortedTags = List<Tag>.of(tags)..sort(_compareMetadataTags);
+    final folderIds = folders.map((folder) => folder.id).toSet();
+    final rootTags = sortedTags
+        .where((tag) => _isRootTag(tag, folderIds))
+        .where((tag) => _showHiddenMetadata || !_isTagHidden(tag.id))
+        .toList(growable: false);
+    return [
+      _MetadataRootDropTarget(
+        onAccept: (item) => _moveMetadataToRoot(item, folders),
+        child: Column(
+          children: [
+            for (final tag in rootTags)
+              _tagManagementRow(tag, folders, depth: 0),
+          ],
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _folderTreeRowsFrom(
+    Folder folder,
+    List<Folder> folders, {
+    required List<Tag> tags,
+    required int depth,
+  }) {
+    if (!_showHiddenMetadata && _isFolderHidden(folder.id)) {
+      return const <Widget>[];
+    }
+    final children = folders
+        .where((candidate) => candidate.parentFolderId == folder.id)
+        .toList(growable: false);
+    children.sort(_compareMetadataFolders);
+    final folderTags = _tagsInFolder(folder.id, tags);
+    final isExpanded = _expandedFolderIds.contains(folder.id);
+    final childCount = children.length + folderTags.length;
+
+    return [
+      _FolderTreeRow(
+        folder: folder,
+        depth: depth,
+        isHidden: _isFolderHidden(folder.id),
+        childCount: childCount,
+        isExpanded: isExpanded,
+        dragItem: _MetadataDragItem.folder(folder.id),
+        onAcceptBefore: (item) =>
+            _moveMetadataBeforeFolder(item, folder, folders),
+        onAcceptInside: (item) => _moveMetadataToFolder(item, folder, folders),
+        onTap: childCount == 0 ? null : () => _toggleFolderExpanded(folder.id),
+        onEdit: () => _editFolder(folder, folders),
+      ),
+      if (isExpanded) ...[
+        for (final child in children)
+          ..._folderTreeRowsFrom(child, folders, tags: tags, depth: depth + 1),
+        for (final tag in folderTags)
+          _tagManagementRow(tag, folders, depth: depth + 1),
+      ],
+    ];
+  }
+
+  Widget _tagManagementRow(
+    Tag tag,
+    List<Folder> folders, {
+    required int depth,
+  }) {
+    return _ManagementRow(
+      icon: _isTagHidden(tag.id) ? Icons.visibility_off_outlined : Icons.circle,
+      iconColor: _isTagHidden(tag.id)
+          ? AppTheme.muted
+          : _colorFromHex(tag.color),
+      title: tag.name,
+      depth: depth,
+      dragItem: _MetadataDragItem.tag(tag.id),
+      onAccept: (item) => _moveMetadataBeforeTag(item, tag, folders),
+      onTap: () => _openTagTasks(tag),
+      onEdit: () => _editTag(tag, folders),
+      editTooltip: '태그 편집',
+    );
+  }
+
+  bool _isRootTag(Tag tag, Set<String> folderIds) {
+    final folderId = widget.settings.tagFolderIds[tag.id];
+    return folderId == null || !folderIds.contains(folderId);
+  }
+
+  List<Tag> _tagsInFolder(String folderId, List<Tag> tags) {
+    final folderTags = tags
+        .where((tag) => widget.settings.tagFolderIds[tag.id] == folderId)
+        .where((tag) => _showHiddenMetadata || !_isTagHidden(tag.id))
+        .toList(growable: false);
+    folderTags.sort(_compareMetadataTags);
+    return folderTags;
+  }
+
+  int _compareMetadataTags(Tag a, Tag b) {
+    final orderA = widget.settings.tagSortOrders[a.id];
+    final orderB = widget.settings.tagSortOrders[b.id];
+    if (orderA != null && orderB != null && orderA != orderB) {
+      return orderA.compareTo(orderB);
+    }
+    if (orderA != null && orderB == null) {
+      return -1;
+    }
+    if (orderA == null && orderB != null) {
+      return 1;
+    }
+    return a.name.compareTo(b.name);
+  }
+
+  int _compareMetadataFolders(Folder a, Folder b) {
+    final order = a.sortOrder.compareTo(b.sortOrder);
+    if (order != 0) {
+      return order;
+    }
+    return a.name.compareTo(b.name);
+  }
+
+  void _toggleFolderExpanded(String folderId) {
+    setState(() {
+      if (!_expandedFolderIds.remove(folderId)) {
+        _expandedFolderIds.add(folderId);
+      }
+    });
+  }
+
+  bool _isTagHidden(String tagId) {
+    return widget.settings.hiddenTagIds.contains(tagId);
+  }
+
+  bool _isFolderHidden(String folderId) {
+    return widget.settings.hiddenFolderIds.contains(folderId);
+  }
+
+  Future<void> _setFolderHidden(String folderId, bool isHidden) {
+    final hiddenIds = {...widget.settings.hiddenFolderIds};
+    if (isHidden) {
+      hiddenIds.add(folderId);
+    } else {
+      hiddenIds.remove(folderId);
+    }
+    return widget.onSettingsChanged(
+      widget.settings.copyWith(hiddenFolderIds: hiddenIds),
+    );
+  }
+
+  Future<void> _setTagFolder(String tagId, String? folderId) {
+    final tagFolderIds = {...widget.settings.tagFolderIds};
+    if (folderId == null) {
+      tagFolderIds.remove(tagId);
+    } else {
+      tagFolderIds[tagId] = folderId;
+    }
+    return widget.onSettingsChanged(
+      widget.settings.copyWith(tagFolderIds: tagFolderIds),
+    );
+  }
+
+  Future<void> _moveMetadataToRoot(
+    _MetadataDragItem item,
+    List<Folder> folders,
+  ) async {
+    if (item.type == _MetadataDragType.tag) {
+      await _setTagFolder(item.id, null);
+      return;
+    }
+
+    final folder = await widget.folderRepository.getFolderById(item.id);
+    if (folder == null || folder.parentFolderId == null) {
+      return;
+    }
+    await widget.folderRepository.updateFolder(
+      Folder(
+        id: folder.id,
+        name: folder.name,
+        color: folder.color,
+        icon: folder.icon,
+        parentFolderId: null,
+        sortOrder: _nextFolderSortOrder(null, folders),
+        createdAt: folder.createdAt,
+        updatedAt: DateTime.now(),
+      ),
+    );
+    if (mounted) {
+      _refreshMetadata();
+    }
+  }
+
+  Future<void> _moveMetadataToFolder(
+    _MetadataDragItem item,
+    Folder targetFolder,
+    List<Folder> folders,
+  ) async {
+    if (item.type == _MetadataDragType.tag) {
+      await _setTagFolder(item.id, targetFolder.id);
+      return;
+    }
+
+    if (item.id == targetFolder.id ||
+        _isFolderDescendant(targetFolder.id, item.id, folders)) {
+      return;
+    }
+    final folder = folders.where((folder) => folder.id == item.id).firstOrNull;
+    if (folder == null) {
+      return;
+    }
+    if (folder.parentFolderId == targetFolder.id) {
+      return;
+    }
+    await widget.folderRepository.updateFolder(
+      Folder(
+        id: folder.id,
+        name: folder.name,
+        color: folder.color,
+        icon: folder.icon,
+        parentFolderId: targetFolder.id,
+        sortOrder: _nextFolderSortOrder(targetFolder.id, folders),
+        createdAt: folder.createdAt,
+        updatedAt: DateTime.now(),
+      ),
+    );
+    if (mounted) {
+      _expandedFolderIds.add(targetFolder.id);
+      _refreshMetadata();
+    }
+  }
+
+  Future<void> _moveMetadataBeforeFolder(
+    _MetadataDragItem item,
+    Folder targetFolder,
+    List<Folder> folders,
+  ) async {
+    if (item.type != _MetadataDragType.folder || item.id == targetFolder.id) {
+      return;
+    }
+    final folder = folders.where((folder) => folder.id == item.id).firstOrNull;
+    if (folder == null ||
+        _isFolderDescendant(targetFolder.id, item.id, folders)) {
+      return;
+    }
+    if (folder.parentFolderId != targetFolder.parentFolderId) {
+      final updatedFolder = Folder(
+        id: folder.id,
+        name: folder.name,
+        color: folder.color,
+        icon: folder.icon,
+        parentFolderId: targetFolder.parentFolderId,
+        sortOrder: targetFolder.sortOrder,
+        createdAt: folder.createdAt,
+        updatedAt: DateTime.now(),
+      );
+      await widget.folderRepository.updateFolder(updatedFolder);
+      final updatedFolders = [
+        for (final candidate in folders)
+          candidate.id == updatedFolder.id ? updatedFolder : candidate,
+      ];
+      await _moveFolderBeforeFolder(
+        updatedFolder,
+        targetFolder,
+        updatedFolders,
+      );
+      return;
+    }
+    await _moveFolderBeforeFolder(folder, targetFolder, folders);
+  }
+
+  Future<void> _moveFolderBeforeFolder(
+    Folder movedFolder,
+    Folder targetFolder,
+    List<Folder> folders,
+  ) async {
+    final siblings =
+        folders
+            .where(
+              (folder) => folder.parentFolderId == targetFolder.parentFolderId,
+            )
+            .toList(growable: false)
+          ..sort(_compareMetadataFolders);
+    final orderedIds = siblings
+        .map((folder) => folder.id)
+        .where((id) => id != movedFolder.id)
+        .toList(growable: true);
+    final targetIndex = orderedIds.indexOf(targetFolder.id);
+    orderedIds.insert(
+      targetIndex < 0 ? orderedIds.length : targetIndex,
+      movedFolder.id,
+    );
+    await widget.folderRepository.updateFolderOrder(orderedIds);
+    if (mounted) {
+      _refreshMetadata();
+    }
+  }
+
+  int _nextFolderSortOrder(
+    String? parentFolderId,
+    List<Folder> folders, {
+    int fallback = 0,
+  }) {
+    final siblings = folders
+        .where((folder) => folder.parentFolderId == parentFolderId)
+        .toList(growable: false);
+    if (siblings.isEmpty) {
+      return fallback;
+    }
+    return siblings
+            .map((folder) => folder.sortOrder)
+            .reduce((a, b) => a > b ? a : b) +
+        1;
+  }
+
+  Future<void> _moveMetadataBeforeTag(
+    _MetadataDragItem item,
+    Tag targetTag,
+    List<Folder> folders,
+  ) async {
+    if (item.type != _MetadataDragType.tag || item.id == targetTag.id) {
+      return;
+    }
+    final targetFolderId = widget.settings.tagFolderIds[targetTag.id];
+    final tagFolderIds = {...widget.settings.tagFolderIds};
+    if (targetFolderId == null) {
+      tagFolderIds.remove(item.id);
+    } else {
+      tagFolderIds[item.id] = targetFolderId;
+    }
+
+    final scopeTags = await widget.tagRepository.getTags();
+    final folderIds = folders.map((folder) => folder.id).toSet();
+    final sameScopeTags =
+        scopeTags
+            .where((tag) {
+              final folderId = tagFolderIds[tag.id];
+              final isRoot = folderId == null || !folderIds.contains(folderId);
+              final targetIsRoot =
+                  targetFolderId == null || !folderIds.contains(targetFolderId);
+              return targetIsRoot ? isRoot : folderId == targetFolderId;
+            })
+            .toList(growable: false)
+          ..sort(_compareMetadataTags);
+
+    final orderedIds = sameScopeTags
+        .map((tag) => tag.id)
+        .where((id) => id != item.id)
+        .toList(growable: true);
+    final targetIndex = orderedIds.indexOf(targetTag.id);
+    orderedIds.insert(
+      targetIndex < 0 ? orderedIds.length : targetIndex,
+      item.id,
+    );
+
+    final tagSortOrders = {...widget.settings.tagSortOrders};
+    for (var index = 0; index < orderedIds.length; index++) {
+      tagSortOrders[orderedIds[index]] = index;
+    }
+
+    await widget.onSettingsChanged(
+      widget.settings.copyWith(
+        tagFolderIds: tagFolderIds,
+        tagSortOrders: tagSortOrders,
+      ),
+    );
+  }
+
+  bool _isFolderDescendant(
+    String candidateId,
+    String ancestorId,
+    List<Folder> folders,
+  ) {
+    var current = folders
+        .where((folder) => folder.id == candidateId)
+        .firstOrNull;
+    while (current?.parentFolderId != null) {
+      if (current!.parentFolderId == ancestorId) {
+        return true;
+      }
+      current = folders
+          .where((folder) => folder.id == current!.parentFolderId)
+          .firstOrNull;
+    }
+    return false;
+  }
+
+  Future<void> _createTag(List<Folder> folders) async {
+    final result = await showDialog<_TagFormResult>(
+      context: context,
+      builder: (_) => _TagEditDialog(folders: folders),
+    );
+    if (result == null || !mounted) {
+      return;
+    }
+
+    final now = DateTime.now();
+    final tag = await widget.tagRepository.createTag(
+      Tag(
+        id: 'tag_${now.microsecondsSinceEpoch}',
+        name: result.name,
+        color: result.color,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    await _setTagFolder(tag.id, result.folderId);
+    if (!mounted) {
+      return;
+    }
+    _refreshMetadata();
+    _showSnackBar(context, '태그를 추가했습니다.');
+  }
+
+  Future<void> _editTag(Tag tag, List<Folder> folders) async {
+    final result = await showDialog<_TagFormResult>(
+      context: context,
+      builder: (_) => _TagEditDialog(
+        tag: tag,
+        folders: folders,
+        selectedFolderId: widget.settings.tagFolderIds[tag.id],
+        isHidden: _isTagHidden(tag.id),
+      ),
+    );
+    if (result == null || !mounted) {
+      return;
+    }
+
+    if (result.deleteRequested) {
+      final confirmed = await _confirmDelete(
+        title: '태그 삭제',
+        message: '태그를 삭제해도 작업은 삭제되지 않고, 연결만 해제됩니다.',
+      );
+      if (!confirmed || !mounted) {
+        return;
+      }
+      await widget.tagRepository.deleteTag(tag.id);
+      final hiddenIds = {...widget.settings.hiddenTagIds}..remove(tag.id);
+      final tagFolderIds = {...widget.settings.tagFolderIds}..remove(tag.id);
+      final tagSortOrders = {...widget.settings.tagSortOrders}..remove(tag.id);
+      await widget.onSettingsChanged(
+        widget.settings.copyWith(
+          hiddenTagIds: hiddenIds,
+          tagFolderIds: tagFolderIds,
+          tagSortOrders: tagSortOrders,
+        ),
+      );
+      if (!mounted) {
+        return;
+      }
+      _refreshMetadata();
+      _showSnackBar(context, '태그를 삭제했습니다.');
+      return;
+    }
+
+    final now = DateTime.now();
+    await widget.tagRepository.updateTag(
+      Tag(
+        id: tag.id,
+        name: result.name,
+        color: result.color,
+        createdAt: tag.createdAt,
+        updatedAt: now,
+      ),
+    );
+    final hiddenIds = {...widget.settings.hiddenTagIds};
+    if (result.isHidden) {
+      hiddenIds.add(tag.id);
+    } else {
+      hiddenIds.remove(tag.id);
+    }
+    final tagFolderIds = {...widget.settings.tagFolderIds};
+    if (result.folderId == null) {
+      tagFolderIds.remove(tag.id);
+    } else {
+      tagFolderIds[tag.id] = result.folderId!;
+    }
+    await widget.onSettingsChanged(
+      widget.settings.copyWith(
+        hiddenTagIds: hiddenIds,
+        tagFolderIds: tagFolderIds,
+      ),
+    );
+    if (!mounted) {
+      return;
+    }
+    _refreshMetadata();
+    _showSnackBar(context, '태그를 수정했습니다.');
+  }
+
+  Future<void> _createFolder(List<Folder> folders) async {
+    final result = await showDialog<_FolderFormResult>(
+      context: context,
+      builder: (_) => _FolderEditDialog(folders: folders),
+    );
+    if (result == null || !mounted) {
+      return;
+    }
+
+    final now = DateTime.now();
+    await widget.folderRepository.createFolder(
+      Folder(
+        id: 'folder_${now.microsecondsSinceEpoch}',
+        name: result.name,
+        color: result.color,
+        icon: 'folder',
+        parentFolderId: result.parentFolderId,
+        sortOrder: _nextFolderSortOrder(result.parentFolderId, folders),
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    if (!mounted) {
+      return;
+    }
+    _refreshMetadata();
+    _showSnackBar(context, '폴더를 추가했습니다.');
+  }
+
+  Future<void> _editFolder(Folder folder, List<Folder> folders) async {
+    final result = await showDialog<_FolderFormResult>(
+      context: context,
+      builder: (_) => _FolderEditDialog(
+        folder: folder,
+        folders: folders,
+        isHidden: _isFolderHidden(folder.id),
+      ),
+    );
+    if (result == null || !mounted) {
+      return;
+    }
+
+    if (result.deleteRequested) {
+      final confirmed = await _confirmDelete(
+        title: '폴더 삭제',
+        message: '폴더를 삭제해도 작업은 삭제되지 않고, 연결만 해제됩니다.',
+      );
+      if (!confirmed || !mounted) {
+        return;
+      }
+      await widget.folderRepository.deleteFolder(folder.id);
+      await _setFolderHidden(folder.id, false);
+      if (!mounted) {
+        return;
+      }
+      _refreshMetadata();
+      _showSnackBar(context, '폴더를 삭제했습니다.');
+      return;
+    }
+
+    final now = DateTime.now();
+    await widget.folderRepository.updateFolder(
+      Folder(
+        id: folder.id,
+        name: result.name,
+        color: result.color,
+        icon: folder.icon ?? 'folder',
+        parentFolderId: result.parentFolderId,
+        sortOrder: result.parentFolderId == folder.parentFolderId
+            ? folder.sortOrder
+            : _nextFolderSortOrder(result.parentFolderId, folders),
+        createdAt: folder.createdAt,
+        updatedAt: now,
+      ),
+    );
+    await _setFolderHidden(folder.id, result.isHidden);
+    if (!mounted) {
+      return;
+    }
+    _refreshMetadata();
+    _showSnackBar(context, '폴더를 수정했습니다.');
+  }
+
+  Future<bool> _confirmDelete({
+    required String title,
+    required String message,
+  }) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('취소'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('삭제'),
+            ),
+          ],
+        );
+      },
+    );
+    return confirmed ?? false;
+  }
+}
+
+class _MetadataTaskListScreen extends StatefulWidget {
+  const _MetadataTaskListScreen({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.iconColor,
+    required this.tasks,
+    required this.onOpenTaskDetail,
+    this.reloadTasks,
+    this.taskFilter,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color iconColor;
+  final List<Task> tasks;
+  final Future<void> Function(Task task) onOpenTaskDetail;
+  final Future<List<Task>> Function()? reloadTasks;
+  final bool Function(Task task)? taskFilter;
+
+  @override
+  State<_MetadataTaskListScreen> createState() =>
+      _MetadataTaskListScreenState();
+}
+
+class _MetadataTaskListScreenState extends State<_MetadataTaskListScreen> {
+  late List<Task> _tasks;
+
+  @override
+  void initState() {
+    super.initState();
+    _tasks = widget.tasks;
+  }
+
+  Future<void> _openTaskDetail(Task task) async {
+    await widget.onOpenTaskDetail(task);
+    final reloadTasks = widget.reloadTasks;
+    if (reloadTasks == null) {
+      return;
+    }
+
+    final latestTasks = await reloadTasks();
+    if (!mounted) {
+      return;
+    }
+    final filter = widget.taskFilter;
+    setState(() {
+      _tasks = filter == null
+          ? latestTasks
+          : latestTasks.where(filter).toList(growable: false);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sortedTasks = List<Task>.of(_tasks)..sort(_compareMetadataTasks);
+
+    return Scaffold(
+      appBar: AppBar(title: Text(widget.title)),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: widget.iconColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(widget.icon, color: widget.iconColor),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.subtitle,
+                        style: const TextStyle(
+                          color: AppTheme.muted,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${sortedTasks.length}개 작업',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            if (sortedTasks.isEmpty)
+              const _EmptyBlock(message: '작업 없음')
+            else
+              Card(
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    for (var i = 0; i < sortedTasks.length; i++) ...[
+                      _MetadataTaskTile(
+                        task: sortedTasks[i],
+                        onTap: () => _openTaskDetail(sortedTasks[i]),
+                      ),
+                      if (i != sortedTasks.length - 1)
+                        const Divider(height: 1, indent: 16),
+                    ],
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MetadataTaskTile extends StatelessWidget {
+  const _MetadataTaskTile({required this.task, required this.onTap});
+
+  final Task task;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isCompleted = task.status == TaskStatus.completed;
+    return ListTile(
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      title: Text(
+        task.title,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: isCompleted ? AppTheme.muted : AppTheme.ink,
+          fontWeight: FontWeight.w900,
+          decoration: isCompleted ? TextDecoration.lineThrough : null,
+        ),
+      ),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              if (task.dueDate != null) ...[
+                _DueChip(task: task),
+                const SizedBox(width: 6),
+              ],
+              _ColoredChip(
+                label: isCompleted ? '완료' : '미완료',
+                color: isCompleted ? AppTheme.successGreen : AppTheme.muted,
+              ),
+              const SizedBox(width: 6),
+              _OriginChip(origin: task.origin),
+            ],
+          ),
+        ),
+      ),
+      trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.muted),
+    );
+  }
+}
+
+class _DeletedTasksManagementScreen extends StatefulWidget {
+  const _DeletedTasksManagementScreen({
+    required this.tasks,
+    required this.onRestoreTask,
+    required this.onDeletePermanently,
+  });
+
+  final List<Task> tasks;
+  final Future<void> Function(Task task) onRestoreTask;
+  final Future<void> Function(Task task) onDeletePermanently;
+
+  @override
+  State<_DeletedTasksManagementScreen> createState() =>
+      _DeletedTasksManagementScreenState();
+}
+
+class _DeletedTasksManagementScreenState
+    extends State<_DeletedTasksManagementScreen> {
+  late List<Task> _tasks;
+  final Set<String> _busyTaskIds = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _tasks = List<Task>.of(widget.tasks)..sort(_compareDeletedTasks);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('삭제된 작업')),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppTheme.dangerRed.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.delete_outline_rounded,
+                    color: AppTheme.dangerRed,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '삭제한 작업',
+                        style: TextStyle(
+                          color: AppTheme.muted,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${_tasks.length}개 작업',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            if (_tasks.isEmpty)
+              const _EmptyBlock(message: '삭제된 작업이 없습니다.')
+            else
+              Card(
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    for (var i = 0; i < _tasks.length; i++) ...[
+                      _DeletedManagementTaskTile(
+                        task: _tasks[i],
+                        isBusy: _busyTaskIds.contains(_tasks[i].id),
+                        onRestore: () => _restoreTask(_tasks[i]),
+                        onDeletePermanently: () =>
+                            _confirmDeletePermanently(_tasks[i]),
+                      ),
+                      if (i != _tasks.length - 1)
+                        const Divider(height: 1, indent: 16),
+                    ],
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _restoreTask(Task task) async {
+    if (_busyTaskIds.contains(task.id)) {
+      return;
+    }
+    setState(() {
+      _busyTaskIds.add(task.id);
+    });
+
+    try {
+      await widget.onRestoreTask(task);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _tasks.removeWhere((item) => item.id == task.id);
+        _busyTaskIds.remove(task.id);
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _busyTaskIds.remove(task.id);
+      });
+      _showSnackBar(context, '작업 복구에 실패했습니다.');
+    }
+  }
+
+  Future<void> _confirmDeletePermanently(Task task) async {
+    if (_busyTaskIds.contains(task.id)) {
+      return;
+    }
+
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('영구 삭제'),
+        content: Text('"${task.title}"을 완전히 삭제할까요? 이 작업은 되돌릴 수 없습니다.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('영구 삭제'),
+          ),
+        ],
+      ),
+    );
+    if (shouldDelete == true) {
+      await _deletePermanently(task);
+    }
+  }
+
+  Future<void> _deletePermanently(Task task) async {
+    setState(() {
+      _busyTaskIds.add(task.id);
+    });
+
+    try {
+      await widget.onDeletePermanently(task);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _tasks.removeWhere((item) => item.id == task.id);
+        _busyTaskIds.remove(task.id);
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _busyTaskIds.remove(task.id);
+      });
+      _showSnackBar(context, '작업 영구 삭제에 실패했습니다.');
+    }
+  }
+}
+
+class _DeletedManagementTaskTile extends StatelessWidget {
+  const _DeletedManagementTaskTile({
+    required this.task,
+    required this.isBusy,
+    required this.onRestore,
+    required this.onDeletePermanently,
+  });
+
+  final Task task;
+  final bool isBusy;
+  final VoidCallback onRestore;
+  final VoidCallback onDeletePermanently;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            task.title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.w900, height: 1.3),
+          ),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                if (task.dueDate != null) ...[
+                  _DueChip(task: task),
+                  const SizedBox(width: 6),
+                ],
+                _OriginChip(origin: task.origin),
+                if (task.deletedAt != null) ...[
+                  const SizedBox(width: 6),
+                  _NeutralChip(label: '삭제 ${_shortDateLabel(task.deletedAt!)}'),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton.icon(
+                onPressed: isBusy ? null : onRestore,
+                icon: const Icon(Icons.restore_rounded, size: 18),
+                label: const Text('복구'),
+              ),
+              const SizedBox(width: 8),
+              TextButton.icon(
+                onPressed: isBusy ? null : onDeletePermanently,
+                icon: const Icon(Icons.delete_forever_outlined, size: 18),
+                label: const Text('영구 삭제'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ExcludedEcampusTasksManagementScreen extends StatefulWidget {
+  const _ExcludedEcampusTasksManagementScreen({
+    required this.tasks,
+    required this.onAllowSync,
+  });
+
+  final List<Task> tasks;
+  final Future<void> Function(Task task) onAllowSync;
+
+  @override
+  State<_ExcludedEcampusTasksManagementScreen> createState() =>
+      _ExcludedEcampusTasksManagementScreenState();
+}
+
+class _ExcludedEcampusTasksManagementScreenState
+    extends State<_ExcludedEcampusTasksManagementScreen> {
+  late List<Task> _tasks;
+  final Set<String> _busyTaskIds = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _tasks = List<Task>.of(widget.tasks)..sort(_compareCreatedAt);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('제외된 e-campus 항목')),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppTheme.warningOrange.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.block_rounded,
+                    color: AppTheme.warningOrange,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '동기화 제외',
+                        style: TextStyle(
+                          color: AppTheme.muted,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${_tasks.length}개 항목',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              '허용하면 즉시 할 일로 복구하지 않고, 다음 e-campus 동기화부터 다시 가져올 수 있습니다.',
+              style: TextStyle(color: AppTheme.muted, height: 1.4),
+            ),
+            const SizedBox(height: 20),
+            if (_tasks.isEmpty)
+              const _EmptyBlock(message: '제외된 e-campus 항목이 없습니다.')
+            else
+              Card(
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    for (var i = 0; i < _tasks.length; i++) ...[
+                      _ExcludedEcampusTaskTile(
+                        task: _tasks[i],
+                        isBusy: _busyTaskIds.contains(_tasks[i].id),
+                        onAllowSync: () => _allowSync(_tasks[i]),
+                      ),
+                      if (i != _tasks.length - 1)
+                        const Divider(height: 1, indent: 16),
+                    ],
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _allowSync(Task task) async {
+    if (_busyTaskIds.contains(task.id)) {
+      return;
+    }
+    setState(() {
+      _busyTaskIds.add(task.id);
+    });
+
+    try {
+      await widget.onAllowSync(task);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _tasks.removeWhere((item) => item.id == task.id);
+        _busyTaskIds.remove(task.id);
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _busyTaskIds.remove(task.id);
+      });
+      _showSnackBar(context, '제외 해제에 실패했습니다.');
+    }
+  }
+}
+
+class _ExcludedEcampusTaskTile extends StatelessWidget {
+  const _ExcludedEcampusTaskTile({
+    required this.task,
+    required this.isBusy,
+    required this.onAllowSync,
+  });
+
+  final Task task;
+  final bool isBusy;
+  final VoidCallback onAllowSync;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            task.title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.w900, height: 1.3),
+          ),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                if (task.dueDate != null) ...[
+                  _DueChip(task: task),
+                  const SizedBox(width: 6),
+                ],
+                const _ColoredChip(
+                  label: '동기화 제외',
+                  color: AppTheme.warningOrange,
+                ),
+                if (task.ecampus?.sourceCourse != null) ...[
+                  const SizedBox(width: 6),
+                  _NeutralChip(label: task.ecampus!.sourceCourse!),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: isBusy ? null : onAllowSync,
+              icon: const Icon(Icons.sync_rounded, size: 18),
+              label: const Text('다시 가져오기 허용'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SettingsPage extends StatefulWidget {
+  const _SettingsPage({
+    required this.settingsRepository,
+    required this.ecampusSession,
+    required this.lastEcampusSyncedAt,
+    required this.onSettingsChanged,
+    required this.onOpenSync,
+    required this.onClearEcampusSession,
+    required this.localNotificationService,
+  });
+
+  final SettingsRepository settingsRepository;
+  final EcampusSession? ecampusSession;
+  final DateTime? lastEcampusSyncedAt;
+  final VoidCallback onSettingsChanged;
+  final Future<void> Function() onOpenSync;
+  final Future<void> Function() onClearEcampusSession;
+  final LocalNotificationService localNotificationService;
+
+  @override
+  State<_SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<_SettingsPage> {
+  late Future<AppSettings> _settingsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _settingsFuture = widget.settingsRepository.getSettings();
+  }
+
+  Future<void> _saveSettings(AppSettings settings) async {
+    final saved = await widget.settingsRepository.saveSettings(settings);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _settingsFuture = Future.value(saved);
+    });
+    widget.onSettingsChanged();
+  }
+
+  Future<void> _setDefaultNotificationEnabled(
+    AppSettings settings,
+    bool enabled,
+  ) async {
+    if (enabled) {
+      await widget.localNotificationService.requestPermission();
+    }
+    await _saveSettings(settings.copyWith(defaultNotificationEnabled: enabled));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<AppSettings>(
+      future: _settingsFuture,
+      builder: (context, snapshot) {
+        final settings =
+            snapshot.data ??
+            const AppSettings(
+              autoSyncEnabled: false,
+              saveEcampusAccount: false,
+              defaultNotificationEnabled: true,
+              defaultNotificationDays: 60,
+              defaultNotificationTime: 'relative',
+              urgentDueDays: 3,
+            );
+        final isLoading =
+            snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData;
+        final session = widget.ecampusSession;
+
+        return SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 96),
+            children: [
+              _PageTitle(title: '설정'),
+              const SizedBox(height: 28),
+              _SettingsSection(
+                title: 'e-campus 연동',
+                children: [
+                  _SettingsActionRow(
+                    icon: Icons.sync_rounded,
+                    title: 'e-campus 동기화',
+                    subtitle: 'WebView 로그인 후 todo를 가져옵니다.',
+                    onTap: () => unawaited(widget.onOpenSync()),
+                  ),
+                  _SettingsInfoRow(
+                    icon: Icons.lock_outline_rounded,
+                    title: '로그인 세션',
+                    value: session?.hasSessionCookie == true ? '로그인됨' : '없음',
+                    subtitle: session == null
+                        ? '아이디와 비밀번호는 저장하지 않습니다.'
+                        : '생성 ${_dateTimeLabel(session.createdAt)}',
+                  ),
+                  _SettingsInfoRow(
+                    icon: Icons.schedule_rounded,
+                    title: '마지막 동기화',
+                    value: widget.lastEcampusSyncedAt == null
+                        ? '없음'
+                        : _dateTimeLabel(widget.lastEcampusSyncedAt!),
+                    subtitle: '가져온 e-campus 항목 기준',
+                  ),
+                  _SettingsActionRow(
+                    icon: Icons.cleaning_services_outlined,
+                    title: '세션/쿠키 정리',
+                    subtitle: '이 기기의 e-campus 로그인 정보를 삭제합니다.',
+                    onTap: () => unawaited(widget.onClearEcampusSession()),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              _SettingsSection(
+                title: '알림',
+                children: [
+                  _SettingsSwitchRow(
+                    icon: Icons.notifications_rounded,
+                    title: '기본 알림',
+                    value: settings.defaultNotificationEnabled,
+                    subtitle: settings.defaultNotificationEnabled
+                        ? _notificationOffsetLabel(
+                            settings.defaultNotificationDays,
+                          )
+                        : '꺼짐',
+                    onChanged: isLoading
+                        ? null
+                        : (value) =>
+                              _setDefaultNotificationEnabled(settings, value),
+                  ),
+                  if (settings.defaultNotificationEnabled) ...[
+                    _SettingsInfoRow(
+                      icon: Icons.access_time_rounded,
+                      title: '알림 시점',
+                      value: _notificationOffsetLabel(
+                        settings.defaultNotificationDays,
+                      ),
+                      onTap: isLoading
+                          ? null
+                          : () => _pickDefaultNotificationOffset(settings),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 24),
+              _SettingsSection(
+                title: '홈 표시',
+                children: [
+                  _SettingsInfoRow(
+                    icon: Icons.access_time_rounded,
+                    title: '마감 임박 기준',
+                    value: '${settings.urgentDueDays}일 이내',
+                    onTap: isLoading
+                        ? null
+                        : () => _pickUrgentDueDays(settings),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _pickDefaultNotificationOffset(AppSettings settings) async {
+    final minutes = await _pickNotificationOffsetMinutes(
+      title: '알림 시점',
+      selected: settings.defaultNotificationDays,
+    );
+    if (minutes != null) {
+      await _saveSettings(
+        settings.copyWith(
+          defaultNotificationDays: minutes,
+          defaultNotificationTime: 'relative',
+        ),
+      );
+    }
+  }
+
+  Future<void> _pickUrgentDueDays(AppSettings settings) async {
+    final days = await _pickDaySlider(
+      title: '마감 임박 기준',
+      selected: settings.urgentDueDays,
+      min: 1,
+      max: 14,
+      labelBuilder: (days) => '$days일 이내',
+    );
+    if (days != null) {
+      await _saveSettings(settings.copyWith(urgentDueDays: days));
+    }
+  }
+
+  Future<int?> _pickNotificationOffsetMinutes({
+    required String title,
+    required int selected,
+  }) {
+    var current = _closestNotificationOffset(selected);
+    return showModalBottomSheet<int>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          return SafeArea(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.sizeOf(context).height * 0.8,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView(
+                      padding: EdgeInsets.zero,
+                      children: [
+                        for (final option in _notificationOffsetOptions)
+                          ListTile(
+                            onTap: () {
+                              setSheetState(() {
+                                current = option;
+                              });
+                            },
+                            title: Text(_notificationOffsetLabel(option)),
+                            trailing: current == option
+                                ? const Icon(Icons.check_rounded)
+                                : null,
+                          ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: () => Navigator.of(context).pop(current),
+                        child: const Text('적용'),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<int?> _pickDaySlider({
+    required String title,
+    required int selected,
+    required int min,
+    required int max,
+    required String Function(int days) labelBuilder,
+  }) {
+    var current = selected.clamp(min, max);
+    return showModalBottomSheet<int>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Center(
+                    child: _ColoredChip(
+                      label: labelBuilder(current),
+                      color: AppTheme.primaryBlue,
+                    ),
+                  ),
+                  Slider(
+                    value: current.toDouble(),
+                    min: min.toDouble(),
+                    max: max.toDouble(),
+                    divisions: max - min,
+                    label: labelBuilder(current),
+                    onChanged: (value) {
+                      setSheetState(() {
+                        current = value.round();
+                      });
+                    },
+                  ),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () => Navigator.of(context).pop(current),
+                      child: const Text('적용'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _SummaryCard extends StatelessWidget {
+  const _SummaryCard({required this.items});
+
+  final List<_SummaryItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final topItems = items.take(2).toList(growable: false);
+    final bottomItems = items.skip(2).take(2).toList(growable: false);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Column(
+          children: [
+            _SummaryRow(items: topItems),
+            const Divider(height: 1, color: AppTheme.line),
+            _SummaryRow(items: bottomItems),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SummaryRow extends StatelessWidget {
+  const _SummaryRow({required this.items});
+
+  final List<_SummaryItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 58,
+      child: Row(
+        children: [
+          for (var i = 0; i < items.length; i++) ...[
+            Expanded(child: _SummaryCell(item: items[i])),
+            if (i != items.length - 1)
+              const SizedBox(
+                height: 34,
+                child: VerticalDivider(width: 1, color: AppTheme.line),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryCell extends StatelessWidget {
+  const _SummaryCell({required this.item});
+
+  final _SummaryItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(item.icon, size: 16, color: item.color),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  item.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppTheme.muted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    height: 1.1,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          item.value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: item.color,
+            fontSize: 22,
+            fontWeight: FontWeight.w900,
+            height: 1.05,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SummaryItem {
+  const _SummaryItem({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+}
+
+class _HomeTagSection extends StatelessWidget {
+  const _HomeTagSection({
+    required this.tags,
+    required this.selectedTagId,
+    required this.selectedTasks,
+    required this.onTagChanged,
+    required this.onToggleTask,
+    required this.onDeleteTask,
+    required this.onOpenTaskDetail,
+  });
+
+  final List<Tag> tags;
+  final String? selectedTagId;
+  final List<Task> selectedTasks;
+  final ValueChanged<String?> onTagChanged;
+  final ValueChanged<Task> onToggleTask;
+  final ValueChanged<Task> onDeleteTask;
+  final ValueChanged<Task> onOpenTaskDetail;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionHeader(title: '선택 태그', count: selectedTasks.length),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<String?>(
+          initialValue: selectedTagId,
+          decoration: const InputDecoration(
+            isDense: true,
+            labelText: '태그',
+            prefixIcon: Icon(Icons.sell_outlined),
+          ),
+          items: [
+            const DropdownMenuItem<String?>(
+              value: null,
+              child: Text('태그 선택 안 함'),
+            ),
+            for (final tag in tags)
+              DropdownMenuItem<String?>(
+                value: tag.id,
+                child: Text(tag.name, overflow: TextOverflow.ellipsis),
+              ),
+          ],
+          onChanged: onTagChanged,
+        ),
+        const SizedBox(height: 12),
+        if (selectedTagId == null)
+          const _EmptyBlock(message: '태그를 선택하면 관련 할 일을 볼 수 있습니다.')
+        else if (selectedTasks.isEmpty)
+          const _EmptyBlock(message: '선택한 태그의 할 일이 없습니다.')
+        else
+          _HomeTaskSectionCard(
+            tasks: selectedTasks.take(4).toList(growable: false),
+            onToggleTask: onToggleTask,
+            onDeleteTask: onDeleteTask,
+            onOpenTaskDetail: onOpenTaskDetail,
+          ),
+      ],
+    );
+  }
+}
+
+class _HomeTaskSectionCard extends StatelessWidget {
+  const _HomeTaskSectionCard({
+    required this.tasks,
+    required this.onToggleTask,
+    required this.onDeleteTask,
+    required this.onOpenTaskDetail,
+    this.showToggle = true,
+  });
+
+  final List<Task> tasks;
+  final ValueChanged<Task> onToggleTask;
+  final ValueChanged<Task> onDeleteTask;
+  final ValueChanged<Task> onOpenTaskDetail;
+  final bool showToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (var i = 0; i < tasks.length; i++) ...[
+            _HomeTaskListTile(
+              task: tasks[i],
+              onToggle: () => onToggleTask(tasks[i]),
+              onDelete: () => onDeleteTask(tasks[i]),
+              onOpenDetail: () => onOpenTaskDetail(tasks[i]),
+              showToggle: showToggle,
+            ),
+            if (i != tasks.length - 1) const Divider(height: 1),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _HomeTaskListTile extends StatelessWidget {
+  const _HomeTaskListTile({
+    required this.task,
+    required this.onToggle,
+    required this.onDelete,
+    required this.onOpenDetail,
+    required this.showToggle,
+  });
+
+  final Task task;
+  final VoidCallback onToggle;
+  final VoidCallback onDelete;
+  final VoidCallback onOpenDetail;
+  final bool showToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final isOverdue = task.dueDate != null && _isOverdue(task.dueDate!);
+
+    return InkWell(
+      onTap: onOpenDetail,
+      child: Stack(
+        children: [
+          if (isOverdue)
+            Positioned.fill(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Container(width: 3, color: AppTheme.dangerRed),
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+            child: Row(
+              children: [
+                if (showToggle) ...[
+                  _StatusCheckbox(task: task, onTap: onToggle),
+                  const SizedBox(width: 10),
+                ],
+                Expanded(
+                  child: Text(
+                    task.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppTheme.ink,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      height: 1.2,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox.square(
+                  dimension: 32,
+                  child: IconButton(
+                    onPressed: onDelete,
+                    icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                    color: AppTheme.muted,
+                    tooltip: '삭제',
+                    padding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TaskListTile extends StatelessWidget {
+  const _TaskListTile({
+    required this.task,
+    required this.onToggle,
+    required this.onDelete,
+    required this.onOpenDetail,
+    required this.subTaskRepository,
+    required this.metadata,
+  });
+
+  final Task task;
+  final VoidCallback onToggle;
+  final VoidCallback onDelete;
+  final VoidCallback onOpenDetail;
+  final SubTaskRepository subTaskRepository;
+  final _TaskMetadataLookup metadata;
+
+  @override
+  Widget build(BuildContext context) {
+    final isCompleted = task.status == TaskStatus.completed;
+    final isOverdue = task.dueDate != null && _isOverdue(task.dueDate!);
+
+    return InkWell(
+      onTap: onOpenDetail,
+      child: Stack(
+        children: [
+          if (isOverdue && !isCompleted)
+            Positioned.fill(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Container(width: 4, color: AppTheme.dangerRed),
+              ),
+            ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              14,
+              isCompleted ? 10 : 14,
+              14,
+              isCompleted ? 10 : 14,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Column(
+                  children: [
+                    _StatusCheckbox(task: task, onTap: onToggle),
+                    if (!isCompleted) ...[
+                      const SizedBox(height: 14),
+                      _PriorityDot(priority: task.priority),
+                    ],
+                  ],
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              task.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: isCompleted
+                                    ? AppTheme.muted
+                                    : AppTheme.ink,
+                                fontSize: isCompleted ? 15 : 16,
+                                fontWeight: FontWeight.w900,
+                                height: 1.3,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          SizedBox.square(
+                            dimension: 32,
+                            child: IconButton(
+                              onPressed: onDelete,
+                              icon: const Icon(
+                                Icons.delete_outline_rounded,
+                                size: 20,
+                              ),
+                              color: AppTheme.muted,
+                              tooltip: '삭제',
+                              padding: EdgeInsets.zero,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (!isCompleted) ...[
+                        const SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.only(right: 2),
+                          child: _TaskMetaStrip(task: task, metadata: metadata),
+                        ),
+                        const SizedBox(height: 2),
+                        _SubTaskProgressView(
+                          taskId: task.id,
+                          subTaskRepository: subTaskRepository,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TaskSectionCard extends StatefulWidget {
+  const _TaskSectionCard({
+    required this.tasks,
+    required this.onToggleTask,
+    required this.onDeleteTask,
+    required this.onOpenTaskDetail,
+    required this.subTaskRepository,
+    required this.onReorderTasks,
+    required this.enableReorder,
+    required this.metadata,
+  });
+
+  final List<Task> tasks;
+  final ValueChanged<Task> onToggleTask;
+  final ValueChanged<Task> onDeleteTask;
+  final ValueChanged<Task> onOpenTaskDetail;
+  final SubTaskRepository subTaskRepository;
+  final Future<void> Function(List<Task> orderedTasks) onReorderTasks;
+  final bool enableReorder;
+  final _TaskMetadataLookup metadata;
+
+  @override
+  State<_TaskSectionCard> createState() => _TaskSectionCardState();
+}
+
+class _TaskSectionCardState extends State<_TaskSectionCard> {
+  late List<Task> _orderedTasks;
+
+  @override
+  void initState() {
+    super.initState();
+    _orderedTasks = List<Task>.of(widget.tasks);
+  }
+
+  @override
+  void didUpdateWidget(_TaskSectionCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final previousSignature = _taskListSignature(_orderedTasks);
+    final nextSignature = _taskListSignature(widget.tasks);
+
+    if (previousSignature != nextSignature) {
+      _orderedTasks = List<Task>.of(widget.tasks);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: ReorderableListView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        buildDefaultDragHandles: false,
+        itemCount: _orderedTasks.length,
+        onReorder: (oldIndex, newIndex) async {
+          final previousTasks = List<Task>.of(_orderedTasks);
+          final reorderedTasks = List<Task>.of(_orderedTasks);
+          final adjustedNewIndex = newIndex > oldIndex
+              ? newIndex - 1
+              : newIndex;
+          final movedTask = reorderedTasks.removeAt(oldIndex);
+          reorderedTasks.insert(adjustedNewIndex, movedTask);
+          final reorderedTasksWithOrder = _tasksWithSequentialSortOrder(
+            reorderedTasks,
+          );
+
+          setState(() {
+            _orderedTasks = reorderedTasksWithOrder;
+          });
+
+          try {
+            await widget.onReorderTasks(reorderedTasksWithOrder);
+          } catch (_) {
+            if (!context.mounted) {
+              return;
+            }
+            setState(() {
+              _orderedTasks = previousTasks;
+            });
+            _showSnackBar(context, '순서 저장에 실패했습니다.');
+          }
+        },
+        itemBuilder: (context, index) {
+          final task = _orderedTasks[index];
+          return Column(
+            key: ValueKey(task.id),
+            children: [
+              _MaybeReorderableTask(
+                index: index,
+                enabled: widget.enableReorder,
+                child: _TaskListTile(
+                  task: task,
+                  onToggle: () => widget.onToggleTask(task),
+                  onDelete: () => widget.onDeleteTask(task),
+                  onOpenDetail: () => widget.onOpenTaskDetail(task),
+                  subTaskRepository: widget.subTaskRepository,
+                  metadata: widget.metadata,
+                ),
+              ),
+              if (index != _orderedTasks.length - 1) const Divider(height: 1),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _MaybeReorderableTask extends StatelessWidget {
+  const _MaybeReorderableTask({
+    required this.index,
+    required this.enabled,
+    required this.child,
+  });
+
+  final int index;
+  final bool enabled;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!enabled) {
+      return child;
+    }
+
+    return ReorderableDelayedDragStartListener(index: index, child: child);
+  }
+}
+
+class _DeletedTaskList extends StatelessWidget {
+  const _DeletedTaskList({required this.tasks, required this.onRestoreTask});
+
+  final List<Task> tasks;
+  final ValueChanged<Task> onRestoreTask;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (var i = 0; i < tasks.length; i++) ...[
+            _DeletedTaskTile(
+              task: tasks[i],
+              onRestore: () => onRestoreTask(tasks[i]),
+            ),
+            if (i != tasks.length - 1) const Divider(height: 1, indent: 16),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _CompletedBulkDeleteButton extends StatelessWidget {
+  const _CompletedBulkDeleteButton({
+    required this.count,
+    required this.onPressed,
+  });
+
+  final int count;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: TextButton.icon(
+        onPressed: count == 0 ? null : onPressed,
+        icon: const Icon(Icons.delete_sweep_outlined, size: 18),
+        label: Text('완료 전체 삭제 ($count)'),
+      ),
+    );
+  }
+}
+
+class _DeletedTaskTile extends StatelessWidget {
+  const _DeletedTaskTile({required this.task, required this.onRestore});
+
+  final Task task;
+  final VoidCallback onRestore;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: Text(
+        task.title,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontWeight: FontWeight.w900),
+      ),
+      subtitle: Text(
+        task.ecampus?.sourceCourse ??
+            (task.origin == TaskOrigin.ecampus ? 'e-campus' : '개인'),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      trailing: TextButton.icon(
+        onPressed: onRestore,
+        icon: const Icon(Icons.restore_rounded, size: 18),
+        label: const Text('복구'),
+      ),
+    );
+  }
+}
+
+class _StatusCheckbox extends StatelessWidget {
+  const _StatusCheckbox({required this.task, required this.onTap});
+
+  final Task task;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final checked = task.status == TaskStatus.completed;
+    final disabled =
+        task.status == TaskStatus.deleted || task.status == TaskStatus.excluded;
+
+    return InkWell(
+      onTap: disabled ? null : onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          color: checked ? AppTheme.successGreen : Colors.white,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: disabled
+                ? AppTheme.line
+                : checked
+                ? AppTheme.successGreen
+                : AppTheme.muted,
+            width: 1.6,
+          ),
+        ),
+        child: checked
+            ? const Icon(Icons.check_rounded, color: Colors.white, size: 20)
+            : null,
+      ),
+    );
+  }
+}
+
+class _TaskMetaStrip extends StatelessWidget {
+  const _TaskMetaStrip({required this.task, required this.metadata});
+
+  final Task task;
+  final _TaskMetadataLookup metadata;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          if (task.dueDate != null) ...[
+            _DueChip(task: task),
+            const SizedBox(width: 6),
+          ],
+          _OriginChip(origin: task.origin),
+          if (metadata.tagsFor(task).isNotEmpty) ...[
+            const SizedBox(width: 6),
+            metadata_picker.TaskMetadataChips(
+              tags: metadata.tagsFor(task),
+              folders: const [],
+            ),
+          ],
+          if (task.ecampus?.sourceCourse != null) ...[
+            const SizedBox(width: 6),
+            _NeutralChip(label: task.ecampus!.sourceCourse!),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _DueChip extends StatelessWidget {
+  const _DueChip({required this.task});
+
+  final Task task;
+
+  @override
+  Widget build(BuildContext context) {
+    final dueDate = task.dueDate;
+    if (dueDate == null) {
+      return const SizedBox.shrink();
+    }
+
+    return _ColoredChip(
+      label: _isOverdue(dueDate)
+          ? '마감 지남 · ${_shortDateLabel(dueDate)}'
+          : _dueLabel(dueDate),
+      color: _isOverdue(dueDate)
+          ? AppTheme.dangerRed
+          : _isDueToday(task)
+          ? AppTheme.successGreen
+          : AppTheme.warningOrange,
+    );
+  }
+}
+
+class _OriginChip extends StatelessWidget {
+  const _OriginChip({required this.origin});
+
+  final TaskOrigin origin;
+
+  @override
+  Widget build(BuildContext context) {
+    final isEcampus = origin == TaskOrigin.ecampus;
+    return _ColoredChip(
+      label: isEcampus ? 'e-campus' : '개인',
+      color: AppTheme.primaryBlue,
+    );
+  }
+}
+
+class _ColoredChip extends StatelessWidget {
+  const _ColoredChip({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.09),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class _NeutralChip extends StatelessWidget {
+  const _NeutralChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3F4F6),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: AppTheme.muted,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class _SubTaskProgressView extends StatelessWidget {
+  const _SubTaskProgressView({
+    required this.taskId,
+    required this.subTaskRepository,
+  });
+
+  final String taskId;
+  final SubTaskRepository subTaskRepository;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<SubTask>>(
+      future: subTaskRepository.getSubTasks(taskId),
+      builder: (context, snapshot) {
+        final progress = calculateSubTaskProgress(
+          snapshot.data ?? const <SubTask>[],
+        );
+        if (!progress.hasSubTasks) {
+          return const SizedBox.shrink();
+        }
+
+        return Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '서브 작업 ${progress.doneCount}/${progress.totalCount} 완료',
+                      style: const TextStyle(
+                        color: AppTheme.muted,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '${progress.percent}%',
+                    style: const TextStyle(
+                      color: AppTheme.muted,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 5),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: progress.ratio,
+                  minHeight: 4,
+                  backgroundColor: AppTheme.line,
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                    AppTheme.successGreen,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _PriorityDot extends StatelessWidget {
+  const _PriorityDot({required this.priority});
+
+  final TaskPriority? priority;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = switch (priority) {
+      TaskPriority.high => AppTheme.dangerRed,
+      TaskPriority.medium => AppTheme.warningOrange,
+      TaskPriority.low => AppTheme.successGreen,
+      null => AppTheme.primaryBlue,
+    };
+
+    return Container(
+      width: 12,
+      height: 12,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.title, required this.count});
+
+  final String title;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(
+          title,
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+        ),
+        const SizedBox(width: 8),
+        if (count > 0)
+          _ColoredChip(label: '$count', color: AppTheme.successGreen),
+      ],
+    );
+  }
+}
+
+class _ListSectionHeader extends StatelessWidget {
+  const _ListSectionHeader({required this.title, required this.count});
+
+  final String title;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(
+          title,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+        ),
+        const SizedBox(width: 8),
+        _ColoredChip(label: '$count', color: AppTheme.successGreen),
+        const Expanded(child: Divider(indent: 12)),
+      ],
+    );
+  }
+}
+
+class _SortSelector extends StatelessWidget {
+  const _SortSelector({required this.value, required this.onChanged});
+
+  final _TaskSort value;
+  final ValueChanged<_TaskSort> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return MenuAnchor(
+      builder: (context, controller, child) {
+        return IconButton(
+          onPressed: () {
+            if (controller.isOpen) {
+              controller.close();
+            } else {
+              controller.open();
+            }
+          },
+          icon: const Icon(Icons.sort_rounded),
+          tooltip: '정렬: ${value.label}',
+        );
+      },
+      menuChildren: [
+        for (final sort in _TaskSort.values)
+          MenuItemButton(
+            onPressed: () => onChanged(sort),
+            leadingIcon: value == sort
+                ? const Icon(Icons.check_rounded)
+                : const SizedBox.square(dimension: 24),
+            child: Text(sort.label),
+          ),
+      ],
+    );
+  }
+}
+
+class _FilterSelector extends StatelessWidget {
+  const _FilterSelector({required this.value, required this.onChanged});
+
+  final _TaskFilter value;
+  final ValueChanged<_TaskFilter> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return MenuAnchor(
+      builder: (context, controller, child) {
+        return IconButton(
+          onPressed: () {
+            if (controller.isOpen) {
+              controller.close();
+            } else {
+              controller.open();
+            }
+          },
+          icon: const Icon(Icons.filter_list_rounded),
+          tooltip: '보기: ${value.label}',
+        );
+      },
+      menuChildren: [
+        for (final filter in _TaskFilter.values)
+          MenuItemButton(
+            onPressed: () => onChanged(filter),
+            leadingIcon: value == filter
+                ? const Icon(Icons.check_rounded)
+                : const SizedBox.square(dimension: 24),
+            child: Text(filter.label),
+          ),
+      ],
+    );
+  }
+}
+
+class _IconAction extends StatelessWidget {
+  const _IconAction({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+    required this.tooltip,
+  });
+
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+  final String tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppTheme.line),
+          ),
+          child: Icon(icon, color: color),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyBlock extends StatelessWidget {
+  const _EmptyBlock({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Center(
+          child: Text(message, style: const TextStyle(color: AppTheme.muted)),
+        ),
+      ),
+    );
+  }
+}
+
+class _LoadingBlock extends StatelessWidget {
+  const _LoadingBlock();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Card(
+      child: Padding(
+        padding: EdgeInsets.all(24),
+        child: Center(child: CircularProgressIndicator()),
+      ),
+    );
+  }
+}
+
+class _PageTitle extends StatelessWidget {
+  const _PageTitle({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      textAlign: TextAlign.center,
+      style: Theme.of(
+        context,
+      ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
+    );
+  }
+}
+
+class _ManagementSection extends StatelessWidget {
+  const _ManagementSection({
+    required this.title,
+    required this.children,
+    this.action,
+  });
+
+  final String title;
+  final List<Widget> children;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            ?action,
+          ],
+        ),
+        const SizedBox(height: 12),
+        Card(
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: [
+              for (var i = 0; i < children.length; i++) ...[
+                children[i],
+                if (i != children.length - 1)
+                  const Divider(height: 1, indent: 58),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ManagementRow extends StatelessWidget {
+  const _ManagementRow({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    this.trailing,
+    this.depth = 0,
+    this.dragItem,
+    this.onAccept,
+    this.onTap,
+    this.onEdit,
+    this.editTooltip,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String? trailing;
+  final int depth;
+  final _MetadataDragItem? dragItem;
+  final ValueChanged<_MetadataDragItem>? onAccept;
+  final VoidCallback? onTap;
+  final VoidCallback? onEdit;
+  final String? editTooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final baseRow = ListTile(
+      onTap: onTap,
+      contentPadding: EdgeInsets.only(left: 16 + depth * 20, right: 8),
+      leading: Icon(icon, color: iconColor),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+      trailing: onEdit != null
+          ? IconButton(
+              onPressed: onEdit,
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: editTooltip ?? '편집',
+            )
+          : trailing == null
+          ? const Icon(Icons.chevron_right_rounded, color: AppTheme.muted)
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  trailing!,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    color: AppTheme.muted,
+                  ),
+                ),
+                if (onTap != null) ...[
+                  const SizedBox(width: 4),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppTheme.muted,
+                  ),
+                ],
+              ],
+            ),
+    );
+    Widget row = baseRow;
+    final accept = onAccept;
+    if (accept != null) {
+      row = DragTarget<_MetadataDragItem>(
+        onWillAcceptWithDetails: (details) => details.data != dragItem,
+        onAcceptWithDetails: (details) => accept(details.data),
+        builder: (context, candidateData, rejectedData) {
+          return ColoredBox(
+            color: candidateData.isEmpty
+                ? Colors.transparent
+                : AppTheme.primaryBlue.withValues(alpha: 0.08),
+            child: baseRow,
+          );
+        },
+      );
+    }
+    final item = dragItem;
+    if (item == null) {
+      return row;
+    }
+    return LongPressDraggable<_MetadataDragItem>(
+      data: item,
+      feedback: Material(
+        elevation: 4,
+        borderRadius: BorderRadius.circular(8),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 240),
+          child: baseRow,
+        ),
+      ),
+      childWhenDragging: Opacity(opacity: 0.35, child: row),
+      child: row,
+    );
+  }
+}
+
+class _MetadataRootDropTarget extends StatelessWidget {
+  const _MetadataRootDropTarget({required this.onAccept, required this.child});
+
+  final ValueChanged<_MetadataDragItem> onAccept;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return DragTarget<_MetadataDragItem>(
+      onAcceptWithDetails: (details) => onAccept(details.data),
+      builder: (context, candidateData, rejectedData) {
+        return ColoredBox(
+          color: candidateData.isEmpty
+              ? Colors.transparent
+              : AppTheme.primaryBlue.withValues(alpha: 0.06),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 12),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+}
+
+enum _MetadataDragType { tag, folder }
+
+class _MetadataDragItem {
+  const _MetadataDragItem._({required this.type, required this.id});
+
+  const _MetadataDragItem.tag(String id)
+    : this._(type: _MetadataDragType.tag, id: id);
+
+  const _MetadataDragItem.folder(String id)
+    : this._(type: _MetadataDragType.folder, id: id);
+
+  final _MetadataDragType type;
+  final String id;
+}
+
+class _FolderTreeRow extends StatelessWidget {
+  const _FolderTreeRow({
+    required this.folder,
+    required this.depth,
+    required this.isHidden,
+    required this.childCount,
+    required this.isExpanded,
+    required this.onEdit,
+    this.dragItem,
+    this.onAcceptBefore,
+    this.onAcceptInside,
+    this.onTap,
+  });
+
+  final Folder folder;
+  final int depth;
+  final bool isHidden;
+  final int childCount;
+  final bool isExpanded;
+  final VoidCallback onEdit;
+  final _MetadataDragItem? dragItem;
+  final ValueChanged<_MetadataDragItem>? onAcceptBefore;
+  final ValueChanged<_MetadataDragItem>? onAcceptInside;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _colorFromHex(folder.color, fallback: AppTheme.successGreen);
+    final baseRow = ListTile(
+      onTap: onTap,
+      contentPadding: EdgeInsets.only(left: 16 + depth * 20, right: 8),
+      leading: Icon(
+        isHidden ? Icons.visibility_off_outlined : Icons.folder_rounded,
+        color: isHidden ? AppTheme.muted : color,
+      ),
+      title: Text(
+        folder.name,
+        style: const TextStyle(fontWeight: FontWeight.w800),
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (childCount > 0)
+            Icon(
+              isExpanded
+                  ? Icons.keyboard_arrow_up_rounded
+                  : Icons.keyboard_arrow_down_rounded,
+              color: AppTheme.muted,
+            ),
+          IconButton(
+            onPressed: onEdit,
+            icon: const Icon(Icons.edit_outlined),
+            tooltip: '폴더 편집',
+          ),
+        ],
+      ),
+    );
+    Widget row = baseRow;
+    final acceptInside = onAcceptInside;
+    if (acceptInside != null) {
+      row = DragTarget<_MetadataDragItem>(
+        onWillAcceptWithDetails: (details) => details.data != dragItem,
+        onAcceptWithDetails: (details) => acceptInside(details.data),
+        builder: (context, candidateData, rejectedData) {
+          return ColoredBox(
+            color: candidateData.isEmpty
+                ? Colors.transparent
+                : AppTheme.successGreen.withValues(alpha: 0.08),
+            child: baseRow,
+          );
+        },
+      );
+    }
+    final acceptBefore = onAcceptBefore;
+    if (acceptBefore != null) {
+      row = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          DragTarget<_MetadataDragItem>(
+            onWillAcceptWithDetails: (details) =>
+                details.data.type == _MetadataDragType.folder &&
+                details.data != dragItem,
+            onAcceptWithDetails: (details) => acceptBefore(details.data),
+            builder: (context, candidateData, rejectedData) {
+              return ColoredBox(
+                color: candidateData.isEmpty
+                    ? Colors.transparent
+                    : AppTheme.primaryBlue.withValues(alpha: 0.18),
+                child: const SizedBox(height: 8),
+              );
+            },
+          ),
+          row,
+        ],
+      );
+    }
+    final item = dragItem;
+    if (item == null) {
+      return row;
+    }
+    return LongPressDraggable<_MetadataDragItem>(
+      data: item,
+      feedback: Material(
+        elevation: 4,
+        borderRadius: BorderRadius.circular(8),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 240),
+          child: baseRow,
+        ),
+      ),
+      childWhenDragging: Opacity(opacity: 0.35, child: row),
+      child: row,
+    );
+  }
+}
+
+class _ManagementLoadingRow extends StatelessWidget {
+  const _ManagementLoadingRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ListTile(
+      leading: SizedBox(
+        width: 24,
+        height: 24,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      ),
+      title: Text('불러오는 중'),
+    );
+  }
+}
+
+class _ManagementEmptyRow extends StatelessWidget {
+  const _ManagementEmptyRow({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: const Icon(Icons.info_outline_rounded, color: AppTheme.muted),
+      title: Text(
+        message,
+        style: const TextStyle(
+          color: AppTheme.muted,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _TagEditDialog extends StatefulWidget {
+  const _TagEditDialog({
+    required this.folders,
+    this.tag,
+    this.selectedFolderId,
+    this.isHidden = false,
+  });
+
+  final Tag? tag;
+  final List<Folder> folders;
+  final String? selectedFolderId;
+  final bool isHidden;
+
+  @override
+  State<_TagEditDialog> createState() => _TagEditDialogState();
+}
+
+class _TagEditDialogState extends State<_TagEditDialog> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _colorController;
+  late bool _isHidden;
+  String? _selectedFolderId;
+  String? _errorText;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.tag?.name ?? '');
+    _colorController = TextEditingController(
+      text: _normalizeHex(widget.tag?.color ?? '#3B82F6'),
+    );
+    _isHidden = widget.isHidden;
+    _selectedFolderId = widget.selectedFolderId;
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _colorController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedColor = _colorFromHex(_colorController.text);
+    return AlertDialog(
+      title: Text(widget.tag == null ? '태그 추가' : '태그 수정'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(labelText: '태그 이름'),
+              textInputAction: TextInputAction.next,
+            ),
+            const SizedBox(height: 16),
+            const Text('색상', style: TextStyle(fontWeight: FontWeight.w900)),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                for (final color in _metadataColorOptions)
+                  _ColorOptionButton(
+                    color: _colorFromHex(color),
+                    selected: _normalizeHex(_colorController.text) == color,
+                    onTap: () {
+                      setState(() {
+                        _colorController.text = color;
+                        _errorText = null;
+                      });
+                    },
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _colorController,
+              decoration: InputDecoration(
+                labelText: '직접 입력',
+                hintText: '#3B82F6',
+                errorText: _errorText,
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: selectedColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const SizedBox(width: 18, height: 18),
+                  ),
+                ),
+              ),
+              onChanged: (_) {
+                if (_errorText != null) {
+                  setState(() => _errorText = null);
+                }
+              },
+            ),
+            if (widget.folders.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String?>(
+                initialValue: _selectedFolderId,
+                decoration: const InputDecoration(labelText: '폴더'),
+                items: [
+                  const DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('루트'),
+                  ),
+                  for (final folder in _folderCandidates)
+                    DropdownMenuItem<String?>(
+                      value: folder.id,
+                      child: Text(folder.name),
+                    ),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    _selectedFolderId = value;
+                  });
+                },
+              ),
+            ],
+            if (widget.tag != null) ...[
+              const SizedBox(height: 12),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('숨김'),
+                value: _isHidden,
+                onChanged: (value) {
+                  setState(() {
+                    _isHidden = value;
+                  });
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        if (widget.tag != null)
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(_TagFormResult.delete()),
+            child: const Text('삭제'),
+          ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('취소'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('저장')),
+      ],
+    );
+  }
+
+  void _submit() {
+    final name = _nameController.text.trim();
+    final color = _normalizeHex(_colorController.text);
+    if (name.isEmpty) {
+      setState(() => _errorText = null);
+      _showSnackBar(context, '이름을 입력해주세요.');
+      return;
+    }
+    if (!_isValidHexColor(color)) {
+      setState(() => _errorText = '#RRGGBB 형식으로 입력해주세요.');
+      return;
+    }
+    Navigator.of(context).pop(
+      _TagFormResult(
+        name: name,
+        color: color,
+        folderId: _selectedFolderId,
+        isHidden: _isHidden,
+      ),
+    );
+  }
+
+  List<Folder> get _folderCandidates {
+    final folders = List<Folder>.of(widget.folders)
+      ..sort((a, b) => a.name.compareTo(b.name));
+    return folders;
+  }
+}
+
+class _FolderEditDialog extends StatefulWidget {
+  const _FolderEditDialog({
+    required this.folders,
+    this.folder,
+    this.isHidden = false,
+  });
+
+  final Folder? folder;
+  final List<Folder> folders;
+  final bool isHidden;
+
+  @override
+  State<_FolderEditDialog> createState() => _FolderEditDialogState();
+}
+
+class _FolderEditDialogState extends State<_FolderEditDialog> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _colorController;
+  late bool _isHidden;
+  String? _parentFolderId;
+  String? _errorText;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.folder?.name ?? '');
+    _colorController = TextEditingController(
+      text: _normalizeHex(widget.folder?.color ?? '#22C55E'),
+    );
+    _parentFolderId = widget.folder?.parentFolderId;
+    _isHidden = widget.isHidden;
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _colorController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedColor = _colorFromHex(
+      _colorController.text,
+      fallback: AppTheme.successGreen,
+    );
+    return AlertDialog(
+      title: Text(widget.folder == null ? '폴더 추가' : '폴더 수정'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(labelText: '폴더 이름'),
+              textInputAction: TextInputAction.next,
+            ),
+            const SizedBox(height: 16),
+            const Text('색상', style: TextStyle(fontWeight: FontWeight.w900)),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                for (final color in _metadataColorOptions)
+                  _ColorOptionButton(
+                    color: _colorFromHex(color),
+                    selected: _normalizeHex(_colorController.text) == color,
+                    onTap: () {
+                      setState(() {
+                        _colorController.text = color;
+                        _errorText = null;
+                      });
+                    },
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _colorController,
+              decoration: InputDecoration(
+                labelText: '직접 입력',
+                hintText: '#22C55E',
+                errorText: _errorText,
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Icon(
+                    Icons.folder_rounded,
+                    color: selectedColor,
+                    size: 22,
+                  ),
+                ),
+              ),
+              onChanged: (_) {
+                if (_errorText != null) {
+                  setState(() => _errorText = null);
+                }
+              },
+            ),
+            if (_parentCandidates.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String?>(
+                initialValue: _parentFolderId,
+                decoration: const InputDecoration(labelText: '상위 폴더'),
+                items: [
+                  const DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('없음'),
+                  ),
+                  for (final folder in _parentCandidates)
+                    DropdownMenuItem<String?>(
+                      value: folder.id,
+                      child: Text(folder.name),
+                    ),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    _parentFolderId = value;
+                  });
+                },
+              ),
+            ],
+            if (widget.folder != null) ...[
+              const SizedBox(height: 12),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('숨김'),
+                value: _isHidden,
+                onChanged: (value) {
+                  setState(() {
+                    _isHidden = value;
+                  });
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        if (widget.folder != null)
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(_FolderFormResult.delete());
+            },
+            child: const Text('삭제'),
+          ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('취소'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('저장')),
+      ],
+    );
+  }
+
+  void _submit() {
+    final name = _nameController.text.trim();
+    final color = _normalizeHex(_colorController.text);
+    if (name.isEmpty) {
+      setState(() => _errorText = null);
+      _showSnackBar(context, '이름을 입력해주세요.');
+      return;
+    }
+    if (!_isValidHexColor(color)) {
+      setState(() => _errorText = '#RRGGBB 형식으로 입력해주세요.');
+      return;
+    }
+    Navigator.of(context).pop(
+      _FolderFormResult(
+        name: name,
+        color: color,
+        parentFolderId: _parentFolderId,
+        isHidden: _isHidden,
+      ),
+    );
+  }
+
+  List<Folder> get _parentCandidates {
+    final editingId = widget.folder?.id;
+    return widget.folders
+        .where((folder) => !_isSelfOrDescendant(folder.id, editingId))
+        .toList(growable: false);
+  }
+
+  bool _isSelfOrDescendant(String candidateId, String? editingId) {
+    if (editingId == null) {
+      return false;
+    }
+    if (candidateId == editingId) {
+      return true;
+    }
+
+    var current = widget.folders
+        .where((folder) => folder.id == candidateId)
+        .firstOrNull;
+    while (current?.parentFolderId != null) {
+      if (current!.parentFolderId == editingId) {
+        return true;
+      }
+      current = widget.folders
+          .where((folder) => folder.id == current!.parentFolderId)
+          .firstOrNull;
+    }
+    return false;
+  }
+}
+
+class _ColorOptionButton extends StatelessWidget {
+  const _ColorOptionButton({
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: selected ? AppTheme.ink : Colors.transparent,
+            width: 2,
+          ),
+        ),
+        child: selected
+            ? const Icon(Icons.check_rounded, color: Colors.white, size: 18)
+            : null,
+      ),
+    );
+  }
+}
+
+class _TagFormResult {
+  const _TagFormResult({
+    required this.name,
+    required this.color,
+    this.folderId,
+    this.isHidden = false,
+  }) : deleteRequested = false;
+
+  const _TagFormResult.delete()
+    : name = '',
+      color = '',
+      folderId = null,
+      isHidden = false,
+      deleteRequested = true;
+
+  final String name;
+  final String color;
+  final String? folderId;
+  final bool isHidden;
+  final bool deleteRequested;
+}
+
+class _FolderFormResult {
+  const _FolderFormResult({
+    required this.name,
+    required this.color,
+    this.parentFolderId,
+    this.isHidden = false,
+  }) : deleteRequested = false;
+
+  const _FolderFormResult.delete()
+    : name = '',
+      color = '',
+      parentFolderId = null,
+      isHidden = false,
+      deleteRequested = true;
+
+  final String name;
+  final String color;
+  final String? parentFolderId;
+  final bool isHidden;
+  final bool deleteRequested;
+}
+
+class _SettingsSection extends StatelessWidget {
+  const _SettingsSection({required this.title, required this.children});
+
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+        ),
+        const SizedBox(height: 12),
+        Card(
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: [
+              for (var i = 0; i < children.length; i++) ...[
+                children[i],
+                if (i != children.length - 1)
+                  const Divider(height: 1, indent: 58),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SettingsSwitchRow extends StatelessWidget {
+  const _SettingsSwitchRow({
+    required this.icon,
+    required this.title,
+    required this.value,
+    this.subtitle,
+    this.onChanged,
+  });
+
+  final IconData icon;
+  final String title;
+  final bool value;
+  final String? subtitle;
+  final ValueChanged<bool>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      minLeadingWidth: 28,
+      leading: _SettingsIcon(icon: icon, color: AppTheme.successGreen),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+      subtitle: subtitle == null ? null : Text(subtitle!),
+      trailing: Switch(value: value, onChanged: onChanged),
+    );
+  }
+}
+
+class _SettingsInfoRow extends StatelessWidget {
+  const _SettingsInfoRow({
+    required this.icon,
+    required this.title,
+    required this.value,
+    this.subtitle,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String value;
+  final String? subtitle;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      onTap: onTap,
+      minLeadingWidth: 28,
+      leading: _SettingsIcon(icon: icon, color: AppTheme.primaryBlue),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+      subtitle: subtitle == null
+          ? null
+          : Text(
+              subtitle!,
+              style: const TextStyle(
+                color: AppTheme.muted,
+                fontSize: 12,
+                height: 1.3,
+              ),
+            ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 86),
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppTheme.primaryBlue,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                height: 1.2,
+              ),
+            ),
+          ),
+          if (onTap != null) ...[
+            const SizedBox(width: 4),
+            const Icon(Icons.chevron_right_rounded, color: AppTheme.muted),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SettingsActionRow extends StatelessWidget {
+  const _SettingsActionRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      onTap: onTap,
+      minLeadingWidth: 28,
+      leading: _SettingsIcon(icon: icon, color: AppTheme.primaryBlue),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+      subtitle: Text(subtitle),
+      trailing: const Icon(Icons.chevron_right_rounded),
+    );
+  }
+}
+
+class _SettingsIcon extends StatelessWidget {
+  const _SettingsIcon({required this.icon, required this.color});
+
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 28,
+      height: 28,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Icon(icon, color: color, size: 18),
+    );
+  }
+}
+
+enum _TaskFilter {
+  all('전체'),
+  ecampus('e-campus'),
+  personal('개인'),
+  incomplete('미완료'),
+  completed('완료'),
+  overdue('마감 지남'),
+  deleted('삭제됨');
+
+  const _TaskFilter(this.label);
+
+  final String label;
+}
+
+enum _TaskSort {
+  userOrder('사용자 지정'),
+  dueDate('마감일'),
+  priority('우선순위'),
+  createdAt('생성일');
+
+  const _TaskSort(this.label);
+
+  final String label;
+}
+
+bool _isDueToday(Task task) => isTaskDueToday(task, now: DateTime.now());
+
+bool _isOverdue(DateTime dueDate) {
+  return isDueDateOverdue(dueDate, now: DateTime.now());
+}
+
+int _compareDueDate(Task a, Task b) {
+  final aDueDate = a.dueDate;
+  final bDueDate = b.dueDate;
+  if (aDueDate == null && bDueDate == null) {
+    return a.createdAt.compareTo(b.createdAt);
+  }
+  if (aDueDate == null) {
+    return 1;
+  }
+  if (bDueDate == null) {
+    return -1;
+  }
+  return aDueDate.compareTo(bDueDate);
+}
+
+int Function(Task a, Task b) _compareTasksBySort(_TaskSort sort) {
+  return switch (sort) {
+    _TaskSort.userOrder => _compareUserOrder,
+    _TaskSort.dueDate => _compareDueDate,
+    _TaskSort.priority => _comparePriority,
+    _TaskSort.createdAt => _compareCreatedAt,
+  };
+}
+
+int _compareUserOrder(Task a, Task b) {
+  final order = a.sortOrder.compareTo(b.sortOrder);
+  if (order != 0) {
+    return order;
+  }
+  return a.createdAt.compareTo(b.createdAt);
+}
+
+int _comparePriority(Task a, Task b) {
+  final priority = _priorityRank(
+    b.priority,
+  ).compareTo(_priorityRank(a.priority));
+  if (priority != 0) {
+    return priority;
+  }
+  return _compareDueDate(a, b);
+}
+
+int _compareCreatedAt(Task a, Task b) {
+  return b.createdAt.compareTo(a.createdAt);
+}
+
+int _compareDeletedTasks(Task a, Task b) {
+  final aDeletedAt = a.deletedAt;
+  final bDeletedAt = b.deletedAt;
+  if (aDeletedAt == null && bDeletedAt == null) {
+    return _compareCreatedAt(a, b);
+  }
+  if (aDeletedAt == null) {
+    return 1;
+  }
+  if (bDeletedAt == null) {
+    return -1;
+  }
+  return bDeletedAt.compareTo(aDeletedAt);
+}
+
+int _compareMetadataTasks(Task a, Task b) {
+  final status = _metadataStatusRank(
+    a.status,
+  ).compareTo(_metadataStatusRank(b.status));
+  if (status != 0) {
+    return status;
+  }
+  return _compareDueDate(a, b);
+}
+
+int _metadataStatusRank(TaskStatus status) {
+  return switch (status) {
+    TaskStatus.active => 0,
+    TaskStatus.completed => 1,
+    TaskStatus.deleted => 2,
+    TaskStatus.excluded => 3,
+  };
+}
+
+int _priorityRank(TaskPriority? priority) {
+  return switch (priority) {
+    TaskPriority.high => 3,
+    TaskPriority.medium => 2,
+    TaskPriority.low => 1,
+    null => 0,
+  };
+}
+
+List<Task> _tasksWithSequentialSortOrder(List<Task> tasks) {
+  return [
+    for (var index = 0; index < tasks.length; index++)
+      _copyTaskWithSortOrder(tasks[index], index),
+  ];
+}
+
+Task _copyTaskWithSortOrder(Task task, int sortOrder) {
+  return Task(
+    id: task.id,
+    origin: task.origin,
+    status: task.status,
+    title: task.title,
+    dueDate: task.dueDate,
+    priority: task.priority,
+    memo: task.memo,
+    parentTaskId: task.parentTaskId,
+    tagIds: task.tagIds,
+    folderIds: task.folderIds,
+    ecampus: task.ecampus,
+    sortOrder: sortOrder,
+    createdAt: task.createdAt,
+    updatedAt: task.updatedAt,
+    completedAt: task.completedAt,
+    deletedAt: task.deletedAt,
+  );
+}
+
+String _taskListSignature(List<Task> tasks) {
+  return tasks
+      .map(
+        (task) => [
+          task.id,
+          task.status.name,
+          task.title,
+          task.dueDate?.microsecondsSinceEpoch ?? '',
+          task.priority?.name ?? '',
+          task.sortOrder,
+          task.updatedAt.microsecondsSinceEpoch,
+        ].join(':'),
+      )
+      .join('|');
+}
+
+const _metadataColorOptions = [
+  '#EF4444',
+  '#F97316',
+  '#EAB308',
+  '#22C55E',
+  '#3B82F6',
+  '#8B5CF6',
+  '#6B7280',
+];
+
+const _notificationOffsetOptions = [
+  0,
+  10,
+  20,
+  30,
+  60,
+  180,
+  360,
+  720,
+  1440,
+  4320,
+];
+
+int _closestNotificationOffset(int value) {
+  var closest = _notificationOffsetOptions.first;
+  for (final option in _notificationOffsetOptions) {
+    final currentDistance = (option - value).abs();
+    final closestDistance = (closest - value).abs();
+    if (currentDistance < closestDistance) {
+      closest = option;
+    }
+  }
+  return closest;
+}
+
+String _notificationOffsetLabel(int minutes) {
+  if (minutes == 0) {
+    return '마감 시각';
+  }
+  if (minutes < 60) {
+    return '마감 $minutes분 전';
+  }
+  if (minutes < 24 * 60) {
+    final hours = minutes ~/ 60;
+    return '마감 $hours시간 전';
+  }
+  final days = minutes ~/ (24 * 60);
+  return '마감 $days일 전';
+}
+
+Color _colorFromHex(String? value, {Color fallback = AppTheme.primaryBlue}) {
+  final normalized = _normalizeHex(value);
+  if (!_isValidHexColor(normalized)) {
+    return fallback;
+  }
+  return Color(int.parse('FF${normalized.substring(1)}', radix: 16));
+}
+
+String _normalizeHex(String? value) {
+  final trimmed = value?.trim() ?? '';
+  if (trimmed.isEmpty) {
+    return '';
+  }
+  final withHash = trimmed.startsWith('#') ? trimmed : '#$trimmed';
+  return withHash.toUpperCase();
+}
+
+bool _isValidHexColor(String value) {
+  return RegExp(r'^#[0-9A-F]{6}$').hasMatch(value);
+}
+
+String _todayLabel(DateTime date) {
+  const weekdays = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
+  return '${date.month}월 ${date.day}일 ${weekdays[date.weekday - 1]}';
+}
+
+DateTime? _lastEcampusSyncedAt(List<Task> tasks) {
+  DateTime? latest;
+  for (final task in tasks) {
+    final syncedAt = task.ecampus?.lastSyncedAt;
+    if (syncedAt == null) {
+      continue;
+    }
+    if (latest == null || syncedAt.isAfter(latest)) {
+      latest = syncedAt;
+    }
+  }
+  return latest;
+}
+
+String _dateTimeLabel(DateTime date) {
+  final hour = date.hour.toString().padLeft(2, '0');
+  final minute = date.minute.toString().padLeft(2, '0');
+  return '${date.month}월 ${date.day}일 $hour:$minute';
+}
+
+void _showSnackBar(BuildContext context, String message) {
+  final messenger = ScaffoldMessenger.of(context);
+  messenger
+    ..clearSnackBars()
+    ..showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(milliseconds: 1200),
+      ),
+    );
+}
+
+String _dueLabel(DateTime date) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final dueDay = DateTime(date.year, date.month, date.day);
+  final days = dueDay.difference(today).inDays;
+  final time =
+      '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+
+  if (days == 0) {
+    return date.hour == 0 && date.minute == 0 ? '오늘' : '오늘 $time';
+  }
+  if (days == 1) {
+    return date.hour == 0 && date.minute == 0 ? '내일' : '내일 $time';
+  }
+  return '${date.month}월 ${date.day}일';
+}
+
+String _shortDateLabel(DateTime date) {
+  return '${date.month}월 ${date.day}일';
+}

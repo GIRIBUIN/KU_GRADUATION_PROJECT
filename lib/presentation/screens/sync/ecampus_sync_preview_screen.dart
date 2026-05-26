@@ -39,6 +39,7 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
     _selectedKeys = {
       for (final item in widget.syncResult.importCandidates) _itemKey(item),
     };
+    _hasChanges = widget.syncResult.items.any(_isAutoCompletedItem);
   }
 
   @override
@@ -583,10 +584,17 @@ class _IgnoredItemTile extends StatelessWidget {
     return ListTile(
       leading: const Icon(Icons.remove_circle_outline_rounded),
       title: Text(
-        parsedTask?.title ?? item.errorMessage ?? '항목 없음',
+        parsedTask?.title ??
+            item.existingTask?.title ??
+            item.errorMessage ??
+            '항목 없음',
         style: const TextStyle(fontWeight: FontWeight.w800),
       ),
-      subtitle: Text(parsedTask?.course ?? 'e-campus'),
+      subtitle: Text(
+        parsedTask?.course ??
+            item.existingTask?.ecampus?.sourceCourse ??
+            'e-campus',
+      ),
       trailing: _MiniChip(label: _kindLabel(item.kind), color: AppTheme.muted),
     );
   }
@@ -703,6 +711,12 @@ String _itemKey(SyncItem item) {
       item.existingTask?.id ??
       item.errorMessage ??
       item.kind.name;
+}
+
+bool _isAutoCompletedItem(SyncItem item) {
+  return item.kind == SyncItemKind.completed &&
+      item.parsedTask == null &&
+      item.existingTask != null;
 }
 
 String _kindLabel(SyncItemKind kind) {

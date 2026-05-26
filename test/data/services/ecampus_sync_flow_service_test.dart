@@ -57,6 +57,76 @@ void main() {
       expect(syncService.lastExistingTasks, [activeTask, completedTask]);
     });
 
+    test(
+      'auto-completes active e-campus tasks missing from successful sync when due date is future',
+      () async {
+        final missingFutureTask = _task(
+          id: 'missing-future',
+          sourceKey: 'missing-future',
+          sourceDueDate: DateTime(2026, 5, 8),
+        );
+        final syncedTask = _task(
+          id: 'synced',
+          sourceKey: 'synced',
+          sourceDueDate: DateTime(2026, 5, 8),
+        );
+        taskRepository.tasks.addAll([missingFutureTask, syncedTask]);
+        syncService.resultItems = [
+          SyncItem(
+            kind: SyncItemKind.alreadyImported,
+            parsedTask: _parsedTask(sourceKey: 'synced'),
+            existingTask: syncedTask,
+          ),
+        ];
+
+        final result = await flowService.preview(
+          session: session,
+          syncedAt: syncedAt,
+        );
+
+        expect(taskRepository.updatedStatuses, {
+          'missing-future': TaskStatus.completed,
+        });
+        expect(result.items.last.kind, SyncItemKind.completed);
+        expect(result.items.last.existingTask?.id, 'missing-future');
+      },
+    );
+
+    test(
+      'keeps missing active e-campus tasks unchanged when due date is past or absent',
+      () async {
+        taskRepository.tasks.addAll([
+          _task(
+            id: 'missing-past',
+            sourceKey: 'missing-past',
+            sourceDueDate: DateTime(2026, 5, 6),
+          ),
+          _task(id: 'missing-no-due', sourceKey: 'missing-no-due'),
+        ]);
+
+        await flowService.preview(session: session, syncedAt: syncedAt);
+
+        expect(taskRepository.updatedStatuses, isEmpty);
+      },
+    );
+
+    test('skips missing task auto-completion when sync has errors', () async {
+      taskRepository.tasks.add(
+        _task(
+          id: 'missing-future',
+          sourceKey: 'missing-future',
+          sourceDueDate: DateTime(2026, 5, 8),
+        ),
+      );
+      syncService.resultItems = const [
+        SyncItem(kind: SyncItemKind.error, errorMessage: 'parse failed'),
+      ];
+
+      await flowService.preview(session: session, syncedAt: syncedAt);
+
+      expect(taskRepository.updatedStatuses, isEmpty);
+    });
+
     test('delegates selected import items to apply service', () async {
       final items = [
         SyncItem(kind: SyncItemKind.newItem, parsedTask: _parsedTask()),
@@ -99,9 +169,9 @@ void main() {
   });
 }
 
-ParsedEcampusTask _parsedTask() {
-  return const ParsedEcampusTask(
-    sourceKey: 'course:item:report',
+ParsedEcampusTask _parsedTask({String sourceKey = 'course:item:report'}) {
+  return ParsedEcampusTask(
+    sourceKey: sourceKey,
     title: '자료구조 과제',
     course: '자료구조',
     type: EcampusTaskType.report,
@@ -110,8 +180,11 @@ ParsedEcampusTask _parsedTask() {
 
 Task _task({
   required String id,
+  String? sourceKey,
   TaskOrigin origin = TaskOrigin.ecampus,
   TaskStatus status = TaskStatus.active,
+  DateTime? dueDate,
+  DateTime? sourceDueDate,
 }) {
   final now = DateTime(2026, 5, 7, 9);
 
@@ -120,12 +193,14 @@ Task _task({
     origin: origin,
     status: status,
     title: '자료구조 과제',
+    dueDate: dueDate,
     createdAt: now,
     updatedAt: now,
     ecampus: origin == TaskOrigin.ecampus
         ? EcampusSyncMetadata(
-            sourceKey: 'source-$id',
+            sourceKey: sourceKey ?? 'source-$id',
             sourceTitle: '자료구조 과제',
+            sourceDueDate: sourceDueDate,
             lastSyncedAt: now,
           )
         : null,
@@ -135,6 +210,7 @@ Task _task({
 class _FakeTaskRepository implements TaskRepository {
   final tasks = <Task>[];
   final deletedIds = <String>[];
+  final updatedStatuses = <String, TaskStatus>{};
 
   TaskStatus? lastStatus;
   TaskOrigin? lastOrigin;
@@ -204,7 +280,36 @@ class _FakeTaskRepository implements TaskRepository {
 
   @override
   Future<Task> updateTaskStatus(String id, TaskStatus status) {
-    throw UnimplementedError();
+    updatedStatuses[id] = status;
+    final index = tasks.indexWhere((task) => task.id == id);
+    if (index == -1) {
+      throw StateError('Task not found: $id');
+    }
+
+    final existing = tasks[index];
+    final updatedAt = DateTime(2026, 5, 7, 12);
+    final updated = Task(
+      id: existing.id,
+      origin: existing.origin,
+      status: status,
+      title: existing.title,
+      dueDate: existing.dueDate,
+      priority: existing.priority,
+      memo: existing.memo,
+      parentTaskId: existing.parentTaskId,
+      tagIds: existing.tagIds,
+      folderIds: existing.folderIds,
+      ecampus: existing.ecampus,
+      sortOrder: existing.sortOrder,
+      createdAt: existing.createdAt,
+      updatedAt: updatedAt,
+      completedAt: status == TaskStatus.completed
+          ? updatedAt
+          : existing.completedAt,
+      deletedAt: status == TaskStatus.deleted ? updatedAt : existing.deletedAt,
+    );
+    tasks[index] = updated;
+    return Future.value(updated);
   }
 
   @override
@@ -217,6 +322,7 @@ class _FakeEcampusSyncService implements EcampusSyncService {
   _FakeEcampusSyncService({required this.syncedAt});
 
   final DateTime syncedAt;
+  List<SyncItem> resultItems = const [];
 
   EcampusSession? lastSession;
   List<Task>? lastExistingTasks;
@@ -232,7 +338,7 @@ class _FakeEcampusSyncService implements EcampusSyncService {
     lastExistingTasks = existingTasks;
     lastSyncedAt = syncedAt;
 
-    return SyncResult(items: const [], syncedAt: syncedAt ?? this.syncedAt);
+    return SyncResult(items: resultItems, syncedAt: syncedAt ?? this.syncedAt);
   }
 }
 

@@ -15,6 +15,9 @@
 | `priority` | TaskPriority? | 아니오 | 직접 지정한 우선순위 |
 | `memo` | String? | 아니오 | 메모 |
 | `parentTaskId` | String? | 아니오 | 상위 Task ID |
+| `tagIds` | List<String> | 아니오 | 연결된 태그 ID 목록 |
+| `folderIds` | List<String> | 아니오 | 연결된 폴더 ID 목록 |
+| `sortOrder` | Int | 아니오 | 리스트 정렬용 순서 값 |
 | `createdAt` | DateTime | 예 | 생성 시각 |
 | `updatedAt` | DateTime | 예 | 수정 시각 |
 | `completedAt` | DateTime? | 아니오 | 완료 시각 |
@@ -97,6 +100,8 @@ e-campus 작업에만 붙는 원본 추적 정보이다.
 | `name` | String | 예 | 폴더 이름 |
 | `color` | String? | 아니오 | 표시 색상 값 |
 | `icon` | String? | 아니오 | 아이콘 이름 |
+| `parentFolderId` | String? | 아니오 | 상위 폴더 ID (중첩 폴더 지원) |
+| `sortOrder` | Int | 아니오 | 폴더 정렬 순서 |
 | `createdAt` | DateTime | 예 | 생성 시각 |
 | `updatedAt` | DateTime | 예 | 수정 시각 |
 
@@ -110,3 +115,5 @@ e-campus 작업에만 붙는 원본 추적 정보이다.
 | `daysBeforeDue` | Int | 예 | 마감 며칠 전 알림인지 |
 | `notifyTime` | Time | 예 | 알림 시간 |
 | `scheduledAt` | DateTime? | 아니오 | 실제 예약된 알림 시각 |
+
+Note: 현재 코드에서는 `NotificationSetting.daysBeforeDue`가 분(minutes) 단위로 해석됩니다. 문서의 '일(days)' 단위 표현은 코드와 일치하지 않으니 주의하세요.

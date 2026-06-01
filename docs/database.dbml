@@ -1,0 +1,122 @@
+Project ku_task_management {
+  database_type: "SQLite"
+  Note: "Flutter Drift local database. Default database name: ku_task_management. Schema source: lib/data/local/app_database.dart"
+}
+
+Enum task_origin {
+  personal
+  ecampus
+}
+
+Enum task_status {
+  active
+  completed
+  deleted
+  excluded
+}
+
+Enum task_priority {
+  high
+  medium
+  low
+}
+
+Table tasks {
+  id text [pk]
+  origin text [not null, note: "TaskOrigin: personal, ecampus"]
+  status text [not null, note: "TaskStatus: active, completed, deleted, excluded"]
+  title text [not null]
+  due_date datetime
+  priority text [note: "TaskPriority: high, medium, low"]
+  memo text
+  parent_task_id text
+  created_at datetime [not null]
+  updated_at datetime [not null]
+  completed_at datetime
+  deleted_at datetime
+  sort_order integer [not null, default: 0]
+
+  ecampus_source_key text [unique]
+  ecampus_source_title text
+  ecampus_source_due_date datetime
+  ecampus_source_course text
+  ecampus_source_type text [note: "EcampusTaskType: report, project, lecture, quiz, exam, unknown"]
+  ecampus_last_synced_at datetime
+
+  Note: "Unified task table for personal and e-campus tasks."
+}
+
+Table sub_tasks {
+  id text [pk]
+  task_id text [not null, ref: > tasks.id]
+  title text [not null]
+  is_done boolean [not null]
+  created_at datetime [not null]
+  updated_at datetime [not null]
+
+  Note: "Checklist-style child items for a parent task."
+}
+
+Table tags {
+  id text [pk]
+  name text [not null]
+  color text [not null]
+  created_at datetime [not null]
+  updated_at datetime [not null]
+
+  Note: "Tag metadata. No default priority column in current schema."
+}
+
+Table folders {
+  id text [pk]
+  name text [not null]
+  color text
+  icon text
+  parent_folder_id text [ref: > folders.id]
+  sort_order integer [not null, default: 0]
+  created_at datetime [not null]
+  updated_at datetime [not null]
+
+  Note: "Folders support nesting through parent_folder_id."
+}
+
+Table task_tags {
+  task_id text [not null, ref: > tasks.id]
+  tag_id text [not null, ref: > tags.id]
+
+  indexes {
+    (task_id, tag_id) [pk]
+  }
+
+  Note: "Many-to-many relation between tasks and tags."
+}
+
+Table task_folders {
+  task_id text [not null, ref: > tasks.id]
+  folder_id text [not null, ref: > folders.id]
+
+  indexes {
+    (task_id, folder_id) [pk]
+  }
+
+  Note: "Many-to-many relation between tasks and folders."
+}
+
+Table notification_settings {
+  id text [pk]
+  task_id text [not null, ref: > tasks.id]
+  enabled boolean [not null]
+  days_before_due integer [not null, note: "Current implementation interprets this as minutes before due."]
+  notify_time text [not null, note: "String value. Current default uses relative."]
+  scheduled_at datetime
+
+  Note: "One notification setting per task by repository convention."
+}
+
+Table app_settings {
+  key text [pk]
+  value text [not null]
+  updated_at datetime [not null]
+
+  Note: "Key-value app settings. Stores notification defaults, urgent due days, hidden tag/folder ids, tag-folder mapping, tag sort order, e-campus folder id, and legacy autoSync/saveAccount keys."
+}

@@ -14,7 +14,6 @@ import '../../../data/services/ecampus_auth_service.dart';
 import '../../../data/repositories/task_repository.dart';
 import '../../../data/services/home_task_summary.dart';
 import '../../../data/services/http_ecampus_auth_service.dart';
-import '../../../data/services/sub_task_progress.dart';
 import '../../services/in_app_webview_ecampus_cookie_store.dart';
 import '../../services/local_notification_service.dart';
 import '../sync/ecampus_sync_progress_screen.dart';
@@ -484,6 +483,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
                     settings: settings,
                     tagRepository: widget.tagRepository,
                     folderRepository: widget.folderRepository,
+                    subTaskRepository: widget.subTaskRepository,
                     metadataVersion: _metadataVersion,
                     onMetadataChanged: _refreshMetadata,
                     onSettingsChanged: (updatedSettings) async {
@@ -496,6 +496,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
                         _settingsFuture = Future.value(saved);
                       });
                     },
+                    onToggleTask: _toggleTaskCompletion,
+                    onDeleteTask: _deleteTask,
                     onOpenTaskDetail: _openTaskDetail,
                     onRestoreTask: _restoreTask,
                     onAllowExcludedTaskSync: _allowExcludedTaskSync,
@@ -747,7 +749,6 @@ class _HomePageState extends State<_HomePage> {
                 onToggleTask: widget.onToggleTask,
                 onDeleteTask: widget.onDeleteTask,
                 onOpenTaskDetail: widget.onOpenTaskDetail,
-                showToggle: false,
               ),
           ],
         ),
@@ -1042,9 +1043,12 @@ class _ManagementPage extends StatefulWidget {
     required this.settings,
     required this.tagRepository,
     required this.folderRepository,
+    required this.subTaskRepository,
     required this.metadataVersion,
     required this.onMetadataChanged,
     required this.onSettingsChanged,
+    required this.onToggleTask,
+    required this.onDeleteTask,
     required this.onOpenTaskDetail,
     required this.onRestoreTask,
     required this.onAllowExcludedTaskSync,
@@ -1056,9 +1060,12 @@ class _ManagementPage extends StatefulWidget {
   final AppSettings settings;
   final TagRepository tagRepository;
   final FolderRepository folderRepository;
+  final SubTaskRepository subTaskRepository;
   final int metadataVersion;
   final VoidCallback onMetadataChanged;
   final Future<void> Function(AppSettings settings) onSettingsChanged;
+  final Future<void> Function(Task task) onToggleTask;
+  final Future<void> Function(Task task) onDeleteTask;
   final Future<void> Function(Task task) onOpenTaskDetail;
   final Future<void> Function(Task task) onRestoreTask;
   final Future<void> Function(Task task) onAllowExcludedTaskSync;
@@ -1220,8 +1227,11 @@ class _ManagementPageState extends State<_ManagementPage> {
           iconColor: _colorFromHex(tag.color),
           tasks: tasks,
           reloadTasks: widget.loadTasks,
+          subTaskRepository: widget.subTaskRepository,
           taskFilter: (task) =>
               !_isHiddenInMainList(task) && task.tagIds.contains(tag.id),
+          onToggleTask: widget.onToggleTask,
+          onDeleteTask: widget.onDeleteTask,
           onOpenTaskDetail: widget.onOpenTaskDetail,
         ),
       ),
@@ -1880,6 +1890,9 @@ class _MetadataTaskListScreen extends StatefulWidget {
     required this.icon,
     required this.iconColor,
     required this.tasks,
+    required this.subTaskRepository,
+    required this.onToggleTask,
+    required this.onDeleteTask,
     required this.onOpenTaskDetail,
     this.reloadTasks,
     this.taskFilter,
@@ -1890,6 +1903,9 @@ class _MetadataTaskListScreen extends StatefulWidget {
   final IconData icon;
   final Color iconColor;
   final List<Task> tasks;
+  final SubTaskRepository subTaskRepository;
+  final Future<void> Function(Task task) onToggleTask;
+  final Future<void> Function(Task task) onDeleteTask;
   final Future<void> Function(Task task) onOpenTaskDetail;
   final Future<List<Task>> Function()? reloadTasks;
   final bool Function(Task task)? taskFilter;
@@ -1908,13 +1924,11 @@ class _MetadataTaskListScreenState extends State<_MetadataTaskListScreen> {
     _tasks = widget.tasks;
   }
 
-  Future<void> _openTaskDetail(Task task) async {
-    await widget.onOpenTaskDetail(task);
+  Future<void> _reloadTasks() async {
     final reloadTasks = widget.reloadTasks;
     if (reloadTasks == null) {
       return;
     }
-
     final latestTasks = await reloadTasks();
     if (!mounted) {
       return;
@@ -1927,9 +1941,32 @@ class _MetadataTaskListScreenState extends State<_MetadataTaskListScreen> {
     });
   }
 
+  Future<void> _openTaskDetail(Task task) async {
+    await widget.onOpenTaskDetail(task);
+    await _reloadTasks();
+  }
+
+  Future<void> _toggleTask(Task task) async {
+    await widget.onToggleTask(task);
+    await _reloadTasks();
+  }
+
+  Future<void> _deleteTask(Task task) async {
+    setState(() {
+      _tasks.removeWhere((item) => item.id == task.id);
+    });
+    await widget.onDeleteTask(task);
+  }
+
   @override
   Widget build(BuildContext context) {
     final sortedTasks = List<Task>.of(_tasks)..sort(_compareMetadataTasks);
+    final incompleteTasks = sortedTasks
+        .where((task) => task.status == TaskStatus.active)
+        .toList(growable: false);
+    final completedTasks = sortedTasks
+        .where((task) => task.status == TaskStatus.completed)
+        .toList(growable: false);
 
     return Scaffold(
       appBar: AppBar(title: Text(widget.title)),
@@ -1977,22 +2014,33 @@ class _MetadataTaskListScreenState extends State<_MetadataTaskListScreen> {
             const SizedBox(height: 20),
             if (sortedTasks.isEmpty)
               const _EmptyBlock(message: '작업 없음')
-            else
-              Card(
-                clipBehavior: Clip.antiAlias,
-                child: Column(
-                  children: [
-                    for (var i = 0; i < sortedTasks.length; i++) ...[
-                      _MetadataTaskTile(
-                        task: sortedTasks[i],
-                        onTap: () => _openTaskDetail(sortedTasks[i]),
-                      ),
-                      if (i != sortedTasks.length - 1)
-                        const Divider(height: 1, indent: 16),
-                    ],
-                  ],
+            else ...[
+              _ListSectionHeader(title: '미완료', count: incompleteTasks.length),
+              const SizedBox(height: 10),
+              if (incompleteTasks.isEmpty)
+                const _EmptyBlock(message: '미완료 작업이 없습니다.')
+              else
+                _MetadataTaskCard(
+                  tasks: incompleteTasks,
+                  subTaskRepository: widget.subTaskRepository,
+                  onToggleTask: _toggleTask,
+                  onDeleteTask: _deleteTask,
+                  onOpenTaskDetail: _openTaskDetail,
                 ),
-              ),
+              const SizedBox(height: 20),
+              _ListSectionHeader(title: '완료', count: completedTasks.length),
+              const SizedBox(height: 10),
+              if (completedTasks.isEmpty)
+                const _EmptyBlock(message: '완료된 작업이 없습니다.')
+              else
+                _MetadataTaskCard(
+                  tasks: completedTasks,
+                  subTaskRepository: widget.subTaskRepository,
+                  onToggleTask: _toggleTask,
+                  onDeleteTask: _deleteTask,
+                  onOpenTaskDetail: _openTaskDetail,
+                ),
+            ],
           ],
         ),
       ),
@@ -2000,49 +2048,61 @@ class _MetadataTaskListScreenState extends State<_MetadataTaskListScreen> {
   }
 }
 
-class _MetadataTaskTile extends StatelessWidget {
-  const _MetadataTaskTile({required this.task, required this.onTap});
+class _MetadataTaskCard extends StatelessWidget {
+  const _MetadataTaskCard({
+    required this.tasks,
+    required this.subTaskRepository,
+    required this.onToggleTask,
+    required this.onDeleteTask,
+    required this.onOpenTaskDetail,
+  });
 
-  final Task task;
-  final VoidCallback onTap;
+  final List<Task> tasks;
+  final SubTaskRepository subTaskRepository;
+  final Future<void> Function(Task task) onToggleTask;
+  final Future<void> Function(Task task) onDeleteTask;
+  final Future<void> Function(Task task) onOpenTaskDetail;
 
   @override
   Widget build(BuildContext context) {
-    final isCompleted = task.status == TaskStatus.completed;
-    return ListTile(
-      onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      title: Text(
-        task.title,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          color: isCompleted ? AppTheme.muted : AppTheme.ink,
-          fontWeight: FontWeight.w900,
-          decoration: isCompleted ? TextDecoration.lineThrough : null,
-        ),
-      ),
-      subtitle: Padding(
-        padding: const EdgeInsets.only(top: 8),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              if (task.dueDate != null) ...[
-                _DueChip(task: task),
-                const SizedBox(width: 6),
-              ],
-              _ColoredChip(
-                label: isCompleted ? '완료' : '미완료',
-                color: isCompleted ? AppTheme.successGreen : AppTheme.muted,
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      shape: _taskListCardShape,
+      child: Column(
+        children: [
+          for (var i = 0; i < tasks.length; i++) ...[
+            Dismissible(
+              key: ValueKey('metadata_dismiss_${tasks[i].id}'),
+              direction: DismissDirection.horizontal,
+              background: const _TaskSwipeBackground(
+                action: _TaskSwipeAction.edit,
+                alignment: Alignment.centerLeft,
               ),
-              const SizedBox(width: 6),
-              _OriginChip(origin: task.origin),
-            ],
-          ),
-        ),
+              secondaryBackground: const _TaskSwipeBackground(
+                action: _TaskSwipeAction.delete,
+                alignment: Alignment.centerRight,
+              ),
+              confirmDismiss: (direction) async {
+                if (direction == DismissDirection.startToEnd) {
+                  await onOpenTaskDetail(tasks[i]);
+                  return false;
+                }
+                return true;
+              },
+              onDismissed: (_) => onDeleteTask(tasks[i]),
+              child: _TaskListTile(
+                task: tasks[i],
+                onToggle: () => onToggleTask(tasks[i]),
+                onOpenDetail: () => onOpenTaskDetail(tasks[i]),
+                subTaskRepository: subTaskRepository,
+                metadata: const _TaskMetadataLookup.empty(),
+                showMetadata: false,
+              ),
+            ),
+            if (i != tasks.length - 1) const Divider(height: 1),
+          ],
+        ],
       ),
-      trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.muted),
     );
   }
 }
@@ -2994,28 +3054,44 @@ class _HomeTaskSectionCard extends StatelessWidget {
     required this.onToggleTask,
     required this.onDeleteTask,
     required this.onOpenTaskDetail,
-    this.showToggle = true,
   });
 
   final List<Task> tasks;
   final ValueChanged<Task> onToggleTask;
   final ValueChanged<Task> onDeleteTask;
   final ValueChanged<Task> onOpenTaskDetail;
-  final bool showToggle;
 
   @override
   Widget build(BuildContext context) {
     return Card(
       clipBehavior: Clip.antiAlias,
+      shape: _taskListCardShape,
       child: Column(
         children: [
           for (var i = 0; i < tasks.length; i++) ...[
-            _HomeTaskListTile(
-              task: tasks[i],
-              onToggle: () => onToggleTask(tasks[i]),
-              onDelete: () => onDeleteTask(tasks[i]),
-              onOpenDetail: () => onOpenTaskDetail(tasks[i]),
-              showToggle: showToggle,
+            Dismissible(
+              key: ValueKey('home_dismiss_${tasks[i].id}'),
+              direction: DismissDirection.horizontal,
+              background: const _TaskSwipeBackground(
+                action: _TaskSwipeAction.edit,
+                alignment: Alignment.centerLeft,
+              ),
+              secondaryBackground: const _TaskSwipeBackground(
+                action: _TaskSwipeAction.delete,
+                alignment: Alignment.centerRight,
+              ),
+              confirmDismiss: (direction) async {
+                if (direction == DismissDirection.startToEnd) {
+                  onOpenTaskDetail(tasks[i]);
+                  return false;
+                }
+                return true;
+              },
+              onDismissed: (_) => onDeleteTask(tasks[i]),
+              child: _HomeTaskListTile(
+                task: tasks[i],
+                onToggle: () => onToggleTask(tasks[i]),
+              ),
             ),
             if (i != tasks.length - 1) const Divider(height: 1),
           ],
@@ -3026,26 +3102,16 @@ class _HomeTaskSectionCard extends StatelessWidget {
 }
 
 class _HomeTaskListTile extends StatelessWidget {
-  const _HomeTaskListTile({
-    required this.task,
-    required this.onToggle,
-    required this.onDelete,
-    required this.onOpenDetail,
-    required this.showToggle,
-  });
+  const _HomeTaskListTile({required this.task, required this.onToggle});
 
   final Task task;
   final VoidCallback onToggle;
-  final VoidCallback onDelete;
-  final VoidCallback onOpenDetail;
-  final bool showToggle;
 
   @override
   Widget build(BuildContext context) {
     final isOverdue = task.dueDate != null && _isOverdue(task.dueDate!);
 
     return InkWell(
-      onTap: onOpenDetail,
       child: Stack(
         children: [
           if (isOverdue)
@@ -3059,10 +3125,8 @@ class _HomeTaskListTile extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
             child: Row(
               children: [
-                if (showToggle) ...[
-                  _StatusCheckbox(task: task, onTap: onToggle),
-                  const SizedBox(width: 10),
-                ],
+                _StatusCheckbox(task: task, onTap: onToggle),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     task.title,
@@ -3076,17 +3140,6 @@ class _HomeTaskListTile extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                SizedBox.square(
-                  dimension: 32,
-                  child: IconButton(
-                    onPressed: onDelete,
-                    icon: const Icon(Icons.delete_outline_rounded, size: 20),
-                    color: AppTheme.muted,
-                    tooltip: '삭제',
-                    padding: EdgeInsets.zero,
-                  ),
-                ),
               ],
             ),
           ),
@@ -3096,37 +3149,83 @@ class _HomeTaskListTile extends StatelessWidget {
   }
 }
 
-class _TaskListTile extends StatelessWidget {
+class _TaskListTile extends StatefulWidget {
   const _TaskListTile({
     required this.task,
     required this.onToggle,
-    required this.onDelete,
     required this.onOpenDetail,
     required this.subTaskRepository,
     required this.metadata,
+    this.showMetadata = true,
   });
 
   final Task task;
   final VoidCallback onToggle;
-  final VoidCallback onDelete;
   final VoidCallback onOpenDetail;
   final SubTaskRepository subTaskRepository;
   final _TaskMetadataLookup metadata;
+  final bool showMetadata;
+
+  @override
+  State<_TaskListTile> createState() => _TaskListTileState();
+}
+
+class _TaskListTileState extends State<_TaskListTile> {
+  var _isExpanded = false;
+  late Future<List<SubTask>> _subTasksFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _subTasksFuture = widget.subTaskRepository.getSubTasks(widget.task.id);
+  }
+
+  @override
+  void didUpdateWidget(_TaskListTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.task.id != widget.task.id) {
+      _isExpanded = false;
+    }
+    _subTasksFuture = widget.subTaskRepository.getSubTasks(widget.task.id);
+  }
+
+  void _reloadSubTasks() {
+    setState(() {
+      _subTasksFuture = widget.subTaskRepository.getSubTasks(widget.task.id);
+    });
+  }
+
+  Future<void> _toggleSubTask(SubTask subTask) async {
+    await widget.subTaskRepository.updateSubTaskDone(
+      subTask.id,
+      !subTask.isDone,
+    );
+    if (!mounted) {
+      return;
+    }
+    _reloadSubTasks();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final task = widget.task;
     final isCompleted = task.status == TaskStatus.completed;
     final isOverdue = task.dueDate != null && _isOverdue(task.dueDate!);
+    final accentColor = _taskAccentColor(task, isOverdue: isOverdue);
 
     return InkWell(
-      onTap: onOpenDetail,
+      onTap: () {
+        setState(() {
+          _isExpanded = !_isExpanded;
+        });
+      },
       child: Stack(
         children: [
-          if (isOverdue && !isCompleted)
+          if (!isCompleted && accentColor != null)
             Positioned.fill(
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: Container(width: 4, color: AppTheme.dangerRed),
+                child: Container(width: 4, color: accentColor),
               ),
             ),
           Padding(
@@ -3141,10 +3240,10 @@ class _TaskListTile extends StatelessWidget {
               children: [
                 Column(
                   children: [
-                    _StatusCheckbox(task: task, onTap: onToggle),
-                    if (!isCompleted) ...[
-                      const SizedBox(height: 14),
-                      _PriorityDot(priority: task.priority),
+                    _StatusCheckbox(task: task, onTap: widget.onToggle),
+                    if (!isCompleted && task.dueDate != null) ...[
+                      const SizedBox(height: 10),
+                      _DueBadge(dueDate: task.dueDate!),
                     ],
                   ],
                 ),
@@ -3171,32 +3270,23 @@ class _TaskListTile extends StatelessWidget {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          SizedBox.square(
-                            dimension: 32,
-                            child: IconButton(
-                              onPressed: onDelete,
-                              icon: const Icon(
-                                Icons.delete_outline_rounded,
-                                size: 20,
-                              ),
-                              color: AppTheme.muted,
-                              tooltip: '삭제',
-                              padding: EdgeInsets.zero,
-                            ),
-                          ),
                         ],
                       ),
-                      if (!isCompleted) ...[
+                      if (!isCompleted && widget.showMetadata) ...[
                         const SizedBox(height: 8),
                         Padding(
                           padding: const EdgeInsets.only(right: 2),
-                          child: _TaskMetaStrip(task: task, metadata: metadata),
+                          child: _TaskMetaStrip(
+                            task: task,
+                            metadata: widget.metadata,
+                          ),
                         ),
-                        const SizedBox(height: 2),
-                        _SubTaskProgressView(
-                          taskId: task.id,
-                          subTaskRepository: subTaskRepository,
+                      ],
+                      if (_isExpanded) ...[
+                        const SizedBox(height: 10),
+                        _SubTaskListPreview(
+                          future: _subTasksFuture,
+                          onToggle: _toggleSubTask,
                         ),
                       ],
                     ],
@@ -3206,6 +3296,118 @@ class _TaskListTile extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SubTaskListPreview extends StatelessWidget {
+  const _SubTaskListPreview({required this.future, required this.onToggle});
+
+  final Future<List<SubTask>> future;
+  final Future<void> Function(SubTask subTask) onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<SubTask>>(
+      future: future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: SizedBox.square(
+              dimension: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          );
+        }
+
+        final subTasks = snapshot.data ?? const <SubTask>[];
+        if (subTasks.isEmpty) {
+          return const _SubTaskEmptyPreview();
+        }
+
+        return Column(
+          children: [
+            for (final subTask in subTasks)
+              _SubTaskPreviewRow(
+                subTask: subTask,
+                onToggle: () => onToggle(subTask),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _SubTaskPreviewRow extends StatelessWidget {
+  const _SubTaskPreviewRow({required this.subTask, required this.onToggle});
+
+  final SubTask subTask;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onToggle,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.only(top: 6, bottom: 2),
+        child: Row(
+          children: [
+            Checkbox(
+              value: subTask.isDone,
+              onChanged: (_) => onToggle(),
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                subTask.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: subTask.isDone ? AppTheme.muted : AppTheme.ink,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  height: 1.25,
+                  decoration: subTask.isDone
+                      ? TextDecoration.lineThrough
+                      : null,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SubTaskEmptyPreview extends StatelessWidget {
+  const _SubTaskEmptyPreview();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppTheme.line),
+      ),
+      child: const Text(
+        '서브 작업이 없습니다.',
+        style: TextStyle(
+          color: AppTheme.muted,
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
@@ -3260,6 +3462,7 @@ class _TaskSectionCardState extends State<_TaskSectionCard> {
   Widget build(BuildContext context) {
     return Card(
       clipBehavior: Clip.antiAlias,
+      shape: _taskListCardShape,
       child: ReorderableListView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
@@ -3301,13 +3504,37 @@ class _TaskSectionCardState extends State<_TaskSectionCard> {
               _MaybeReorderableTask(
                 index: index,
                 enabled: widget.enableReorder,
-                child: _TaskListTile(
-                  task: task,
-                  onToggle: () => widget.onToggleTask(task),
-                  onDelete: () => widget.onDeleteTask(task),
-                  onOpenDetail: () => widget.onOpenTaskDetail(task),
-                  subTaskRepository: widget.subTaskRepository,
-                  metadata: widget.metadata,
+                child: Dismissible(
+                  key: ValueKey('dismiss_${task.id}'),
+                  direction: DismissDirection.horizontal,
+                  background: const _TaskSwipeBackground(
+                    action: _TaskSwipeAction.edit,
+                    alignment: Alignment.centerLeft,
+                  ),
+                  secondaryBackground: const _TaskSwipeBackground(
+                    action: _TaskSwipeAction.delete,
+                    alignment: Alignment.centerRight,
+                  ),
+                  confirmDismiss: (direction) async {
+                    if (direction == DismissDirection.startToEnd) {
+                      widget.onOpenTaskDetail(task);
+                      return false;
+                    }
+                    return true;
+                  },
+                  onDismissed: (_) {
+                    setState(() {
+                      _orderedTasks.removeWhere((item) => item.id == task.id);
+                    });
+                    widget.onDeleteTask(task);
+                  },
+                  child: _TaskListTile(
+                    task: task,
+                    onToggle: () => widget.onToggleTask(task),
+                    onOpenDetail: () => widget.onOpenTaskDetail(task),
+                    subTaskRepository: widget.subTaskRepository,
+                    metadata: widget.metadata,
+                  ),
                 ),
               ),
               if (index != _orderedTasks.length - 1) const Divider(height: 1),
@@ -3315,6 +3542,29 @@ class _TaskSectionCardState extends State<_TaskSectionCard> {
           );
         },
       ),
+    );
+  }
+}
+
+enum _TaskSwipeAction { edit, delete }
+
+class _TaskSwipeBackground extends StatelessWidget {
+  const _TaskSwipeBackground({required this.action, required this.alignment});
+
+  final _TaskSwipeAction action;
+  final Alignment alignment;
+
+  @override
+  Widget build(BuildContext context) {
+    final isLeft = alignment == Alignment.centerLeft;
+    final isDelete = action == _TaskSwipeAction.delete;
+    final color = isDelete ? AppTheme.dangerRed : AppTheme.primaryBlue;
+    final icon = isDelete ? Icons.delete_outline_rounded : Icons.edit_outlined;
+    return Container(
+      color: color.withValues(alpha: 0.1),
+      alignment: alignment,
+      padding: EdgeInsets.only(left: isLeft ? 20 : 0, right: isLeft ? 0 : 20),
+      child: Icon(icon, color: color),
     );
   }
 }
@@ -3463,21 +3713,16 @@ class _TaskMetaStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          if (task.dueDate != null) ...[
-            _DueChip(task: task),
-            const SizedBox(width: 6),
-          ],
-          if (metadata.tagsFor(task).isNotEmpty)
-            metadata_picker.TaskMetadataChips(
-              tags: metadata.tagsFor(task),
-              folders: const [],
-            ),
-        ],
-      ),
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        if (metadata.tagsFor(task).isNotEmpty)
+          metadata_picker.TaskMetadataChips(
+            tags: metadata.tagsFor(task),
+            folders: const [],
+          ),
+      ],
     );
   }
 }
@@ -3574,94 +3819,55 @@ class _NeutralChip extends StatelessWidget {
   }
 }
 
-class _SubTaskProgressView extends StatelessWidget {
-  const _SubTaskProgressView({
-    required this.taskId,
-    required this.subTaskRepository,
-  });
+class _DueBadge extends StatelessWidget {
+  const _DueBadge({required this.dueDate});
 
-  final String taskId;
-  final SubTaskRepository subTaskRepository;
+  final DateTime dueDate;
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<SubTask>>(
-      future: subTaskRepository.getSubTasks(taskId),
-      builder: (context, snapshot) {
-        final progress = calculateSubTaskProgress(
-          snapshot.data ?? const <SubTask>[],
-        );
-        if (!progress.hasSubTasks) {
-          return const SizedBox.shrink();
-        }
+    const color = AppTheme.muted;
 
-        return Padding(
-          padding: const EdgeInsets.only(top: 8),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '서브 작업 ${progress.doneCount}/${progress.totalCount} 완료',
-                      style: const TextStyle(
-                        color: AppTheme.muted,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '${progress.percent}%',
-                    style: const TextStyle(
-                      color: AppTheme.muted,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 5),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: progress.ratio,
-                  minHeight: 4,
-                  backgroundColor: AppTheme.line,
-                  valueColor: const AlwaysStoppedAnimation<Color>(
-                    AppTheme.successGreen,
-                  ),
-                ),
-              ),
-            ],
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 34),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.09),
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(color: color.withValues(alpha: 0.28)),
+        ),
+        child: Text(
+          _compactDueLabel(dueDate),
+          style: TextStyle(
+            color: color,
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            height: 1,
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
 
-class _PriorityDot extends StatelessWidget {
-  const _PriorityDot({required this.priority});
-
-  final TaskPriority? priority;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = switch (priority) {
-      TaskPriority.high => AppTheme.dangerRed,
-      TaskPriority.medium => AppTheme.warningOrange,
-      TaskPriority.low => AppTheme.successGreen,
-      null => AppTheme.primaryBlue,
-    };
-
-    return Container(
-      width: 12,
-      height: 12,
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-    );
+Color? _taskAccentColor(Task task, {required bool isOverdue}) {
+  if (isOverdue) {
+    return AppTheme.dangerRed;
   }
+  return switch (task.priority) {
+    TaskPriority.high => AppTheme.dangerRed,
+    TaskPriority.medium => AppTheme.warningOrange,
+    TaskPriority.low => AppTheme.primaryBlue,
+    null => null,
+  };
 }
+
+const _taskListCardShape = RoundedRectangleBorder(
+  borderRadius: BorderRadius.horizontal(right: Radius.circular(8)),
+  side: BorderSide(color: AppTheme.line),
+);
 
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader({required this.title, required this.count});
@@ -5111,10 +5317,7 @@ void _showSnackBar(BuildContext context, String message) {
 }
 
 String _dueLabel(DateTime date) {
-  final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
-  final dueDay = DateTime(date.year, date.month, date.day);
-  final days = dueDay.difference(today).inDays;
+  final days = _dueDays(date);
   final time =
       '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
 
@@ -5125,6 +5328,24 @@ String _dueLabel(DateTime date) {
     return date.hour == 0 && date.minute == 0 ? '내일' : '내일 $time';
   }
   return '${date.month}월 ${date.day}일';
+}
+
+int _dueDays(DateTime date) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final dueDay = DateTime(date.year, date.month, date.day);
+  return dueDay.difference(today).inDays;
+}
+
+String _compactDueLabel(DateTime date) {
+  final days = _dueDays(date);
+  if (days == 0) {
+    return 'D-day';
+  }
+  if (days > 0) {
+    return 'D-$days';
+  }
+  return 'D+${days.abs()}';
 }
 
 String _shortDateLabel(DateTime date) {

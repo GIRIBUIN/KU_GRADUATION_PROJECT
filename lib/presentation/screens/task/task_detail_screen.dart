@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/task_models.dart';
+import '../../../data/repositories/folder_repository.dart';
 import '../../../data/repositories/notification_repository.dart';
+import '../../../data/repositories/settings_repository.dart';
 import '../../../data/repositories/sub_task_repository.dart';
 import '../../../data/repositories/tag_repository.dart';
 import '../../../data/repositories/task_repository.dart';
@@ -17,7 +19,9 @@ class TaskDetailScreen extends StatefulWidget {
     required this.taskRepository,
     required this.subTaskRepository,
     required this.notificationRepository,
+    required this.settingsRepository,
     required this.tagRepository,
+    required this.folderRepository,
     required this.localNotificationService,
   });
 
@@ -25,7 +29,9 @@ class TaskDetailScreen extends StatefulWidget {
   final TaskRepository taskRepository;
   final SubTaskRepository subTaskRepository;
   final NotificationRepository notificationRepository;
+  final SettingsRepository settingsRepository;
   final TagRepository tagRepository;
+  final FolderRepository folderRepository;
   final LocalNotificationService localNotificationService;
 
   @override
@@ -40,6 +46,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   Task? _task;
   List<SubTask> _subTasks = const [];
   List<Tag> _tags = const [];
+  List<Folder> _folders = const [];
   final Set<String> _selectedTagIds = {};
   DateTime? _dueDate;
   TaskPriority? _priority;
@@ -71,6 +78,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       widget.taskId,
     );
     final tags = await widget.tagRepository.getTags();
+    final folders = await widget.folderRepository.getFolders();
 
     if (!mounted) {
       return;
@@ -80,6 +88,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       _task = task;
       _subTasks = subTasks;
       _tags = tags;
+      _folders = folders;
       _selectedTagIds
         ..clear()
         ..addAll(task?.tagIds ?? const []);
@@ -490,7 +499,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   }
 
   Future<void> _createTag() async {
-    final draft = await showTagCreateDialog(context);
+    final draft = await showTagCreateDialog(context, folders: _folders);
     if (draft == null || !mounted) {
       return;
     }
@@ -505,6 +514,14 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
         updatedAt: now,
       ),
     );
+    if (draft.folderId != null) {
+      final settings = await widget.settingsRepository.getSettings();
+      await widget.settingsRepository.saveSettings(
+        settings.copyWith(
+          tagFolderIds: {...settings.tagFolderIds, tag.id: draft.folderId!},
+        ),
+      );
+    }
     if (!mounted) {
       return;
     }

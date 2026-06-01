@@ -1,6 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ku_task_management/data/models/ecampus_models.dart';
 import 'package:ku_task_management/data/models/task_models.dart';
+import 'package:ku_task_management/data/repositories/folder_repository.dart';
+import 'package:ku_task_management/data/repositories/settings_repository.dart';
+import 'package:ku_task_management/data/repositories/tag_repository.dart';
 import 'package:ku_task_management/data/repositories/task_repository.dart';
 import 'package:ku_task_management/data/services/ecampus_sync_apply_service.dart';
 
@@ -8,12 +11,21 @@ void main() {
   final syncedAt = DateTime(2026, 5, 7, 12);
 
   late _FakeTaskRepository repository;
+  late _FakeTagRepository tagRepository;
+  late _FakeFolderRepository folderRepository;
+  late _FakeSettingsRepository settingsRepository;
   late DefaultEcampusSyncApplyService service;
 
   setUp(() {
     repository = _FakeTaskRepository();
+    tagRepository = _FakeTagRepository();
+    folderRepository = _FakeFolderRepository();
+    settingsRepository = _FakeSettingsRepository();
     service = DefaultEcampusSyncApplyService(
       taskRepository: repository,
+      tagRepository: tagRepository,
+      folderRepository: folderRepository,
+      settingsRepository: settingsRepository,
       now: () => syncedAt,
       createId: (parsedTask, status) =>
           'task-${status.name}-${parsedTask.sourceKey}',
@@ -33,8 +45,23 @@ void main() {
       expect(applied.single.title, '자료구조 과제');
       expect(applied.single.memo, '자료구조');
       expect(applied.single.priority, TaskPriority.medium);
+      expect(applied.single.tagIds, [tagRepository.tags.values.single.id]);
+      expect(applied.single.folderIds, [
+        folderRepository.folders.values.single.id,
+      ]);
       expect(applied.single.ecampus?.sourceKey, 'course:item:report');
       expect(applied.single.ecampus?.lastSyncedAt, syncedAt);
+      expect(tagRepository.tags.values.single.name, '자료구조');
+      expect(tagRepository.tags.values.single.color, '#3B82F6');
+      expect(folderRepository.folders.values.single.name, 'e-campus');
+      expect(settingsRepository.settings.tagFolderIds, {
+        tagRepository.tags.values.single.id:
+            folderRepository.folders.values.single.id,
+      });
+      expect(
+        settingsRepository.settings.ecampusFolderId,
+        folderRepository.folders.values.single.id,
+      );
     });
 
     test(
@@ -61,12 +88,52 @@ void main() {
         expect(applied.single.id, 'existing');
         expect(applied.single.title, '변경된 과제');
         expect(applied.single.status, TaskStatus.active);
-        expect(applied.single.tagIds, ['tag-1']);
-        expect(applied.single.folderIds, ['folder-1']);
+        expect(applied.single.tagIds, [
+          'tag-1',
+          tagRepository.tags.values.single.id,
+        ]);
+        expect(applied.single.folderIds, [
+          'folder-1',
+          folderRepository.folders.values.single.id,
+        ]);
+        expect(settingsRepository.settings.tagFolderIds, {
+          tagRepository.tags.values.single.id:
+              folderRepository.folders.values.single.id,
+        });
+        expect(
+          settingsRepository.settings.ecampusFolderId,
+          folderRepository.folders.values.single.id,
+        );
         expect(applied.single.createdAt, existing.createdAt);
         expect(applied.single.updatedAt, syncedAt);
       },
     );
+
+    test('reuses saved e-campus folder id after folder is renamed', () async {
+      final renamedFolder = await folderRepository.createFolder(
+        Folder(
+          id: 'folder-ecampus',
+          name: '학교',
+          color: '#1262D6',
+          icon: 'folder',
+          createdAt: syncedAt,
+          updatedAt: syncedAt,
+        ),
+      );
+      settingsRepository.settings = settingsRepository.settings.copyWith(
+        ecampusFolderId: renamedFolder.id,
+      );
+
+      final applied = await service.importItems([
+        SyncItem(kind: SyncItemKind.newItem, parsedTask: _parsedTask()),
+      ]);
+
+      expect(applied.single.folderIds, [renamedFolder.id]);
+      expect(folderRepository.folders, hasLength(1));
+      expect(settingsRepository.settings.tagFolderIds, {
+        tagRepository.tags.values.single.id: renamedFolder.id,
+      });
+    });
 
     test(
       'does not update completed, deleted, excluded, or error items',
@@ -104,7 +171,11 @@ void main() {
       expect(applied, hasLength(1));
       expect(applied.single.id, 'task-excluded-course:item:report');
       expect(applied.single.status, TaskStatus.excluded);
+      expect(applied.single.tagIds, isEmpty);
+      expect(applied.single.folderIds, isEmpty);
       expect(applied.single.ecampus?.sourceKey, 'course:item:report');
+      expect(tagRepository.tags, isEmpty);
+      expect(folderRepository.folders, isEmpty);
     });
 
     test('marks existing active items as excluded', () async {
@@ -301,5 +372,83 @@ class _FakeTaskRepository implements TaskRepository {
   @override
   Future<void> deletePermanently(String id) async {
     tasks.remove(id);
+  }
+}
+
+class _FakeTagRepository implements TagRepository {
+  final tags = <String, Tag>{};
+
+  @override
+  Future<Tag> createTag(Tag tag) async {
+    tags[tag.id] = tag;
+    return tag;
+  }
+
+  @override
+  Future<void> deleteTag(String id) async {
+    tags.remove(id);
+  }
+
+  @override
+  Future<Tag?> getTagById(String id) async => tags[id];
+
+  @override
+  Future<List<Tag>> getTags() async => tags.values.toList(growable: false);
+
+  @override
+  Future<Tag> updateTag(Tag tag) async {
+    tags[tag.id] = tag;
+    return tag;
+  }
+}
+
+class _FakeFolderRepository implements FolderRepository {
+  final folders = <String, Folder>{};
+
+  @override
+  Future<Folder> createFolder(Folder folder) async {
+    folders[folder.id] = folder;
+    return folder;
+  }
+
+  @override
+  Future<void> deleteFolder(String id) async {
+    folders.remove(id);
+  }
+
+  @override
+  Future<Folder?> getFolderById(String id) async => folders[id];
+
+  @override
+  Future<List<Folder>> getFolders() async =>
+      folders.values.toList(growable: false);
+
+  @override
+  Future<Folder> updateFolder(Folder folder) async {
+    folders[folder.id] = folder;
+    return folder;
+  }
+
+  @override
+  Future<void> updateFolderOrder(List<String> folderIds) async {}
+}
+
+class _FakeSettingsRepository implements SettingsRepository {
+  AppSettings settings = const AppSettings(
+    autoSyncEnabled: false,
+    saveEcampusAccount: false,
+    defaultNotificationEnabled: true,
+    defaultNotificationDays: 60,
+    defaultNotificationTime: 'relative',
+    urgentDueDays: 3,
+  );
+
+  @override
+  Future<AppSettings> getSettings() async => settings;
+
+  @override
+  Future<AppSettings> saveSettings(AppSettings settings) async {
+    this.settings = settings;
+    return settings;
   }
 }

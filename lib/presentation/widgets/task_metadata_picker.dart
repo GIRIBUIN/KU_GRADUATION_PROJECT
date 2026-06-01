@@ -14,10 +14,11 @@ const metadataColorOptions = [
 ];
 
 class TagDraft {
-  const TagDraft({required this.name, required this.color});
+  const TagDraft({required this.name, required this.color, this.folderId});
 
   final String name;
   final String color;
+  final String? folderId;
 }
 
 class FolderDraft {
@@ -164,10 +165,13 @@ class TaskMetadataChips extends StatelessWidget {
   }
 }
 
-Future<TagDraft?> showTagCreateDialog(BuildContext context) {
+Future<TagDraft?> showTagCreateDialog(
+  BuildContext context, {
+  List<Folder> folders = const [],
+}) {
   return showDialog<TagDraft>(
     context: context,
-    builder: (_) => const _TagCreateDialog(),
+    builder: (_) => _TagCreateDialog(folders: folders),
   );
 }
 
@@ -379,7 +383,9 @@ class _EmptyPickerText extends StatelessWidget {
 }
 
 class _TagCreateDialog extends StatefulWidget {
-  const _TagCreateDialog();
+  const _TagCreateDialog({required this.folders});
+
+  final List<Folder> folders;
 
   @override
   State<_TagCreateDialog> createState() => _TagCreateDialogState();
@@ -388,6 +394,7 @@ class _TagCreateDialog extends StatefulWidget {
 class _TagCreateDialogState extends State<_TagCreateDialog> {
   final _nameController = TextEditingController();
   final _colorController = TextEditingController(text: '#3B82F6');
+  String? _folderId;
   String? _errorText;
 
   @override
@@ -409,6 +416,31 @@ class _TagCreateDialogState extends State<_TagCreateDialog> {
           initialColor: AppTheme.primaryBlue,
           errorText: _errorText,
           onColorChanged: () => setState(() => _errorText = null),
+          extra: [
+            if (widget.folders.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String?>(
+                initialValue: _folderId,
+                decoration: const InputDecoration(labelText: '폴더 위치'),
+                items: [
+                  const DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('루트'),
+                  ),
+                  for (final folder in widget.folders)
+                    DropdownMenuItem<String?>(
+                      value: folder.id,
+                      child: Text(folder.name),
+                    ),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    _folderId = value;
+                  });
+                },
+              ),
+            ],
+          ],
         ),
       ),
       actions: [
@@ -432,7 +464,9 @@ class _TagCreateDialogState extends State<_TagCreateDialog> {
       setState(() => _errorText = '#RRGGBB 형식으로 입력해주세요.');
       return;
     }
-    Navigator.of(context).pop(TagDraft(name: name, color: color));
+    Navigator.of(
+      context,
+    ).pop(TagDraft(name: name, color: color, folderId: _folderId));
   }
 }
 

@@ -60,7 +60,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   void initState() {
     super.initState();
     _tasksFuture = _loadTasks();
-    _settingsFuture = widget.settingsRepository.getSettings();
+    _settingsFuture = _loadSettings();
     _metadataFuture = _loadMetadata();
     _scheduleClockRefresh();
   }
@@ -73,6 +73,68 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
   Future<List<Task>> _loadTasks() {
     return widget.taskRepository.getTasks(includeArchived: true);
+  }
+
+  Future<AppSettings> _loadSettings() async {
+    final settings = await widget.settingsRepository.getSettings();
+    return _repairAutoTagFolders(settings);
+  }
+
+  Future<AppSettings> _repairAutoTagFolders(AppSettings settings) async {
+    final tasks = await _loadTasks();
+    final folders = await widget.folderRepository.getFolders();
+    final tags = await widget.tagRepository.getTags();
+    final updatedTagFolderIds = {...settings.tagFolderIds};
+    var didChange = false;
+
+    final folderIds = folders.map((folder) => folder.id).toSet();
+    final existingEcampusFolderId = tasks
+        .where((task) => task.origin == TaskOrigin.ecampus)
+        .expand((task) => task.folderIds)
+        .where((folderId) => folderIds.contains(folderId))
+        .firstOrNull;
+    final ecampusFolder =
+        folders
+            .where((folder) => folder.id == settings.ecampusFolderId)
+            .firstOrNull ??
+        folders
+            .where((folder) => folder.id == existingEcampusFolderId)
+            .firstOrNull ??
+        folders
+            .where(
+              (folder) =>
+                  folder.name == _autoEcampusFolderName &&
+                  folder.parentFolderId == null,
+            )
+            .firstOrNull;
+    if (ecampusFolder != null && settings.ecampusFolderId != ecampusFolder.id) {
+      didChange = true;
+    }
+    if (ecampusFolder != null) {
+      final ecampusCourses = tasks
+          .map((task) => task.ecampus?.sourceCourse?.trim())
+          .whereType<String>()
+          .where((course) => course.isNotEmpty)
+          .toSet();
+      for (final tag in tags.where(
+        (tag) => ecampusCourses.contains(tag.name),
+      )) {
+        if (updatedTagFolderIds[tag.id] != ecampusFolder.id) {
+          updatedTagFolderIds[tag.id] = ecampusFolder.id;
+          didChange = true;
+        }
+      }
+    }
+
+    if (!didChange) {
+      return settings;
+    }
+    return widget.settingsRepository.saveSettings(
+      settings.copyWith(
+        tagFolderIds: updatedTagFolderIds,
+        ecampusFolderId: ecampusFolder?.id,
+      ),
+    );
   }
 
   void _scheduleClockRefresh() {
@@ -106,6 +168,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
   void _refreshMetadata() {
     setState(() {
+      _settingsFuture = _loadSettings();
       _metadataFuture = _loadMetadata();
       _metadataVersion++;
     });
@@ -114,6 +177,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   void _refreshTasksAndMetadata() {
     setState(() {
       _tasksFuture = _loadTasks();
+      _settingsFuture = _loadSettings();
       _metadataFuture = _loadMetadata();
       _metadataVersion++;
     });
@@ -133,6 +197,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
         MaterialPageRoute(
           builder: (_) => EcampusSyncProgressScreen(
             taskRepository: widget.taskRepository,
+            tagRepository: widget.tagRepository,
+            folderRepository: widget.folderRepository,
+            settingsRepository: widget.settingsRepository,
             initialSession: _ecampusSession,
             onSessionChanged: (session) {
               if (!mounted) {
@@ -314,7 +381,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
           taskRepository: widget.taskRepository,
           subTaskRepository: widget.subTaskRepository,
           notificationRepository: widget.notificationRepository,
+          settingsRepository: widget.settingsRepository,
           tagRepository: widget.tagRepository,
+          folderRepository: widget.folderRepository,
           localNotificationService: widget.localNotificationService,
         ),
       ),
@@ -333,6 +402,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
           notificationRepository: widget.notificationRepository,
           settingsRepository: widget.settingsRepository,
           tagRepository: widget.tagRepository,
+          folderRepository: widget.folderRepository,
           localNotificationService: widget.localNotificationService,
         ),
       ),
@@ -437,8 +507,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
                     lastEcampusSyncedAt: _lastEcampusSyncedAt(tasks),
                     onSettingsChanged: () {
                       setState(() {
-                        _settingsFuture = widget.settingsRepository
-                            .getSettings();
+                        _settingsFuture = _loadSettings();
                       });
                     },
                     onOpenSync: _openEcampusSync,
@@ -3402,18 +3471,11 @@ class _TaskMetaStrip extends StatelessWidget {
             _DueChip(task: task),
             const SizedBox(width: 6),
           ],
-          _OriginChip(origin: task.origin),
-          if (metadata.tagsFor(task).isNotEmpty) ...[
-            const SizedBox(width: 6),
+          if (metadata.tagsFor(task).isNotEmpty)
             metadata_picker.TaskMetadataChips(
               tags: metadata.tagsFor(task),
               folders: const [],
             ),
-          ],
-          if (task.ecampus?.sourceCourse != null) ...[
-            const SizedBox(width: 6),
-            _NeutralChip(label: task.ecampus!.sourceCourse!),
-          ],
         ],
       ),
     );
@@ -4995,6 +5057,8 @@ Color _colorFromHex(String? value, {Color fallback = AppTheme.primaryBlue}) {
   }
   return Color(int.parse('FF${normalized.substring(1)}', radix: 16));
 }
+
+const _autoEcampusFolderName = 'e-campus';
 
 String _normalizeHex(String? value) {
   final trimmed = value?.trim() ?? '';

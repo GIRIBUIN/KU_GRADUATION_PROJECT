@@ -11,6 +11,7 @@ class AppSettings {
     this.hiddenFolderIds = const <String>{},
     this.tagFolderIds = const <String, String>{},
     this.tagSortOrders = const <String, int>{},
+    this.ecampusFolderId,
   });
 
   final bool autoSyncEnabled;
@@ -24,6 +25,7 @@ class AppSettings {
   final Set<String> hiddenFolderIds;
   final Map<String, String> tagFolderIds;
   final Map<String, int> tagSortOrders;
+  final String? ecampusFolderId;
 
   AppSettings copyWith({
     bool? autoSyncEnabled,
@@ -37,6 +39,7 @@ class AppSettings {
     Set<String>? hiddenFolderIds,
     Map<String, String>? tagFolderIds,
     Map<String, int>? tagSortOrders,
+    Object? ecampusFolderId = _appSettingsUnset,
   }) {
     return AppSettings(
       autoSyncEnabled: autoSyncEnabled ?? this.autoSyncEnabled,
@@ -55,6 +58,9 @@ class AppSettings {
       hiddenFolderIds: hiddenFolderIds ?? this.hiddenFolderIds,
       tagFolderIds: tagFolderIds ?? this.tagFolderIds,
       tagSortOrders: tagSortOrders ?? this.tagSortOrders,
+      ecampusFolderId: ecampusFolderId == _appSettingsUnset
+          ? this.ecampusFolderId
+          : ecampusFolderId as String?,
     );
   }
 }

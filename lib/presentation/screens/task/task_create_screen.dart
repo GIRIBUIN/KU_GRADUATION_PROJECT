@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/task_models.dart';
+import '../../../data/repositories/folder_repository.dart';
 import '../../../data/repositories/notification_repository.dart';
 import '../../../data/repositories/settings_repository.dart';
 import '../../../data/repositories/sub_task_repository.dart';
@@ -19,6 +20,7 @@ class TaskCreateScreen extends StatefulWidget {
     required this.notificationRepository,
     required this.settingsRepository,
     required this.tagRepository,
+    required this.folderRepository,
     required this.localNotificationService,
   });
 
@@ -27,6 +29,7 @@ class TaskCreateScreen extends StatefulWidget {
   final NotificationRepository notificationRepository;
   final SettingsRepository settingsRepository;
   final TagRepository tagRepository;
+  final FolderRepository folderRepository;
   final LocalNotificationService localNotificationService;
 
   @override
@@ -39,6 +42,7 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
   final _subTaskController = TextEditingController();
   final List<_DraftSubTask> _subTasks = [];
   List<Tag> _tags = const [];
+  List<Folder> _folders = const [];
   final Set<String> _selectedTagIds = {};
 
   DateTime? _dueDate;
@@ -66,11 +70,13 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
   Future<void> _loadDefaults() async {
     final settings = await widget.settingsRepository.getSettings();
     final tags = await widget.tagRepository.getTags();
+    final folders = await widget.folderRepository.getFolders();
     if (!mounted) {
       return;
     }
     setState(() {
       _tags = tags;
+      _folders = folders;
       _notificationEnabled = settings.defaultNotificationEnabled;
       _notificationOffsetMinutes = settings.defaultNotificationDays;
       _isLoadingSettings = false;
@@ -441,7 +447,7 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
   }
 
   Future<void> _createTag() async {
-    final draft = await showTagCreateDialog(context);
+    final draft = await showTagCreateDialog(context, folders: _folders);
     if (draft == null || !mounted) {
       return;
     }
@@ -456,6 +462,14 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
         updatedAt: now,
       ),
     );
+    if (draft.folderId != null) {
+      final settings = await widget.settingsRepository.getSettings();
+      await widget.settingsRepository.saveSettings(
+        settings.copyWith(
+          tagFolderIds: {...settings.tagFolderIds, tag.id: draft.folderId!},
+        ),
+      );
+    }
     if (!mounted) {
       return;
     }

@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/theme/app_theme.dart';
+import '../../../data/repositories/folder_repository.dart';
+import '../../../data/repositories/settings_repository.dart';
+import '../../../data/repositories/tag_repository.dart';
 import '../../../data/repositories/task_repository.dart';
 import '../../../data/services/default_ecampus_sync_service.dart';
 import '../../../data/services/default_ecampus_todo_service.dart';
@@ -18,11 +21,17 @@ class EcampusSyncProgressScreen extends StatefulWidget {
   const EcampusSyncProgressScreen({
     super.key,
     required this.taskRepository,
+    required this.tagRepository,
+    required this.folderRepository,
+    required this.settingsRepository,
     this.initialSession,
     this.onSessionChanged,
   });
 
   final TaskRepository taskRepository;
+  final TagRepository tagRepository;
+  final FolderRepository folderRepository;
+  final SettingsRepository settingsRepository;
   final EcampusSession? initialSession;
   final ValueChanged<EcampusSession?>? onSessionChanged;
 
@@ -57,6 +66,9 @@ class _EcampusSyncProgressScreenState extends State<EcampusSyncProgressScreen> {
       ),
       applyService: DefaultEcampusSyncApplyService(
         taskRepository: widget.taskRepository,
+        tagRepository: widget.tagRepository,
+        folderRepository: widget.folderRepository,
+        settingsRepository: widget.settingsRepository,
       ),
     );
 

@@ -187,6 +187,7 @@ void main() {
       expect(defaults.hiddenFolderIds, isEmpty);
       expect(defaults.tagFolderIds, isEmpty);
       expect(defaults.tagSortOrders, isEmpty);
+      expect(defaults.ecampusFolderId, isNull);
 
       final saved = await settingsRepository.saveSettings(
         const AppSettings(
@@ -201,6 +202,7 @@ void main() {
           hiddenFolderIds: {'folder-1'},
           tagFolderIds: {'tag-2': 'folder-1'},
           tagSortOrders: {'tag-2': 1},
+          ecampusFolderId: 'folder-ecampus',
         ),
       );
 
@@ -215,7 +217,8 @@ void main() {
       expect(saved.hiddenFolderIds, {'folder-1'});
       expect(saved.tagFolderIds, {'tag-2': 'folder-1'});
       expect(saved.tagSortOrders, {'tag-2': 1});
-      expect((await database.select(database.appSettings).get()).length, 11);
+      expect(saved.ecampusFolderId, 'folder-ecampus');
+      expect((await database.select(database.appSettings).get()).length, 12);
 
       final restartedRepository = DriftSettingsRepository(database: database);
       final persisted = await restartedRepository.getSettings();
@@ -231,6 +234,7 @@ void main() {
       expect(persisted.hiddenFolderIds, {'folder-1'});
       expect(persisted.tagFolderIds, {'tag-2': 'folder-1'});
       expect(persisted.tagSortOrders, {'tag-2': 1});
+      expect(persisted.ecampusFolderId, 'folder-ecampus');
 
       final cleared = await restartedRepository.saveSettings(
         persisted.copyWith(
@@ -239,6 +243,7 @@ void main() {
           hiddenFolderIds: const <String>{},
           tagFolderIds: const <String, String>{},
           tagSortOrders: const <String, int>{},
+          ecampusFolderId: null,
         ),
       );
 
@@ -247,6 +252,7 @@ void main() {
       expect(cleared.hiddenFolderIds, isEmpty);
       expect(cleared.tagFolderIds, isEmpty);
       expect(cleared.tagSortOrders, isEmpty);
+      expect(cleared.ecampusFolderId, isNull);
     });
   });
 }

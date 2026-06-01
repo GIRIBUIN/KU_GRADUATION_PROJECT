@@ -120,6 +120,7 @@ class AppSettingsMapper {
   static const hiddenFolderIdsKey = 'hiddenFolderIds';
   static const tagFolderIdsKey = 'tagFolderIds';
   static const tagSortOrdersKey = 'tagSortOrders';
+  static const ecampusFolderIdKey = 'ecampusFolderId';
 
   settings_model.AppSettings fromMap(Map<String, String> values) {
     return settings_model.AppSettings(
@@ -138,6 +139,7 @@ class AppSettingsMapper {
       hiddenFolderIds: _parseStringSet(values[hiddenFolderIdsKey]),
       tagFolderIds: _parseStringMap(values[tagFolderIdsKey]),
       tagSortOrders: _parseIntMap(values[tagSortOrdersKey]),
+      ecampusFolderId: _emptyToNull(values[ecampusFolderIdKey]),
     );
   }
 
@@ -155,6 +157,7 @@ class AppSettingsMapper {
       hiddenFolderIdsKey: _encodeStringSet(settings.hiddenFolderIds),
       tagFolderIdsKey: _encodeStringMap(settings.tagFolderIds),
       tagSortOrdersKey: _encodeIntMap(settings.tagSortOrders),
+      ecampusFolderIdKey: settings.ecampusFolderId ?? '',
     };
   }
 

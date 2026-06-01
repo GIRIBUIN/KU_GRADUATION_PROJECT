@@ -43,16 +43,39 @@
 
 ## 4. 상태 전이
 
-```text
-active -> completed
-active -> deleted
-completed -> active
-deleted -> active
-ecampus 신규 후보 -> excluded
-excluded -> active
+```mermaid
+stateDiagram-v2
+    [*] --> active: 개인 task 생성
+    [*] --> active: e-campus 항목 가져오기
+    [*] --> excluded: e-campus 항목 제외
+
+    active --> completed: 완료 처리
+    completed --> active: 미완료로 되돌리기
+
+    active --> deleted: 삭제
+    completed --> deleted: 완료 작업 삭제
+    deleted --> active: 복구
+
+    active --> excluded: e-campus 항목 제외
+    excluded --> [*]: 다시 가져오기 허용\n(excluded marker 영구 삭제)
+    deleted --> [*]: 영구 삭제
 ```
 
 삭제는 즉시 영구 삭제하지 않고 `deleted` 상태로 남긴다.
+`excluded`는 실제 작업으로 복구하지 않고 제외 marker를 영구 삭제해 다음 e-campus 동기화에서 다시 신규 후보로 나타날 수 있게 한다.
+
+| 전이 | 대상 | 트리거 |
+| --- | --- | --- |
+| 생성 없음 -> `active` | 개인, e-campus | 개인 task 생성 또는 e-campus 항목 가져오기 |
+| 생성 없음 -> `excluded` | e-campus | 동기화 결과에서 가져오지 않기로 선택 |
+| `active` -> `completed` | 개인, e-campus | 완료 처리 또는 동기화에서 원본 누락/마감 전 조건 충족 |
+| `completed` -> `active` | 개인, e-campus | 미완료로 되돌리기 |
+| `active` -> `deleted` | 개인, e-campus | 삭제 |
+| `completed` -> `deleted` | 개인, e-campus | 완료 작업 삭제 |
+| `deleted` -> `active` | 개인, e-campus | 복구 |
+| `active` -> `excluded` | e-campus | 이미 가져온 e-campus 항목을 제외 처리 |
+| `excluded` -> 종료 | e-campus | 다시 가져오기 허용 또는 영구 삭제 |
+| `deleted` -> 종료 | 개인, e-campus | 영구 삭제 |
 
 ## 5. EcampusSyncMetadata
 
@@ -64,7 +87,7 @@ e-campus 작업에만 붙는 원본 추적 정보이다.
 | `sourceTitle` | String? | 아니오 | e-campus 원본 제목 |
 | `sourceDueDate` | DateTime? | 아니오 | e-campus 원본 마감일 |
 | `sourceCourse` | String? | 아니오 | 과목명 |
-| `sourceType` | String? | 아니오 | 과제, 온라인강의 등 |
+| `sourceType` | EcampusTaskType? | 아니오 | 과제, 온라인강의 등 |
 | `lastSyncedAt` | DateTime? | 아니오 | 마지막 동기화 시각 |
 
 `sourceKey`는 e-campus HTML에 그대로 존재하는 필드명이 아니다.
@@ -88,9 +111,10 @@ e-campus 작업에만 붙는 원본 추적 정보이다.
 | `id` | String | 예 | 태그 ID |
 | `name` | String | 예 | 태그 이름 |
 | `color` | String | 예 | 표시 색상 값 |
-| `defaultPriority` | TaskPriority? | 아니오 | 태그 기본 우선순위 |
 | `createdAt` | DateTime | 예 | 생성 시각 |
 | `updatedAt` | DateTime | 예 | 수정 시각 |
+
+태그 기본 우선순위 필드는 현재 구현되어 있지 않다.
 
 ## 8. Folder
 
@@ -112,8 +136,25 @@ e-campus 작업에만 붙는 원본 추적 정보이다.
 | `id` | String | 예 | 알림 ID |
 | `taskId` | String | 예 | 연결된 Task ID |
 | `enabled` | Boolean | 예 | 알림 사용 여부 |
-| `daysBeforeDue` | Int | 예 | 마감 며칠 전 알림인지 |
-| `notifyTime` | Time | 예 | 알림 시간 |
+| `daysBeforeDue` | Int | 예 | 마감 몇 분 전 알림인지. 필드명과 달리 분 단위 |
+| `notifyTime` | String | 예 | 알림 시간 또는 방식. 현재 기본 설정은 `relative` |
 | `scheduledAt` | DateTime? | 아니오 | 실제 예약된 알림 시각 |
 
-Note: 현재 코드에서는 `NotificationSetting.daysBeforeDue`가 분(minutes) 단위로 해석됩니다. 문서의 '일(days)' 단위 표현은 코드와 일치하지 않으니 주의하세요.
+## 10. AppSettings
+
+설정은 `AppSettings` key-value 테이블에 저장한다.
+
+| 필드 | 타입 | 설명 |
+| --- | --- | --- |
+| `defaultNotificationEnabled` | Boolean | 기본 알림 사용 여부 |
+| `defaultNotificationDays` | Int | 기본 알림 오프셋. 현재 분 단위 |
+| `defaultNotificationTime` | String | 기본 알림 방식 |
+| `urgentDueDays` | Int | 홈 마감 임박 기준 |
+| `homeSelectedTagId` | String? | 홈에서 선택한 태그 |
+| `hiddenTagIds` | Set<String> | 숨긴 태그 목록 |
+| `hiddenFolderIds` | Set<String> | 숨긴 폴더 목록 |
+| `tagFolderIds` | Map<String, String> | 태그-폴더 매핑 |
+| `tagSortOrders` | Map<String, Int> | 태그 표시 순서 |
+| `ecampusFolderId` | String? | e-campus 자동 폴더 ID |
+
+`autoSyncEnabled`, `saveEcampusAccount` 필드도 모델에는 남아 있지만 현재 UI에서는 사용하지 않는다.

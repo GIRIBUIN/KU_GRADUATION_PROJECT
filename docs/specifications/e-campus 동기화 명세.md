@@ -16,7 +16,7 @@ HTML 파싱 직후에는 Task로 바로 저장하지 않고 `ParsedEcampusTask` 
 | `dueDate` | DateTime? | 원본 마감일 |
 | `dueLabel` | String? | HTML에 표시된 마감 문자열 |
 | `dDay` | Int? | D-day 값 |
-| `type` | String | 과제, 온라인강의, 팀프로젝트 등 |
+| `type` | EcampusTaskType | `report`, `project`, `lecture`, `quiz`, `exam`, `unknown` |
 | `rawLectureId` | String? | `goLecture(...)` 첫 번째 인자 또는 `kj_*` 값 |
 | `rawItemId` | String? | `goLecture(...)` 두 번째 인자 |
 | `rawType` | String? | `goLecture(...)` 세 번째 인자 또는 `gubun_*` 값 |
@@ -53,8 +53,7 @@ sourceKey = rawLectureId + ":" + rawItemId + ":" + rawType
 A20261BBAB590693222001:13429606:project
 ```
 
-`rawItemId`를 얻을 수 없으면 `rawLectureId + rawType + title + dueDate` 조합을 fallback 후보로 둘 수 있다.
-다만 fallback key는 HTML 구조 변경 대응용이며, 기본 식별 기준으로 쓰지 않는다.
+현재 구현은 `rawLectureId`, `rawItemId`, `rawType` 중 하나라도 없으면 fallback key를 만들지 않고 파싱 실패 항목으로 분리한다.
 
 ## 5. 동기화 분류
 
@@ -112,15 +111,16 @@ Task.status = excluded
 
 ## 6. 원본에서 사라진 항목
 
-e-campus 체크리스트에서 사라졌다고 해서 앱에서 자동 완료 처리하지 않는다.
+현재 구현은 동기화가 오류 없이 끝났을 때, 기존 e-campus task가 이번 체크리스트에 없고 마감 전이면 완료 처리한다.
 
-이유:
+완료 처리 조건:
 
-- 제출해서 사라진 것인지 알 수 없다.
-- 교수자가 삭제했는지 알 수 없다.
-- 마감 기한이 지나 사라진 것인지 알 수 없다.
+- 기존 task 상태가 `active`
+- `sourceKey`가 있음
+- 이번 동기화 결과에 같은 `sourceKey`가 없음
+- `sourceDueDate` 또는 `dueDate`가 동기화 시각 이후임
 
-앱에서는 기존 Task 상태를 유지하고, 사용자가 직접 완료 또는 삭제한다.
+마감일이 지났거나 마감일이 없는 task는 자동 완료하지 않고 기존 상태를 유지한다.
 
 ## 7. 실패 처리
 

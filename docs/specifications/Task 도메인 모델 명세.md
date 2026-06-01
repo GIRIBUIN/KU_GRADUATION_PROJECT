@@ -56,13 +56,14 @@ stateDiagram-v2
     completed --> deleted: 완료 작업 삭제
     deleted --> active: 복구
 
-    active --> excluded: e-campus 항목 제외
+    active --> excluded: 업데이트 후보 선택 제외
     excluded --> [*]: 다시 가져오기 허용\n(excluded marker 영구 삭제)
     deleted --> [*]: 영구 삭제
 ```
 
 삭제는 즉시 영구 삭제하지 않고 `deleted` 상태로 남긴다.
 `excluded`는 실제 작업으로 복구하지 않고 제외 marker를 영구 삭제해 다음 e-campus 동기화에서 다시 신규 후보로 나타날 수 있게 한다.
+현재 화면에서 `alreadyImported` active 항목을 바로 제외하는 액션은 없다. `active -> excluded` 전이는 동기화 미리보기에서 기존 active e-campus task가 업데이트 후보로 분류되고, 사용자가 해당 후보를 `선택 제외`할 때 발생한다.
 
 | 전이 | 대상 | 트리거 |
 | --- | --- | --- |
@@ -73,7 +74,7 @@ stateDiagram-v2
 | `active` -> `deleted` | 개인, e-campus | 삭제 |
 | `completed` -> `deleted` | 개인, e-campus | 완료 작업 삭제 |
 | `deleted` -> `active` | 개인, e-campus | 복구 |
-| `active` -> `excluded` | e-campus | 이미 가져온 e-campus 항목을 제외 처리 |
+| `active` -> `excluded` | e-campus | 업데이트 후보로 분류된 기존 active 항목을 선택 제외 |
 | `excluded` -> 종료 | e-campus | 다시 가져오기 허용 또는 영구 삭제 |
 | `deleted` -> 종료 | 개인, e-campus | 영구 삭제 |
 

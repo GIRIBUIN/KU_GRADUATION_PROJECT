@@ -145,7 +145,7 @@ class TaskMetadataChips extends StatelessWidget {
         _SmallMetadataChip(
           label: tag.name,
           color: colorFromHex(tag.color),
-          icon: Icons.circle,
+          // icon: Icons.circle,
         ),
     ];
     if (chips.isEmpty) {

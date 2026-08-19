@@ -3,4 +3,12 @@
     <color name="light_blue_200">#FF81D4FA</color>
     <color name="light_blue_600">#FF039BE5</color>
     <color name="light_blue_900">#FF01579B</color>
+    <color name="widget_primary">#1262D6</color>
+    <color name="widget_success">#139A50</color>
+    <color name="widget_warning">#F57C00</color>
+    <color name="widget_danger">#E72E2E</color>
+    <color name="widget_ink">#111827</color>
+    <color name="widget_muted">#6B7280</color>
+    <color name="widget_surface">#FFFFFF</color>
+    <color name="widget_line">#E5E7EB</color>
 </resources>

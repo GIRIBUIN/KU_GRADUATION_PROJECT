@@ -1,17 +1,18 @@
 package com.example.ku_task_management
 
+import android.app.ActivityOptions
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.Color
-import android.net.Uri
 import android.os.Build
 import android.view.View
 import android.widget.RemoteViews
-import es.antonborri.home_widget.HomeWidgetBackgroundReceiver
 import es.antonborri.home_widget.HomeWidgetLaunchIntent
+import es.antonborri.home_widget.HomeWidgetPlugin
 import es.antonborri.home_widget.HomeWidgetProvider
 import org.json.JSONArray
 import org.json.JSONObject
@@ -28,9 +29,9 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
 
         appWidgetIds.forEach { widgetId ->
             val views = RemoteViews(context.packageName, R.layout.schedule_widget).apply {
-                val pendingIntent =
+                val openAppIntent =
                     HomeWidgetLaunchIntent.getActivity(context, MainActivity::class.java)
-                setOnClickPendingIntent(R.id.widget_container, pendingIntent)
+                setOnClickPendingIntent(R.id.widget_header, openAppIntent)
 
                 setTextViewText(R.id.widget_date, payload.headerDateLabel)
 
@@ -44,7 +45,6 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
                 val accentIds = intArrayOf(R.id.task_accent_0, R.id.task_accent_1, R.id.task_accent_2)
                 val timeIds = intArrayOf(R.id.task_time_0, R.id.task_time_1, R.id.task_time_2)
                 val titleIds = intArrayOf(R.id.task_title_0, R.id.task_title_1, R.id.task_title_2)
-                val dueIds = intArrayOf(R.id.task_due_0, R.id.task_due_1, R.id.task_due_2)
 
                 for (index in rowIds.indices) {
                     val task = payload.tasks.getOrNull(index)
@@ -66,15 +66,14 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
 
                     setTextViewText(timeIds[index], task.timeLabel)
                     setTextViewText(titleIds[index], task.title)
-                    setTextViewText(dueIds[index], task.dueLabel)
-                    setTextColor(dueIds[index], parseColor(task.dueColorHex))
                     setInt(accentIds[index], "setBackgroundColor", parseColor(task.accentColorHex))
 
                     val completeIntent = completeTaskPendingIntent(
                         context = context,
                         taskId = task.id,
-                        requestCode = CHECKBOX_REQUEST_CODE_BASE + index,
+                        requestCode = CHECKBOX_REQUEST_CODE_BASE + task.id.hashCode(),
                     )
+                    setOnClickPendingIntent(rowIds[index], completeIntent)
                     setOnClickPendingIntent(checkboxIds[index], completeIntent)
                 }
             }
@@ -87,9 +86,7 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
         val id: String,
         val title: String,
         val timeLabel: String,
-        val dueLabel: String,
         val accentColorHex: String,
-        val dueColorHex: String,
     )
 
     private data class WidgetPayload(
@@ -122,9 +119,7 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
                             id = id,
                             title = title,
                             timeLabel = taskJson.optString("timeLabel", "--:--"),
-                            dueLabel = taskJson.optString("dueLabel", "마감 없음"),
                             accentColorHex = taskJson.optString("accentColorHex", DEFAULT_ACCENT_COLOR),
-                            dueColorHex = taskJson.optString("dueColorHex", DEFAULT_DUE_COLOR),
                         ),
                     )
                 }
@@ -144,33 +139,56 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
         taskId: String,
         requestCode: Int,
     ): PendingIntent {
-        val intent = Intent(context, HomeWidgetBackgroundReceiver::class.java).apply {
-            action = HOME_WIDGET_BACKGROUND_ACTION
-            data = Uri.parse("kutodo://completeTask?taskId=${Uri.encode(taskId)}")
+        val intent = Intent(context, WidgetTaskCompleteActivity::class.java).apply {
+            putExtra(WidgetActions.EXTRA_TASK_ID, taskId)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
 
-        var flags = PendingIntent.FLAG_UPDATE_CURRENT
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            flags = flags or PendingIntent.FLAG_IMMUTABLE
+        var flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            val options = ActivityOptions.makeBasic()
+            if (Build.VERSION.SDK_INT >= 35) {
+                options.setPendingIntentCreatorBackgroundActivityStartMode(
+                    ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED,
+                )
+            } else {
+                options.pendingIntentBackgroundActivityStartMode =
+                    ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+            }
+            return PendingIntent.getActivity(context, requestCode, intent, flags, options.toBundle())
         }
 
-        return PendingIntent.getBroadcast(context, requestCode, intent, flags)
+        return PendingIntent.getActivity(context, requestCode, intent, flags)
     }
 
     private fun parseColor(hex: String): Int {
         return try {
             Color.parseColor(hex)
         } catch (_: IllegalArgumentException) {
-            Color.parseColor(DEFAULT_DUE_COLOR)
+            Color.parseColor(DEFAULT_ACCENT_COLOR)
         }
     }
 
     companion object {
         private const val WIDGET_DATA_KEY = "schedule_widget_data"
-        private const val HOME_WIDGET_BACKGROUND_ACTION =
-            "es.antonborri.home_widget.action.BACKGROUND"
         private const val DEFAULT_ACCENT_COLOR = "#1262D6"
-        private const val DEFAULT_DUE_COLOR = "#6B7280"
         private const val CHECKBOX_REQUEST_CODE_BASE = 10_000
+
+        fun requestUpdate(context: Context) {
+            val appWidgetManager = AppWidgetManager.getInstance(context)
+            val componentName = ComponentName(context, ScheduleWidgetProvider::class.java)
+            val widgetIds = appWidgetManager.getAppWidgetIds(componentName)
+            if (widgetIds.isEmpty()) {
+                return
+            }
+
+            ScheduleWidgetProvider().onUpdate(
+                context,
+                appWidgetManager,
+                widgetIds,
+                HomeWidgetPlugin.getData(context),
+            )
+        }
     }
 }

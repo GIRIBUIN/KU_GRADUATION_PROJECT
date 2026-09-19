@@ -8,12 +8,15 @@ import org.json.JSONObject
 import java.io.File
 
 object WidgetTaskCompleter {
-    private const val WIDGET_DATA_KEY = "schedule_widget_data"
+    private const val TODAY_WIDGET_DATA_KEY = "schedule_widget_data"
+    private const val WEEKLY_WIDGET_DATA_KEY = "weekly_schedule_widget_data"
     const val WIDGET_REFRESH_REQUIRED = "widget_refresh_required"
 
     fun completeTask(context: Context, taskId: String) {
-        removeTaskFromWidgetData(context, taskId)
+        removeTaskFromTodayWidgetData(context, taskId)
+        markCompletedInWeeklyWidgetData(context, taskId)
         ScheduleWidgetProvider.requestUpdate(context)
+        WeeklyScheduleWidgetProvider.requestUpdate(context)
 
         val dbUpdated = markTaskCompleted(context, taskId)
         if (dbUpdated) {
@@ -83,9 +86,9 @@ object WidgetTaskCompleter {
             }
     }
 
-    private fun removeTaskFromWidgetData(context: Context, taskId: String) {
+    private fun removeTaskFromTodayWidgetData(context: Context, taskId: String) {
         val prefs = HomeWidgetPlugin.getData(context)
-        val rawJson = prefs.getString(WIDGET_DATA_KEY, null) ?: return
+        val rawJson = prefs.getString(TODAY_WIDGET_DATA_KEY, null) ?: return
 
         try {
             val root = JSONObject(rawJson)
@@ -101,7 +104,41 @@ object WidgetTaskCompleter {
 
             root.put("tasks", filteredTasks)
             root.put("todayCount", filteredTasks.length())
-            prefs.edit().putString(WIDGET_DATA_KEY, root.toString()).commit()
+            prefs.edit().putString(TODAY_WIDGET_DATA_KEY, root.toString()).commit()
+        } catch (_: Exception) {
+            // Ignore malformed widget cache. App will rebuild it on next launch.
+        }
+    }
+
+    private fun markCompletedInWeeklyWidgetData(context: Context, taskId: String) {
+        val prefs = HomeWidgetPlugin.getData(context)
+        val rawJson = prefs.getString(WEEKLY_WIDGET_DATA_KEY, null) ?: return
+
+        try {
+            val root = JSONObject(rawJson)
+            val tasksArray = root.optJSONArray("tasks") ?: JSONArray()
+            var completedCount = root.optInt("completedCount", 0)
+            var taskUpdated = false
+
+            for (index in 0 until tasksArray.length()) {
+                val taskJson = tasksArray.optJSONObject(index) ?: continue
+                if (taskJson.optString("id") != taskId) {
+                    continue
+                }
+                if (!taskJson.optBoolean("isCompleted", false)) {
+                    taskJson.put("isCompleted", true)
+                    completedCount += 1
+                    taskUpdated = true
+                }
+                break
+            }
+
+            if (!taskUpdated) {
+                return
+            }
+
+            root.put("completedCount", completedCount)
+            prefs.edit().putString(WEEKLY_WIDGET_DATA_KEY, root.toString()).commit()
         } catch (_: Exception) {
             // Ignore malformed widget cache. App will rebuild it on next launch.
         }

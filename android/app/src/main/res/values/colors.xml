@@ -11,4 +11,6 @@
     <color name="widget_muted">#6B7280</color>
     <color name="widget_surface">#FFFFFF</color>
     <color name="widget_line">#E5E7EB</color>
+    <color name="widget_category_ecampus_text">#7C3AED</color>
+    <color name="widget_category_personal_text">#DB2777</color>
 </resources>

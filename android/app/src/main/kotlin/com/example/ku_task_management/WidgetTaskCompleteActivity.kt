@@ -9,8 +9,14 @@ class WidgetTaskCompleteActivity : Activity() {
         super.onCreate(savedInstanceState)
 
         val taskId = intent.getStringExtra(WidgetActions.EXTRA_TASK_ID)
+        val widgetKind = intent.getStringExtra(WidgetActions.EXTRA_WIDGET_KIND)
+            ?: WidgetActions.WIDGET_KIND_TODAY
         if (!taskId.isNullOrBlank()) {
-            WidgetTaskCompleter.completeTask(applicationContext, taskId)
+            WidgetTaskCompleter.completeTask(
+                context = applicationContext,
+                taskId = taskId,
+                widgetKind = widgetKind,
+            )
             NotificationManagerCompat.from(this).cancel(notificationIdForTask(taskId))
         }
 

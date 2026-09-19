@@ -8,11 +8,21 @@ import org.json.JSONObject
 import java.io.File
 
 object WidgetTaskCompleter {
-    private const val WIDGET_DATA_KEY = "schedule_widget_data"
+    private const val TODAY_WIDGET_DATA_KEY = "schedule_widget_data"
+    private const val WEEKLY_WIDGET_DATA_KEY = "weekly_schedule_widget_data"
     const val WIDGET_REFRESH_REQUIRED = "widget_refresh_required"
+    const val WIDGET_PENDING_COMPLETIONS = "widget_pending_completions"
+    const val WIDGET_PENDING_UNCOMPLETIONS = "widget_pending_uncompletions"
 
-    fun completeTask(context: Context, taskId: String) {
-        removeTaskFromWidgetData(context, taskId)
+    fun completeTask(context: Context, taskId: String, widgetKind: String) {
+        when (widgetKind) {
+            WidgetActions.WIDGET_KIND_WEEKLY -> toggleWeeklyWidgetTask(context, taskId)
+            else -> completeTodayWidgetTask(context, taskId)
+        }
+    }
+
+    private fun completeTodayWidgetTask(context: Context, taskId: String) {
+        removeTaskFromTodayWidgetData(context, taskId)
         ScheduleWidgetProvider.requestUpdate(context)
 
         val dbUpdated = markTaskCompleted(context, taskId)
@@ -22,6 +32,26 @@ object WidgetTaskCompleter {
                 .putBoolean(WIDGET_REFRESH_REQUIRED, true)
                 .apply()
         }
+    }
+
+    private fun toggleWeeklyWidgetTask(context: Context, taskId: String) {
+        val toggledToCompleted = toggleWeeklyWidgetTaskInData(context, taskId) ?: return
+
+        if (toggledToCompleted) {
+            removeTaskFromTodayWidgetData(context, taskId)
+            addPendingWidgetCompletion(context, taskId)
+            removePendingWidgetUncompletion(context, taskId)
+        } else {
+            addPendingWidgetUncompletion(context, taskId)
+            removePendingWidgetCompletion(context, taskId)
+        }
+
+        ScheduleWidgetProvider.requestUpdate(context)
+        WeeklyScheduleWidgetProvider.requestUpdate(context)
+        HomeWidgetPlugin.getData(context)
+            .edit()
+            .putBoolean(WIDGET_REFRESH_REQUIRED, true)
+            .apply()
     }
 
     private fun markTaskCompleted(context: Context, taskId: String): Boolean {
@@ -83,9 +113,9 @@ object WidgetTaskCompleter {
             }
     }
 
-    private fun removeTaskFromWidgetData(context: Context, taskId: String) {
+    private fun removeTaskFromTodayWidgetData(context: Context, taskId: String) {
         val prefs = HomeWidgetPlugin.getData(context)
-        val rawJson = prefs.getString(WIDGET_DATA_KEY, null) ?: return
+        val rawJson = prefs.getString(TODAY_WIDGET_DATA_KEY, null) ?: return
 
         try {
             val root = JSONObject(rawJson)
@@ -101,9 +131,106 @@ object WidgetTaskCompleter {
 
             root.put("tasks", filteredTasks)
             root.put("todayCount", filteredTasks.length())
-            prefs.edit().putString(WIDGET_DATA_KEY, root.toString()).commit()
+            prefs.edit().putString(TODAY_WIDGET_DATA_KEY, root.toString()).commit()
         } catch (_: Exception) {
             // Ignore malformed widget cache. App will rebuild it on next launch.
         }
+    }
+
+    private fun toggleWeeklyWidgetTaskInData(context: Context, taskId: String): Boolean? {
+        val prefs = HomeWidgetPlugin.getData(context)
+        val rawJson = prefs.getString(WEEKLY_WIDGET_DATA_KEY, null) ?: return null
+
+        return try {
+            val root = JSONObject(rawJson)
+            val tasksArray = root.optJSONArray("tasks") ?: JSONArray()
+            var completedCount = root.optInt("completedCount", 0)
+            var toggledToCompleted: Boolean? = null
+
+            for (index in 0 until tasksArray.length()) {
+                val taskJson = tasksArray.optJSONObject(index) ?: continue
+                if (taskJson.optString("id") != taskId) {
+                    continue
+                }
+
+                val isCompleted = taskJson.optBoolean("isCompleted", false)
+                if (isCompleted) {
+                    taskJson.put("isCompleted", false)
+                    completedCount = (completedCount - 1).coerceAtLeast(0)
+                    toggledToCompleted = false
+                } else {
+                    taskJson.put("isCompleted", true)
+                    completedCount += 1
+                    toggledToCompleted = true
+                }
+                break
+            }
+
+            if (toggledToCompleted == null) {
+                return null
+            }
+
+            root.put("completedCount", completedCount)
+            prefs.edit().putString(WEEKLY_WIDGET_DATA_KEY, root.toString()).commit()
+            toggledToCompleted
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun addPendingWidgetCompletion(context: Context, taskId: String) {
+        addPendingWidgetTaskId(context, WIDGET_PENDING_COMPLETIONS, taskId)
+    }
+
+    private fun removePendingWidgetCompletion(context: Context, taskId: String) {
+        removePendingWidgetTaskId(context, WIDGET_PENDING_COMPLETIONS, taskId)
+    }
+
+    private fun addPendingWidgetUncompletion(context: Context, taskId: String) {
+        addPendingWidgetTaskId(context, WIDGET_PENDING_UNCOMPLETIONS, taskId)
+    }
+
+    private fun removePendingWidgetUncompletion(context: Context, taskId: String) {
+        removePendingWidgetTaskId(context, WIDGET_PENDING_UNCOMPLETIONS, taskId)
+    }
+
+    private fun addPendingWidgetTaskId(context: Context, key: String, taskId: String) {
+        val prefs = HomeWidgetPlugin.getData(context)
+        val pendingArray = readPendingTaskIds(prefs.getString(key, "[]"))
+        if (pendingArray.contains(taskId)) {
+            return
+        }
+        pendingArray.put(taskId)
+        prefs.edit().putString(key, pendingArray.toString()).apply()
+    }
+
+    private fun removePendingWidgetTaskId(context: Context, key: String, taskId: String) {
+        val prefs = HomeWidgetPlugin.getData(context)
+        val pendingArray = readPendingTaskIds(prefs.getString(key, "[]"))
+        val filtered = JSONArray()
+        for (index in 0 until pendingArray.length()) {
+            val currentId = pendingArray.optString(index)
+            if (currentId != taskId) {
+                filtered.put(currentId)
+            }
+        }
+        prefs.edit().putString(key, filtered.toString()).apply()
+    }
+
+    private fun readPendingTaskIds(raw: String?): JSONArray {
+        return try {
+            JSONArray(raw ?: "[]")
+        } catch (_: Exception) {
+            JSONArray()
+        }
+    }
+
+    private fun JSONArray.contains(taskId: String): Boolean {
+        for (index in 0 until length()) {
+            if (optString(index) == taskId) {
+                return true
+            }
+        }
+        return false
     }
 }

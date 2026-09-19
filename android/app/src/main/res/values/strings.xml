@@ -4,5 +4,7 @@
     <string name="schedule_widget_title">KU Todo</string>
     <string name="schedule_widget_header_title">오늘 할 일정</string>
     <string name="schedule_widget_description">오늘 할 일정을 홈 화면에서 확인하고 완료할 수 있습니다.</string>
+    <string name="weekly_schedule_widget_header_title">이번 주 일정</string>
+    <string name="weekly_schedule_widget_description">이번 주 일정을 홈 화면에서 확인하고 완료할 수 있습니다.</string>
     <string name="schedule_widget_complete_task">일정 완료</string>
 </resources>

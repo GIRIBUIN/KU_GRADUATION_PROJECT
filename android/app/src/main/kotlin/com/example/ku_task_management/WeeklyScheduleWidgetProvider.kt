@@ -121,6 +121,12 @@ class WeeklyScheduleWidgetProvider : HomeWidgetProvider() {
             setTextViewText(dueIds[index], task.dueLabel)
             setTextColor(dueIds[index], parseColor(task.dueColorHex))
 
+            val toggleIntent = toggleTaskPendingIntent(
+                context = context,
+                taskId = task.id,
+                requestCode = CHECKBOX_REQUEST_CODE_BASE + task.id.hashCode(),
+            )
+
             if (task.isCompleted) {
                 setImageViewResource(checkboxIds[index], R.drawable.widget_checkbox_checked)
                 setTextColor(titleIds[index], parseColor(COMPLETED_TITLE_COLOR))
@@ -129,21 +135,14 @@ class WeeklyScheduleWidgetProvider : HomeWidgetProvider() {
                     "setPaintFlags",
                     Paint.STRIKE_THRU_TEXT_FLAG or Paint.ANTI_ALIAS_FLAG,
                 )
-                setOnClickPendingIntent(rowIds[index], null)
-                setOnClickPendingIntent(checkboxIds[index], null)
             } else {
                 setImageViewResource(checkboxIds[index], R.drawable.widget_checkbox_unchecked)
                 setTextColor(titleIds[index], parseColor(DEFAULT_TITLE_COLOR))
                 setInt(titleIds[index], "setPaintFlags", Paint.ANTI_ALIAS_FLAG)
-
-                val completeIntent = completeTaskPendingIntent(
-                    context = context,
-                    taskId = task.id,
-                    requestCode = CHECKBOX_REQUEST_CODE_BASE + task.id.hashCode(),
-                )
-                setOnClickPendingIntent(rowIds[index], completeIntent)
-                setOnClickPendingIntent(checkboxIds[index], completeIntent)
             }
+
+            setOnClickPendingIntent(rowIds[index], toggleIntent)
+            setOnClickPendingIntent(checkboxIds[index], toggleIntent)
         }
     }
 
@@ -236,13 +235,14 @@ class WeeklyScheduleWidgetProvider : HomeWidgetProvider() {
         return "$completedCount / $totalCount 완료"
     }
 
-    private fun completeTaskPendingIntent(
+    private fun toggleTaskPendingIntent(
         context: Context,
         taskId: String,
         requestCode: Int,
     ): PendingIntent {
         val intent = Intent(context, WidgetTaskCompleteActivity::class.java).apply {
             putExtra(WidgetActions.EXTRA_TASK_ID, taskId)
+            putExtra(WidgetActions.EXTRA_WIDGET_KIND, WidgetActions.WIDGET_KIND_WEEKLY)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
 

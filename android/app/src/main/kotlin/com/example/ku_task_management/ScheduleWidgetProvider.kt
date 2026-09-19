@@ -141,6 +141,7 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
     ): PendingIntent {
         val intent = Intent(context, WidgetTaskCompleteActivity::class.java).apply {
             putExtra(WidgetActions.EXTRA_TASK_ID, taskId)
+            putExtra(WidgetActions.EXTRA_WIDGET_KIND, WidgetActions.WIDGET_KIND_TODAY)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
 

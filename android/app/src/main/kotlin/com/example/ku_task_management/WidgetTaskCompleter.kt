@@ -117,26 +117,24 @@ object WidgetTaskCompleter {
         try {
             val root = JSONObject(rawJson)
             val tasksArray = root.optJSONArray("tasks") ?: JSONArray()
-            var completedCount = root.optInt("completedCount", 0)
-            var taskUpdated = false
+            val filteredTasks = JSONArray()
+            var removedFromList = false
 
             for (index in 0 until tasksArray.length()) {
                 val taskJson = tasksArray.optJSONObject(index) ?: continue
-                if (taskJson.optString("id") != taskId) {
+                if (taskJson.optString("id") == taskId) {
+                    removedFromList = true
                     continue
                 }
-                if (!taskJson.optBoolean("isCompleted", false)) {
-                    taskJson.put("isCompleted", true)
-                    completedCount += 1
-                    taskUpdated = true
-                }
-                break
+                filteredTasks.put(taskJson)
             }
 
-            if (!taskUpdated) {
+            if (!removedFromList) {
                 return
             }
 
+            val completedCount = root.optInt("completedCount", 0) + 1
+            root.put("tasks", filteredTasks)
             root.put("completedCount", completedCount)
             prefs.edit().putString(WEEKLY_WIDGET_DATA_KEY, root.toString()).commit()
         } catch (_: Exception) {

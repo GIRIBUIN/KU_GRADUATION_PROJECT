@@ -4,6 +4,7 @@ import android.app.Activity
 import android.os.Bundle
 import androidx.core.app.NotificationManagerCompat
 
+/** 위젯 RemoteViews 클릭을 받는 투명 트램폴린 Activity */
 class WidgetTaskCompleteActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

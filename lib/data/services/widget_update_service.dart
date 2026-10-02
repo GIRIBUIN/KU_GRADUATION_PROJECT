@@ -1,0 +1,174 @@
+import 'dart:convert';
+
+import 'package:home_widget/home_widget.dart';
+import 'package:path_provider/path_provider.dart';
+
+import '../models/task_models.dart';
+import '../models/today_widget_data.dart';
+import '../models/weekly_widget_data.dart';
+import '../repositories/settings_repository.dart';
+import '../repositories/tag_repository.dart';
+import '../repositories/task_repository.dart';
+import 'home_task_summary.dart';
+import 'widget_format.dart';
+import 'widget_today_selection.dart';
+import 'widget_week_selection.dart';
+
+/// Flutter → home_widget JSON 저장 및 오늘/주간 위젯 갱신.
+class WidgetUpdateService {
+  WidgetUpdateService({
+    required TaskRepository taskRepository,
+    required SettingsRepository settingsRepository,
+    required TagRepository tagRepository,
+    DateTime Function()? now,
+  }) : _taskRepository = taskRepository,
+       _settingsRepository = settingsRepository,
+       _tagRepository = tagRepository,
+       _now = now ?? DateTime.now;
+
+  static const todayAndroidProviderName = 'ScheduleWidgetProvider';
+  static const weeklyAndroidProviderName = 'WeeklyScheduleWidgetProvider';
+  static const widgetRefreshRequiredKey = 'widget_refresh_required';
+  static const widgetPendingCompletionsKey = 'widget_pending_completions';
+  static const widgetPendingUncompletionsKey = 'widget_pending_uncompletions';
+  static const widgetDatabasePathKey = 'widget_db_path';
+
+  final TaskRepository _taskRepository;
+  final SettingsRepository _settingsRepository;
+  final TagRepository _tagRepository;
+  final DateTime Function() _now;
+
+  /// 주간 위젯에서만 쌓인 완료/해제 요청을 Drift에 반영한다.
+  Future<void> applyPendingWidgetCompletions() async {
+    final uncompletionIds = await _readPendingTaskIds(widgetPendingUncompletionsKey);
+    for (final taskId in uncompletionIds) {
+      final task = await _taskRepository.getTaskById(taskId);
+      if (task == null || task.status != TaskStatus.completed) {
+        continue;
+      }
+      await _taskRepository.updateTaskStatus(taskId, TaskStatus.active);
+    }
+    await HomeWidget.saveWidgetData(widgetPendingUncompletionsKey, null);
+
+    final completionIds = await _readPendingTaskIds(widgetPendingCompletionsKey);
+    for (final taskId in completionIds) {
+      final task = await _taskRepository.getTaskById(taskId);
+      if (task == null || task.status != TaskStatus.active) {
+        continue;
+      }
+      await _taskRepository.updateTaskStatus(taskId, TaskStatus.completed);
+    }
+    await HomeWidget.saveWidgetData(widgetPendingCompletionsKey, null);
+  }
+
+  Future<List<String>> _readPendingTaskIds(String key) async {
+    final raw = await HomeWidget.getWidgetData<String>(key, defaultValue: '');
+    if (raw == null || raw.isEmpty) {
+      return const [];
+    }
+
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) {
+        return const [];
+      }
+      return decoded
+          .whereType<String>()
+          .where((id) => id.isNotEmpty)
+          .toList(growable: false);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// 두 위젯 JSON을 각각 저장하고 Android Provider를 업데이트한다.
+  Future<void> refresh() async {
+    await applyPendingWidgetCompletions();
+    final now = _now();
+    final documentsDir = await getApplicationDocumentsDirectory();
+    await HomeWidget.saveWidgetData(
+      widgetDatabasePathKey,
+      '${documentsDir.path}/ku_task_management.sqlite',
+    );
+
+    final todayData = await buildTodayWidgetData(now: now);
+    await HomeWidget.saveWidgetData(
+      TodayWidgetData.storageKey,
+      todayData.toJsonString(),
+    );
+    await HomeWidget.updateWidget(androidName: todayAndroidProviderName);
+
+    final weeklyData = await buildWeeklyWidgetData(now: now);
+    await HomeWidget.saveWidgetData(
+      WeeklyWidgetData.storageKey,
+      weeklyData.toJsonString(),
+    );
+    await HomeWidget.updateWidget(androidName: weeklyAndroidProviderName);
+  }
+
+  /// 오늘 할 일정 위젯(ScheduleWidgetProvider)용 스냅샷.
+  Future<TodayWidgetData> buildTodayWidgetData({DateTime? now}) async {
+    final current = now ?? _now();
+    final tasks = await _taskRepository.getTasks(includeArchived: false);
+    final settings = await _settingsRepository.getSettings();
+    final tagsById = {
+      for (final tag in await _tagRepository.getTags()) tag.id: tag,
+    };
+    final summary = HomeTaskSummary.fromTasks(
+      tasks: tasks,
+      now: current,
+      urgentDueDays: settings.urgentDueDays,
+    );
+    final selectedTasks = selectWidgetTasks(summary);
+
+    return TodayWidgetData(
+      headerDateLabel: formatWidgetHeaderDate(current),
+      tasks: selectedTasks
+          .map(
+            (task) => TodayWidgetTaskSnapshot(
+              id: task.id,
+              title: task.title,
+              timeLabel: formatWidgetTime(task.dueDate),
+              accentColorHex: accentColorForTask(task, tagsById: tagsById),
+            ),
+          )
+          .toList(growable: false),
+      todayCount: summary.todayTasks.length,
+      updatedAt: current,
+    );
+  }
+
+  /// 이번 주 일정 위젯(WeeklyScheduleWidgetProvider)용 스냅샷.
+  Future<WeeklyWidgetData> buildWeeklyWidgetData({DateTime? now}) async {
+    final current = now ?? _now();
+    final week = weekWindowFor(current);
+    final tasks = await _taskRepository.getTasks(includeArchived: true);
+    final weekTasks = tasksForWeek(tasks, week);
+    final selectedTasks = selectWidgetWeekTasks(weekTasks);
+    final progress = weekProgressCounts(weekTasks);
+
+    return WeeklyWidgetData(
+      weekRangeLabel: formatWidgetWeekRange(week.start, week.end),
+      completedCount: progress.completedCount,
+      totalCount: progress.totalCount,
+      tasks: selectedTasks
+          .map((task) => _toWeeklySnapshot(task, now: current))
+          .toList(growable: false),
+      updatedAt: current,
+    );
+  }
+
+  WeeklyWidgetTaskSnapshot _toWeeklySnapshot(Task task, {required DateTime now}) {
+    final dueDate = task.dueDate!;
+    return WeeklyWidgetTaskSnapshot(
+      id: task.id,
+      title: task.title,
+      categoryLabel: categoryLabelForTask(task),
+      categoryBackgroundHex: categoryBackgroundHexForTask(task),
+      categoryTextHex: categoryTextHexForTask(task),
+      dueLabel: formatWidgetDueLabel(dueDate, now: now),
+      dueColorHex: dueColorHexForDate(dueDate, now: now),
+      isCompleted: isTaskCompletedForWidget(task),
+    );
+  }
+}

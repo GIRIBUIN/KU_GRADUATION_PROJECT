@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:home_widget/home_widget.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/theme/app_theme.dart';
@@ -13,6 +14,7 @@ import '../../../data/repositories/tag_repository.dart';
 import '../../../data/services/ecampus_auth_service.dart';
 import '../../../data/repositories/task_repository.dart';
 import '../../../data/services/home_task_summary.dart';
+import '../../../data/services/widget_update_service.dart';
 import '../../../data/services/http_ecampus_auth_service.dart';
 import '../../services/in_app_webview_ecampus_cookie_store.dart';
 import '../../services/local_notification_service.dart';
@@ -31,6 +33,7 @@ class MainShellScreen extends StatefulWidget {
     required this.tagRepository,
     required this.folderRepository,
     required this.localNotificationService,
+    required this.widgetUpdateService,
   });
 
   final TaskRepository taskRepository;
@@ -40,12 +43,14 @@ class MainShellScreen extends StatefulWidget {
   final TagRepository tagRepository;
   final FolderRepository folderRepository;
   final LocalNotificationService localNotificationService;
+  final WidgetUpdateService widgetUpdateService;
 
   @override
   State<MainShellScreen> createState() => _MainShellScreenState();
 }
 
-class _MainShellScreenState extends State<MainShellScreen> {
+class _MainShellScreenState extends State<MainShellScreen>
+    with WidgetsBindingObserver {
   var _selectedIndex = 0;
   EcampusSession? _ecampusSession;
   Timer? _clockRefreshTimer;
@@ -62,12 +67,40 @@ class _MainShellScreenState extends State<MainShellScreen> {
     _settingsFuture = _loadSettings();
     _metadataFuture = _loadMetadata();
     _scheduleClockRefresh();
+    _listenForWidgetLaunch();
+    WidgetsBinding.instance.addObserver(this);
+    unawaited(_refreshIfWidgetChangedTasks());
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _clockRefreshTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_refreshIfWidgetChangedTasks());
+    }
+  }
+
+  /// 주간 위젯에서 체크한 뒤 앱 복귀 시 목록·위젯 JSON을 다시 맞춘다.
+  Future<void> _refreshIfWidgetChangedTasks() async {
+    final needsRefresh = await HomeWidget.getWidgetData<bool>(
+      WidgetUpdateService.widgetRefreshRequiredKey,
+      defaultValue: false,
+    );
+    if (needsRefresh != true || !mounted) {
+      return;
+    }
+
+    await HomeWidget.saveWidgetData(
+      WidgetUpdateService.widgetRefreshRequiredKey,
+      null,
+    );
+    _refreshTasksAndMetadata();
   }
 
   Future<List<Task>> _loadTasks() {
@@ -150,14 +183,39 @@ class _MainShellScreenState extends State<MainShellScreen> {
         return;
       }
       setState(() {});
+      _refreshHomeWidget();
       _scheduleClockRefresh();
     });
+  }
+
+  Future<void> _listenForWidgetLaunch() async {
+    final launchedUri = await HomeWidget.initiallyLaunchedFromHomeWidget();
+    if (launchedUri != null) {
+      _openHomeFromWidget();
+    }
+    HomeWidget.widgetClicked.listen((_) {
+      _openHomeFromWidget();
+    });
+  }
+
+  void _openHomeFromWidget() {
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _selectedIndex = 0;
+    });
+  }
+
+  void _refreshHomeWidget() {
+    unawaited(widget.widgetUpdateService.refresh());
   }
 
   void _refreshTasks() {
     setState(() {
       _tasksFuture = _loadTasks();
     });
+    _refreshHomeWidget();
   }
 
   Future<_TaskMetadataLookup> _loadMetadata() async {
@@ -180,6 +238,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
       _metadataFuture = _loadMetadata();
       _metadataVersion++;
     });
+    _refreshHomeWidget();
   }
 
   Future<void> _openEcampusSync() async {

@@ -7,6 +7,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
+/** 위젯 체크박스 처리: 오늘=즉시 SQLite, 주간=JSON 토글+pending */
 object WidgetTaskCompleter {
     private const val TODAY_WIDGET_DATA_KEY = "schedule_widget_data"
     private const val WEEKLY_WIDGET_DATA_KEY = "weekly_schedule_widget_data"
@@ -22,6 +23,7 @@ object WidgetTaskCompleter {
     }
 
     private fun completeTodayWidgetTask(context: Context, taskId: String) {
+        // 위젯 캐시에서 제거 후 Drift DB 직접 UPDATE
         removeTaskFromTodayWidgetData(context, taskId)
         ScheduleWidgetProvider.requestUpdate(context)
 
@@ -35,6 +37,7 @@ object WidgetTaskCompleter {
     }
 
     private fun toggleWeeklyWidgetTask(context: Context, taskId: String) {
+        // JSON isCompleted만 바꾸고, 실제 status 변경은 Flutter pending 큐에 위임
         val toggledToCompleted = toggleWeeklyWidgetTaskInData(context, taskId) ?: return
 
         if (toggledToCompleted) {

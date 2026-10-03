@@ -1,3 +1,5 @@
+import '../models/home_section.dart';
+
 class AppSettings {
   const AppSettings({
     required this.autoSyncEnabled,
@@ -7,6 +9,8 @@ class AppSettings {
     required this.defaultNotificationTime,
     required this.urgentDueDays,
     this.homeSelectedTagId,
+    this.homeSectionOrder = HomeSection.values,
+    this.hiddenHomeSections = HomeSection.defaultHidden,
     this.hiddenTagIds = const <String>{},
     this.hiddenFolderIds = const <String>{},
     this.tagFolderIds = const <String, String>{},
@@ -21,6 +25,8 @@ class AppSettings {
   final String defaultNotificationTime;
   final int urgentDueDays;
   final String? homeSelectedTagId;
+  final List<HomeSection> homeSectionOrder;
+  final Set<HomeSection> hiddenHomeSections;
   final Set<String> hiddenTagIds;
   final Set<String> hiddenFolderIds;
   final Map<String, String> tagFolderIds;
@@ -35,6 +41,8 @@ class AppSettings {
     String? defaultNotificationTime,
     int? urgentDueDays,
     Object? homeSelectedTagId = _appSettingsUnset,
+    List<HomeSection>? homeSectionOrder,
+    Set<HomeSection>? hiddenHomeSections,
     Set<String>? hiddenTagIds,
     Set<String>? hiddenFolderIds,
     Map<String, String>? tagFolderIds,
@@ -54,6 +62,8 @@ class AppSettings {
       homeSelectedTagId: homeSelectedTagId == _appSettingsUnset
           ? this.homeSelectedTagId
           : homeSelectedTagId as String?,
+      homeSectionOrder: homeSectionOrder ?? this.homeSectionOrder,
+      hiddenHomeSections: hiddenHomeSections ?? this.hiddenHomeSections,
       hiddenTagIds: hiddenTagIds ?? this.hiddenTagIds,
       hiddenFolderIds: hiddenFolderIds ?? this.hiddenFolderIds,
       tagFolderIds: tagFolderIds ?? this.tagFolderIds,

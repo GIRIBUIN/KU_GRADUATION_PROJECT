@@ -17,6 +17,7 @@ import es.antonborri.home_widget.HomeWidgetProvider
 import org.json.JSONArray
 import org.json.JSONObject
 
+/** 오늘 할 일정 홈 위젯: schedule_widget_data JSON → RemoteViews */
 class ScheduleWidgetProvider : HomeWidgetProvider() {
 
     override fun onUpdate(
@@ -68,6 +69,7 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
                     setTextViewText(titleIds[index], task.title)
                     setInt(accentIds[index], "setBackgroundColor", parseColor(task.accentColorHex))
 
+                    // 체크 시 투명 Activity → DB 즉시 완료 + JSON에서 제거
                     val completeIntent = completeTaskPendingIntent(
                         context = context,
                         taskId = task.id,

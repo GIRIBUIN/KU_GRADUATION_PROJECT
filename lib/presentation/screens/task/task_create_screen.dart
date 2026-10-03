@@ -22,6 +22,7 @@ class TaskCreateScreen extends StatefulWidget {
     required this.tagRepository,
     required this.folderRepository,
     required this.localNotificationService,
+    this.initialDueDate,
   });
 
   final TaskRepository taskRepository;
@@ -31,6 +32,7 @@ class TaskCreateScreen extends StatefulWidget {
   final TagRepository tagRepository;
   final FolderRepository folderRepository;
   final LocalNotificationService localNotificationService;
+  final DateTime? initialDueDate;
 
   @override
   State<TaskCreateScreen> createState() => _TaskCreateScreenState();
@@ -64,6 +66,7 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
   @override
   void initState() {
     super.initState();
+    _dueDate = widget.initialDueDate;
     _loadDefaults();
   }
 
@@ -77,8 +80,10 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
     setState(() {
       _tags = tags;
       _folders = folders;
-      _notificationEnabled = settings.defaultNotificationEnabled;
       _notificationOffsetMinutes = settings.defaultNotificationDays;
+      _notificationEnabled =
+          settings.defaultNotificationEnabled &&
+          !_isCurrentNotificationSchedulePast();
       _isLoadingSettings = false;
     });
   }
@@ -253,7 +258,7 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
   bool _hasDraftInput() {
     return _titleController.text.trim().isNotEmpty ||
         _memoController.text.trim().isNotEmpty ||
-        _dueDate != null ||
+        _dueDate != widget.initialDueDate ||
         _priority != null ||
         _subTasks.isNotEmpty ||
         _selectedTagIds.isNotEmpty;
@@ -341,8 +346,10 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
     final date = await showDatePicker(
       context: context,
       initialDate: initial,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2035),
+      firstDate: initial.isBefore(DateTime(2020)) ? initial : DateTime(2020),
+      lastDate: initial.isAfter(DateTime(2035, 12, 31))
+          ? initial
+          : DateTime(2035, 12, 31),
     );
     if (date == null || !mounted) {
       return;

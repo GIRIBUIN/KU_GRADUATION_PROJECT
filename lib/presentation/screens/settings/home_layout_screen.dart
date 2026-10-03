@@ -128,13 +128,6 @@ class _HomeLayoutScreenState extends State<HomeLayoutScreen> {
                                 section.label,
                                 style: Theme.of(context).textTheme.titleMedium,
                               ),
-                              if (section == HomeSection.calendar)
-                                Text(
-                                  '준비 중',
-                                  style: TextStyle(
-                                    color: colors.onSurfaceVariant,
-                                  ),
-                                ),
                             ],
                           ),
                         ),

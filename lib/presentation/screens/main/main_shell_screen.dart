@@ -24,6 +24,7 @@ import '../sync/ecampus_sync_progress_screen.dart';
 import '../task/task_create_screen.dart';
 import '../task/task_detail_screen.dart';
 import '../../widgets/task_metadata_picker.dart' as metadata_picker;
+import '../../widgets/home_calendar_section.dart';
 
 class MainShellScreen extends StatefulWidget {
   const MainShellScreen({
@@ -453,10 +454,19 @@ class _MainShellScreenState extends State<MainShellScreen>
     }
   }
 
-  Future<void> _openTaskCreate() async {
+  Future<void> _openTaskCreate({DateTime? initialDay}) async {
     await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => TaskCreateScreen(
+          initialDueDate: initialDay == null
+              ? null
+              : DateTime(
+                  initialDay.year,
+                  initialDay.month,
+                  initialDay.day,
+                  23,
+                  59,
+                ),
           taskRepository: widget.taskRepository,
           subTaskRepository: widget.subTaskRepository,
           notificationRepository: widget.notificationRepository,
@@ -530,6 +540,8 @@ class _MainShellScreenState extends State<MainShellScreen>
                     onToggleTask: _toggleTaskCompletion,
                     onDeleteTask: _deleteTask,
                     onOpenTaskDetail: _openTaskDetail,
+                    onCreateCalendarTask: (day) =>
+                        _openTaskCreate(initialDay: day),
                   ),
                   _TaskListPage(
                     tasks: tasks,
@@ -650,6 +662,7 @@ class _HomePage extends StatefulWidget {
     required this.onToggleTask,
     required this.onDeleteTask,
     required this.onOpenTaskDetail,
+    required this.onCreateCalendarTask,
   });
 
   final List<Task> tasks;
@@ -665,6 +678,7 @@ class _HomePage extends StatefulWidget {
   final ValueChanged<Task> onToggleTask;
   final ValueChanged<Task> onDeleteTask;
   final ValueChanged<Task> onOpenTaskDetail;
+  final ValueChanged<DateTime> onCreateCalendarTask;
 
   @override
   State<_HomePage> createState() => _HomePageState();
@@ -822,13 +836,13 @@ class _HomePageState extends State<_HomePage> {
         onDeleteTask: widget.onDeleteTask,
         onOpenTaskDetail: widget.onOpenTaskDetail,
       ),
-      HomeSection.calendar => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _SectionHeader(title: section.label, count: 0),
-          const SizedBox(height: 12),
-          const _EmptyBlock(message: '캘린더 기능 준비 중'),
-        ],
+      HomeSection.calendar => HomeCalendarSection(
+        tasks: widget.tasks,
+        isLoading: widget.isLoading,
+        onCreateTask: widget.onCreateCalendarTask,
+        onOpenTask: widget.onOpenTaskDetail,
+        onToggleTask: widget.onToggleTask,
+        onDeleteTask: widget.onDeleteTask,
       ),
     };
   }

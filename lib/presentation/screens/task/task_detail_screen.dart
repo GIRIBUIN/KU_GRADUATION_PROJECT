@@ -338,8 +338,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     final date = await showDatePicker(
       context: context,
       initialDate: initial,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2035),
+      firstDate: initial.isBefore(DateTime(2020)) ? initial : DateTime(2020),
+      lastDate: initial.isAfter(DateTime(2035, 12, 31))
+          ? initial
+          : DateTime(2035, 12, 31),
     );
     if (date == null || !mounted) {
       return;

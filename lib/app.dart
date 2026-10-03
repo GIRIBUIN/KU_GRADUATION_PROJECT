@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'core/theme/app_theme.dart';
 import 'data/local/app_database.dart';
@@ -82,6 +83,9 @@ class _KuTaskAppState extends State<KuTaskApp> {
       title: 'KU Todo',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
+      locale: const Locale('ko', 'KR'),
+      supportedLocales: const [Locale('ko', 'KR'), Locale('en', 'US')],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       home: MainShellScreen(
         taskRepository: _taskRepository,
         subTaskRepository: _subTaskRepository,

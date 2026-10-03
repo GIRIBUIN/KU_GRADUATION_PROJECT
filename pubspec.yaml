@@ -13,8 +13,10 @@ dependencies:
     sdk: flutter
   flutter_inappwebview: ^6.1.5
   flutter_local_notifications: ^21.0.0
+  home_widget: 0.9.3
   html: ^0.15.4
   http: ^1.5.0
+  path_provider: 2.1.5
   timezone: ^0.11.0
 
 dev_dependencies:

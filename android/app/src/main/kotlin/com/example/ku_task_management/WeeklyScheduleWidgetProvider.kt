@@ -18,6 +18,7 @@ import es.antonborri.home_widget.HomeWidgetProvider
 import org.json.JSONArray
 import org.json.JSONObject
 
+/** 이번 주 일정 홈 위젯: weekly_schedule_widget_data JSON → RemoteViews */
 class WeeklyScheduleWidgetProvider : HomeWidgetProvider() {
 
     override fun onUpdate(
@@ -121,6 +122,7 @@ class WeeklyScheduleWidgetProvider : HomeWidgetProvider() {
             setTextViewText(dueIds[index], task.dueLabel)
             setTextColor(dueIds[index], parseColor(task.dueColorHex))
 
+            // 완료/미완료 모두 토글 가능; DB 반영은 앱에서 pending 큐로 처리
             val toggleIntent = toggleTaskPendingIntent(
                 context = context,
                 taskId = task.id,

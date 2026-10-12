@@ -1,8 +1,12 @@
+import 'dart:io';
+
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ku_task_management/data/local/app_database.dart'
     show AppDatabase, TaskFoldersCompanion, TaskTagsCompanion, TasksCompanion;
 import 'package:ku_task_management/data/models/task_models.dart';
+import 'package:ku_task_management/data/models/home_section.dart';
+import 'package:ku_task_management/data/local/mappers/metadata_mappers.dart';
 import 'package:ku_task_management/data/repositories/drift_folder_repository.dart';
 import 'package:ku_task_management/data/repositories/drift_notification_repository.dart';
 import 'package:ku_task_management/data/repositories/drift_settings_repository.dart';
@@ -183,6 +187,8 @@ void main() {
       expect(defaults.defaultNotificationTime, 'relative');
       expect(defaults.urgentDueDays, 3);
       expect(defaults.homeSelectedTagId, isNull);
+      expect(defaults.homeSectionOrder, HomeSection.values);
+      expect(defaults.hiddenHomeSections, {HomeSection.calendar});
       expect(defaults.hiddenTagIds, isEmpty);
       expect(defaults.hiddenFolderIds, isEmpty);
       expect(defaults.tagFolderIds, isEmpty);
@@ -198,6 +204,14 @@ void main() {
           defaultNotificationTime: 'relative',
           urgentDueDays: 7,
           homeSelectedTagId: 'tag-1',
+          homeSectionOrder: [
+            HomeSection.calendar,
+            HomeSection.overdueTasks,
+            HomeSection.todayTasks,
+            HomeSection.urgentTasks,
+            HomeSection.selectedTagTasks,
+          ],
+          hiddenHomeSections: {HomeSection.urgentTasks},
           hiddenTagIds: {'tag-2'},
           hiddenFolderIds: {'folder-1'},
           tagFolderIds: {'tag-2': 'folder-1'},
@@ -213,12 +227,14 @@ void main() {
       expect(saved.defaultNotificationTime, 'relative');
       expect(saved.urgentDueDays, 7);
       expect(saved.homeSelectedTagId, 'tag-1');
+      expect(saved.homeSectionOrder.first, HomeSection.calendar);
+      expect(saved.hiddenHomeSections, {HomeSection.urgentTasks});
       expect(saved.hiddenTagIds, {'tag-2'});
       expect(saved.hiddenFolderIds, {'folder-1'});
       expect(saved.tagFolderIds, {'tag-2': 'folder-1'});
       expect(saved.tagSortOrders, {'tag-2': 1});
       expect(saved.ecampusFolderId, 'folder-ecampus');
-      expect((await database.select(database.appSettings).get()).length, 12);
+      expect((await database.select(database.appSettings).get()).length, 14);
 
       final restartedRepository = DriftSettingsRepository(database: database);
       final persisted = await restartedRepository.getSettings();
@@ -230,6 +246,8 @@ void main() {
       expect(persisted.defaultNotificationTime, 'relative');
       expect(persisted.urgentDueDays, 7);
       expect(persisted.homeSelectedTagId, 'tag-1');
+      expect(persisted.homeSectionOrder, saved.homeSectionOrder);
+      expect(persisted.hiddenHomeSections, saved.hiddenHomeSections);
       expect(persisted.hiddenTagIds, {'tag-2'});
       expect(persisted.hiddenFolderIds, {'folder-1'});
       expect(persisted.tagFolderIds, {'tag-2': 'folder-1'});
@@ -248,11 +266,94 @@ void main() {
       );
 
       expect(cleared.homeSelectedTagId, isNull);
+      expect(cleared.homeSectionOrder, saved.homeSectionOrder);
+      expect(cleared.hiddenHomeSections, saved.hiddenHomeSections);
       expect(cleared.hiddenTagIds, isEmpty);
       expect(cleared.hiddenFolderIds, isEmpty);
       expect(cleared.tagFolderIds, isEmpty);
       expect(cleared.tagSortOrders, isEmpty);
       expect(cleared.ecampusFolderId, isNull);
+    });
+
+    test('persists home layout across a database close and reopen', () async {
+      await database.close();
+      final directory = await Directory.systemTemp.createTemp(
+        'ku_home_layout_',
+      );
+      final file = File('${directory.path}/settings.sqlite');
+      final firstDatabase = AppDatabase(NativeDatabase(file));
+      final firstRepository = DriftSettingsRepository(database: firstDatabase);
+      final settings = await firstRepository.getSettings();
+      final order = HomeSection.values.reversed.toList();
+      try {
+        await firstRepository.saveSettings(
+          settings.copyWith(
+            homeSectionOrder: order,
+            hiddenHomeSections: {HomeSection.todayTasks},
+          ),
+        );
+      } finally {
+        await firstDatabase.close();
+      }
+
+      database = AppDatabase(NativeDatabase(file));
+      try {
+        final loaded = await DriftSettingsRepository(
+          database: database,
+        ).getSettings();
+        expect(loaded.homeSectionOrder, order);
+        expect(loaded.hiddenHomeSections, {HomeSection.todayTasks});
+      } finally {
+        await database.close();
+        await directory.delete(recursive: true);
+      }
+    });
+  });
+
+  group('home layout settings compatibility', () {
+    const mapper = AppSettingsMapper();
+
+    test('loads legacy settings with the four original visible sections', () {
+      final settings = mapper.fromMap({'urgentDueDays': '7'});
+      expect(settings.homeSectionOrder, HomeSection.values);
+      expect(settings.hiddenHomeSections, {HomeSection.calendar});
+      expect(settings.urgentDueDays, 7);
+    });
+
+    test('repairs duplicate, unknown and missing section IDs', () {
+      final settings = mapper.fromMap({
+        'homeSectionOrder': '["overdueTasks","futureSection","overdueTasks"]',
+        'hiddenHomeSections': '["urgentTasks","futureSection"]',
+      });
+      expect(settings.homeSectionOrder, [
+        HomeSection.overdueTasks,
+        HomeSection.todayTasks,
+        HomeSection.urgentTasks,
+        HomeSection.selectedTagTasks,
+        HomeSection.calendar,
+      ]);
+      expect(settings.hiddenHomeSections, {HomeSection.urgentTasks});
+    });
+
+    test('uses safe defaults for malformed stored values', () {
+      for (final invalid in ['{broken', '{}', 'null', '[42]']) {
+        final settings = mapper.fromMap({
+          'homeSectionOrder': invalid,
+          'hiddenHomeSections': invalid,
+        });
+        expect(settings.homeSectionOrder, HomeSection.values);
+        expect(settings.hiddenHomeSections, {HomeSection.calendar});
+      }
+    });
+
+    test('preserves explicit show-all and hide-all configurations', () {
+      final settings = mapper.fromMap({});
+      for (final hidden in [<HomeSection>{}, HomeSection.values.toSet()]) {
+        final loaded = mapper.fromMap(
+          mapper.toMap(settings.copyWith(hiddenHomeSections: hidden)),
+        );
+        expect(loaded.hiddenHomeSections, hidden);
+      }
     });
   });
 }

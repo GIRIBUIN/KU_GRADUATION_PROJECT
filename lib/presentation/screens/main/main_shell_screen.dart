@@ -1,9 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:home_widget/home_widget.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/theme/app_theme.dart';
+import '../../../data/models/home_section.dart';
 import '../../../data/models/task_models.dart';
 import '../../../data/repositories/folder_repository.dart';
 import '../../../data/repositories/notification_repository.dart';
@@ -13,13 +15,16 @@ import '../../../data/repositories/tag_repository.dart';
 import '../../../data/services/ecampus_auth_service.dart';
 import '../../../data/repositories/task_repository.dart';
 import '../../../data/services/home_task_summary.dart';
+import '../../../data/services/widget_update_service.dart';
 import '../../../data/services/http_ecampus_auth_service.dart';
 import '../../services/in_app_webview_ecampus_cookie_store.dart';
 import '../../services/local_notification_service.dart';
+import '../settings/home_layout_screen.dart';
 import '../sync/ecampus_sync_progress_screen.dart';
 import '../task/task_create_screen.dart';
 import '../task/task_detail_screen.dart';
 import '../../widgets/task_metadata_picker.dart' as metadata_picker;
+import '../../widgets/home_calendar_section.dart';
 
 class MainShellScreen extends StatefulWidget {
   const MainShellScreen({
@@ -31,6 +36,7 @@ class MainShellScreen extends StatefulWidget {
     required this.tagRepository,
     required this.folderRepository,
     required this.localNotificationService,
+    required this.widgetUpdateService,
   });
 
   final TaskRepository taskRepository;
@@ -40,12 +46,14 @@ class MainShellScreen extends StatefulWidget {
   final TagRepository tagRepository;
   final FolderRepository folderRepository;
   final LocalNotificationService localNotificationService;
+  final WidgetUpdateService widgetUpdateService;
 
   @override
   State<MainShellScreen> createState() => _MainShellScreenState();
 }
 
-class _MainShellScreenState extends State<MainShellScreen> {
+class _MainShellScreenState extends State<MainShellScreen>
+    with WidgetsBindingObserver {
   var _selectedIndex = 0;
   EcampusSession? _ecampusSession;
   Timer? _clockRefreshTimer;
@@ -62,12 +70,40 @@ class _MainShellScreenState extends State<MainShellScreen> {
     _settingsFuture = _loadSettings();
     _metadataFuture = _loadMetadata();
     _scheduleClockRefresh();
+    _listenForWidgetLaunch();
+    WidgetsBinding.instance.addObserver(this);
+    unawaited(_refreshIfWidgetChangedTasks());
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _clockRefreshTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_refreshIfWidgetChangedTasks());
+    }
+  }
+
+  /// 주간 위젯에서 체크한 뒤 앱 복귀 시 목록·위젯 JSON을 다시 맞춘다.
+  Future<void> _refreshIfWidgetChangedTasks() async {
+    final needsRefresh = await HomeWidget.getWidgetData<bool>(
+      WidgetUpdateService.widgetRefreshRequiredKey,
+      defaultValue: false,
+    );
+    if (needsRefresh != true || !mounted) {
+      return;
+    }
+
+    await HomeWidget.saveWidgetData(
+      WidgetUpdateService.widgetRefreshRequiredKey,
+      null,
+    );
+    _refreshTasksAndMetadata();
   }
 
   Future<List<Task>> _loadTasks() {
@@ -150,14 +186,39 @@ class _MainShellScreenState extends State<MainShellScreen> {
         return;
       }
       setState(() {});
+      _refreshHomeWidget();
       _scheduleClockRefresh();
     });
+  }
+
+  Future<void> _listenForWidgetLaunch() async {
+    final launchedUri = await HomeWidget.initiallyLaunchedFromHomeWidget();
+    if (launchedUri != null) {
+      _openHomeFromWidget();
+    }
+    HomeWidget.widgetClicked.listen((_) {
+      _openHomeFromWidget();
+    });
+  }
+
+  void _openHomeFromWidget() {
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _selectedIndex = 0;
+    });
+  }
+
+  void _refreshHomeWidget() {
+    unawaited(widget.widgetUpdateService.refresh());
   }
 
   void _refreshTasks() {
     setState(() {
       _tasksFuture = _loadTasks();
     });
+    _refreshHomeWidget();
   }
 
   Future<_TaskMetadataLookup> _loadMetadata() async {
@@ -180,6 +241,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
       _metadataFuture = _loadMetadata();
       _metadataVersion++;
     });
+    _refreshHomeWidget();
   }
 
   Future<void> _openEcampusSync() async {
@@ -392,10 +454,19 @@ class _MainShellScreenState extends State<MainShellScreen> {
     }
   }
 
-  Future<void> _openTaskCreate() async {
+  Future<void> _openTaskCreate({DateTime? initialDay}) async {
     await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => TaskCreateScreen(
+          initialDueDate: initialDay == null
+              ? null
+              : DateTime(
+                  initialDay.year,
+                  initialDay.month,
+                  initialDay.day,
+                  23,
+                  59,
+                ),
           taskRepository: widget.taskRepository,
           subTaskRepository: widget.subTaskRepository,
           notificationRepository: widget.notificationRepository,
@@ -444,6 +515,12 @@ class _MainShellScreenState extends State<MainShellScreen> {
                     isLoading: isLoading,
                     urgentDueDays: settings.urgentDueDays,
                     selectedTagId: settings.homeSelectedTagId,
+                    visibleSections: settings.homeSectionOrder
+                        .where(
+                          (section) =>
+                              !settings.hiddenHomeSections.contains(section),
+                        )
+                        .toList(growable: false),
                     metadata: metadata,
                     onRefresh: _refreshTasks,
                     onOpenSync: _openEcampusSync,
@@ -463,6 +540,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
                     onToggleTask: _toggleTaskCompletion,
                     onDeleteTask: _deleteTask,
                     onOpenTaskDetail: _openTaskDetail,
+                    onCreateCalendarTask: (day) =>
+                        _openTaskCreate(initialDay: day),
                   ),
                   _TaskListPage(
                     tasks: tasks,
@@ -505,11 +584,12 @@ class _MainShellScreenState extends State<MainShellScreen> {
                   ),
                   _SettingsPage(
                     settingsRepository: widget.settingsRepository,
+                    settingsFuture: _settingsFuture,
                     ecampusSession: _ecampusSession,
                     lastEcampusSyncedAt: _lastEcampusSyncedAt(tasks),
-                    onSettingsChanged: () {
+                    onSettingsChanged: (saved) {
                       setState(() {
-                        _settingsFuture = _loadSettings();
+                        _settingsFuture = Future.value(saved);
                       });
                     },
                     onOpenSync: _openEcampusSync,
@@ -573,6 +653,7 @@ class _HomePage extends StatefulWidget {
     required this.isLoading,
     required this.urgentDueDays,
     required this.selectedTagId,
+    required this.visibleSections,
     required this.metadata,
     required this.onRefresh,
     required this.onOpenSync,
@@ -581,12 +662,14 @@ class _HomePage extends StatefulWidget {
     required this.onToggleTask,
     required this.onDeleteTask,
     required this.onOpenTaskDetail,
+    required this.onCreateCalendarTask,
   });
 
   final List<Task> tasks;
   final bool isLoading;
   final int urgentDueDays;
   final String? selectedTagId;
+  final List<HomeSection> visibleSections;
   final _TaskMetadataLookup metadata;
   final VoidCallback onRefresh;
   final Future<void> Function() onOpenSync;
@@ -595,6 +678,7 @@ class _HomePage extends StatefulWidget {
   final ValueChanged<Task> onToggleTask;
   final ValueChanged<Task> onDeleteTask;
   final ValueChanged<Task> onOpenTaskDetail;
+  final ValueChanged<DateTime> onCreateCalendarTask;
 
   @override
   State<_HomePage> createState() => _HomePageState();
@@ -698,61 +782,94 @@ class _HomePageState extends State<_HomePage> {
               ],
             ),
             const SizedBox(height: 32),
-            _SectionHeader(title: '오늘 할 일', count: summary.todayTasks.length),
-            const SizedBox(height: 12),
-            if (widget.isLoading)
-              const _LoadingBlock()
-            else if (summary.todayTasks.isEmpty)
-              const _EmptyBlock(message: '오늘 마감인 일정이 없습니다.')
-            else
-              _HomeTaskSectionCard(
-                tasks: summary.todayTasks.take(3).toList(growable: false),
-                onToggleTask: widget.onToggleTask,
-                onDeleteTask: widget.onDeleteTask,
-                onOpenTaskDetail: widget.onOpenTaskDetail,
-              ),
-            const SizedBox(height: 20),
-            _SectionHeader(title: '마감 임박', count: summary.urgentTasks.length),
-            const SizedBox(height: 12),
-            if (summary.urgentTasks.isEmpty)
-              const _EmptyBlock(message: '가까운 마감 일정이 없습니다.')
-            else
-              _HomeTaskSectionCard(
-                tasks: summary.urgentTasks.take(4).toList(growable: false),
-                onToggleTask: widget.onToggleTask,
-                onDeleteTask: widget.onDeleteTask,
-                onOpenTaskDetail: widget.onOpenTaskDetail,
-              ),
-            const SizedBox(height: 20),
-            _HomeTagSection(
-              tags: widget.metadata.tags,
-              selectedTagId: effectiveSelectedTagId,
-              selectedTasks: selectedTagTasks,
-              onTagChanged: (tagId) {
-                setState(() {
-                  _selectedTagId = tagId;
-                });
-                widget.onSelectedTagChanged(tagId);
-              },
-              onToggleTask: widget.onToggleTask,
-              onDeleteTask: widget.onDeleteTask,
-              onOpenTaskDetail: widget.onOpenTaskDetail,
-            ),
-            const SizedBox(height: 20),
-            _SectionHeader(title: '마감 지남', count: summary.overdueTasks.length),
-            const SizedBox(height: 12),
-            if (summary.overdueTasks.isEmpty)
-              const _EmptyBlock(message: '마감이 지난 일정이 없습니다.')
-            else
-              _HomeTaskSectionCard(
-                tasks: summary.overdueTasks.take(4).toList(growable: false),
-                onToggleTask: widget.onToggleTask,
-                onDeleteTask: widget.onDeleteTask,
-                onOpenTaskDetail: widget.onOpenTaskDetail,
+            if (widget.visibleSections.isEmpty)
+              const _EmptyBlock(message: '표시 중인 홈 섹션이 없습니다.'),
+            for (final section in widget.visibleSections)
+              Padding(
+                key: ValueKey('home-section-${section.id}'),
+                padding: const EdgeInsets.only(bottom: 20),
+                child: _buildSection(
+                  section,
+                  summary,
+                  selectedTagTasks,
+                  effectiveSelectedTagId,
+                ),
               ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSection(
+    HomeSection section,
+    HomeTaskSummary summary,
+    List<Task> selectedTagTasks,
+    String? selectedTagId,
+  ) {
+    return switch (section) {
+      HomeSection.todayTasks => _buildTaskSection(
+        section,
+        summary.todayTasks,
+        limit: 3,
+        emptyMessage: '오늘 마감인 일정이 없습니다.',
+      ),
+      HomeSection.urgentTasks => _buildTaskSection(
+        section,
+        summary.urgentTasks,
+        emptyMessage: '가까운 마감 일정이 없습니다.',
+      ),
+      HomeSection.overdueTasks => _buildTaskSection(
+        section,
+        summary.overdueTasks,
+        emptyMessage: '마감이 지난 일정이 없습니다.',
+      ),
+      HomeSection.selectedTagTasks => _HomeTagSection(
+        tags: widget.metadata.tags,
+        selectedTagId: selectedTagId,
+        selectedTasks: selectedTagTasks,
+        onTagChanged: (tagId) {
+          setState(() => _selectedTagId = tagId);
+          widget.onSelectedTagChanged(tagId);
+        },
+        onToggleTask: widget.onToggleTask,
+        onDeleteTask: widget.onDeleteTask,
+        onOpenTaskDetail: widget.onOpenTaskDetail,
+      ),
+      HomeSection.calendar => HomeCalendarSection(
+        tasks: widget.tasks,
+        isLoading: widget.isLoading,
+        onCreateTask: widget.onCreateCalendarTask,
+        onOpenTask: widget.onOpenTaskDetail,
+        onToggleTask: widget.onToggleTask,
+        onDeleteTask: widget.onDeleteTask,
+      ),
+    };
+  }
+
+  Widget _buildTaskSection(
+    HomeSection section,
+    List<Task> tasks, {
+    int limit = 4,
+    required String emptyMessage,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionHeader(title: section.label, count: tasks.length),
+        const SizedBox(height: 12),
+        if (widget.isLoading)
+          const _LoadingBlock()
+        else if (tasks.isEmpty)
+          _EmptyBlock(message: emptyMessage)
+        else
+          _HomeTaskSectionCard(
+            tasks: tasks.take(limit).toList(growable: false),
+            onToggleTask: widget.onToggleTask,
+            onDeleteTask: widget.onDeleteTask,
+            onOpenTaskDetail: widget.onOpenTaskDetail,
+          ),
+      ],
     );
   }
 }
@@ -2552,6 +2669,7 @@ class _ExcludedEcampusTaskTile extends StatelessWidget {
 class _SettingsPage extends StatefulWidget {
   const _SettingsPage({
     required this.settingsRepository,
+    required this.settingsFuture,
     required this.ecampusSession,
     required this.lastEcampusSyncedAt,
     required this.onSettingsChanged,
@@ -2561,9 +2679,10 @@ class _SettingsPage extends StatefulWidget {
   });
 
   final SettingsRepository settingsRepository;
+  final Future<AppSettings> settingsFuture;
   final EcampusSession? ecampusSession;
   final DateTime? lastEcampusSyncedAt;
-  final VoidCallback onSettingsChanged;
+  final ValueChanged<AppSettings> onSettingsChanged;
   final Future<void> Function() onOpenSync;
   final Future<void> Function() onClearEcampusSession;
   final LocalNotificationService localNotificationService;
@@ -2573,23 +2692,26 @@ class _SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<_SettingsPage> {
-  late Future<AppSettings> _settingsFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _settingsFuture = widget.settingsRepository.getSettings();
-  }
-
   Future<void> _saveSettings(AppSettings settings) async {
     final saved = await widget.settingsRepository.saveSettings(settings);
     if (!mounted) {
       return;
     }
-    setState(() {
-      _settingsFuture = Future.value(saved);
-    });
-    widget.onSettingsChanged();
+    widget.onSettingsChanged(saved);
+  }
+
+  Future<void> _openHomeLayout(AppSettings settings) async {
+    final saved = await Navigator.of(context).push<AppSettings>(
+      MaterialPageRoute(
+        builder: (_) => HomeLayoutScreen(
+          settings: settings,
+          settingsRepository: widget.settingsRepository,
+        ),
+      ),
+    );
+    if (saved != null && mounted) {
+      widget.onSettingsChanged(saved);
+    }
   }
 
   Future<void> _setDefaultNotificationEnabled(
@@ -2605,7 +2727,7 @@ class _SettingsPageState extends State<_SettingsPage> {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<AppSettings>(
-      future: _settingsFuture,
+      future: widget.settingsFuture,
       builder: (context, snapshot) {
         final settings =
             snapshot.data ??
@@ -2697,6 +2819,12 @@ class _SettingsPageState extends State<_SettingsPage> {
               _SettingsSection(
                 title: '홈 표시',
                 children: [
+                  _SettingsInfoRow(
+                    icon: Icons.dashboard_customize_outlined,
+                    title: '홈 화면 구성',
+                    value: '편집',
+                    onTap: isLoading ? null : () => _openHomeLayout(settings),
+                  ),
                   _SettingsInfoRow(
                     icon: Icons.access_time_rounded,
                     title: '마감 임박 기준',

@@ -11,12 +11,16 @@ dependencies:
   drift_flutter: ^0.3.0
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
   flutter_inappwebview: ^6.1.5
   flutter_local_notifications: ^21.0.0
-  home_widget: 0.9.3
+  home_widget: ^0.9.3
+  path_provider: ^2.1.5
   html: ^0.15.4
   http: ^1.5.0
-  path_provider: 2.1.5
+  intl: ^0.20.2
+  table_calendar: ^3.3.0
   timezone: ^0.11.0
 
 dev_dependencies:

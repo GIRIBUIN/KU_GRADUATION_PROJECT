@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart';
 
+import '../../models/home_section.dart';
 import '../../models/task_models.dart' as models;
 import '../../repositories/settings_repository.dart' as settings_model;
 import '../app_database.dart' as db;
@@ -116,6 +117,8 @@ class AppSettingsMapper {
   static const defaultNotificationTimeKey = 'defaultNotificationTime';
   static const urgentDueDaysKey = 'urgentDueDays';
   static const homeSelectedTagIdKey = 'homeSelectedTagId';
+  static const homeSectionOrderKey = 'homeSectionOrder';
+  static const hiddenHomeSectionsKey = 'hiddenHomeSections';
   static const hiddenTagIdsKey = 'hiddenTagIds';
   static const hiddenFolderIdsKey = 'hiddenFolderIds';
   static const tagFolderIdsKey = 'tagFolderIds';
@@ -135,6 +138,10 @@ class AppSettingsMapper {
       defaultNotificationTime: values[defaultNotificationTimeKey] ?? 'relative',
       urgentDueDays: int.tryParse(values[urgentDueDaysKey] ?? '') ?? 3,
       homeSelectedTagId: _emptyToNull(values[homeSelectedTagIdKey]),
+      homeSectionOrder: _parseHomeSectionOrder(values[homeSectionOrderKey]),
+      hiddenHomeSections: _parseHiddenHomeSections(
+        values[hiddenHomeSectionsKey],
+      ),
       hiddenTagIds: _parseStringSet(values[hiddenTagIdsKey]),
       hiddenFolderIds: _parseStringSet(values[hiddenFolderIdsKey]),
       tagFolderIds: _parseStringMap(values[tagFolderIdsKey]),
@@ -153,12 +160,49 @@ class AppSettingsMapper {
       defaultNotificationTimeKey: settings.defaultNotificationTime,
       urgentDueDaysKey: settings.urgentDueDays.toString(),
       homeSelectedTagIdKey: settings.homeSelectedTagId ?? '',
+      homeSectionOrderKey: jsonEncode([
+        for (final section in settings.homeSectionOrder) section.id,
+      ]),
+      hiddenHomeSectionsKey: _encodeStringSet({
+        for (final section in settings.hiddenHomeSections) section.id,
+      }),
       hiddenTagIdsKey: _encodeStringSet(settings.hiddenTagIds),
       hiddenFolderIdsKey: _encodeStringSet(settings.hiddenFolderIds),
       tagFolderIdsKey: _encodeStringMap(settings.tagFolderIds),
       tagSortOrdersKey: _encodeIntMap(settings.tagSortOrders),
       ecampusFolderIdKey: settings.ecampusFolderId ?? '',
     };
+  }
+
+  List<HomeSection>? _parseHomeSections(String? value) {
+    if (value == null) return null;
+    try {
+      final decoded = jsonDecode(value);
+      if (decoded is List && decoded.every((id) => id is String)) {
+        return decoded
+            .cast<String>()
+            .map(HomeSection.fromId)
+            .whereType<HomeSection>()
+            .toList(growable: false);
+      }
+    } on FormatException {
+      return null;
+    }
+    return null;
+  }
+
+  List<HomeSection> _parseHomeSectionOrder(String? value) {
+    // Keep saved positions, discard duplicates, and append newly added sections.
+    return List.unmodifiable({
+      ...?_parseHomeSections(value),
+      ...HomeSection.values,
+    });
+  }
+
+  Set<HomeSection> _parseHiddenHomeSections(String? value) {
+    return Set.unmodifiable(
+      _parseHomeSections(value) ?? HomeSection.defaultHidden,
+    );
   }
 
   bool? _parseBool(String? value) {

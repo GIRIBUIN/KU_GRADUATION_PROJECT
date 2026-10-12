@@ -99,11 +99,18 @@ class _MainShellScreenState extends State<MainShellScreen>
       return;
     }
 
+    // Read the shared task list only after weekly widget changes reach the DB.
+    await widget.widgetUpdateService.applyPendingWidgetCompletions();
+    if (!mounted) {
+      return;
+    }
     await HomeWidget.saveWidgetData(
       WidgetUpdateService.widgetRefreshRequiredKey,
       null,
     );
-    _refreshTasksAndMetadata();
+    if (mounted) {
+      _refreshTasksAndMetadata();
+    }
   }
 
   Future<List<Task>> _loadTasks() {

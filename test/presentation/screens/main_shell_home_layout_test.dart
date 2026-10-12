@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -22,15 +24,26 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(() => initializeDateFormatting('ko_KR'));
   late _Repositories repositories;
+  late Map<String, Object?> widgetData;
 
   setUp(() {
     repositories = _Repositories();
+    widgetData = {};
     final messenger =
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-    messenger.setMockMethodCallHandler(
-      const MethodChannel('home_widget'),
-      (_) async => null,
-    );
+    messenger.setMockMethodCallHandler(const MethodChannel('home_widget'), (
+      call,
+    ) async {
+      final arguments = call.arguments as Map?;
+      if (call.method == 'getWidgetData') {
+        return widgetData[arguments!['id']] ?? arguments['defaultValue'];
+      }
+      if (call.method == 'saveWidgetData') {
+        widgetData[arguments!['id'] as String] = arguments['data'];
+        return true;
+      }
+      return null;
+    });
     messenger.setMockMethodCallHandler(
       const MethodChannel('home_widget/updates'),
       (_) async => null,
@@ -50,7 +63,10 @@ void main() {
     );
   });
 
-  Future<void> pumpApp(WidgetTester tester) async {
+  Future<void> pumpApp(
+    WidgetTester tester, {
+    WidgetUpdateService? widgetService,
+  }) async {
     tester.view.physicalSize = const Size(600, 2200);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -66,7 +82,7 @@ void main() {
           tagRepository: repositories,
           folderRepository: repositories,
           localNotificationService: _Notifications(),
-          widgetUpdateService: _WidgetService(),
+          widgetUpdateService: widgetService ?? _WidgetService(),
         ),
       ),
     );
@@ -75,6 +91,59 @@ void main() {
 
   Finder section(HomeSection section) =>
       find.byKey(ValueKey('home-section-${section.id}'));
+
+  for (final completed in [true, false]) {
+    testWidgets(
+      'applies weekly widget ${completed ? 'completion' : 'uncompletion'} before reloading the calendar on resume',
+      (tester) async {
+        final now = DateTime.now();
+        repositories.settings = repositories.settings.copyWith(
+          hiddenHomeSections: HomeSection.values
+              .where((section) => section != HomeSection.calendar)
+              .toSet(),
+        );
+        repositories.tasks[0] = Task(
+          id: 'task-1',
+          origin: TaskOrigin.personal,
+          status: completed ? TaskStatus.active : TaskStatus.completed,
+          title: '위젯에서 변경한 일정',
+          dueDate: now,
+          createdAt: now,
+          updatedAt: now,
+        );
+        await pumpApp(
+          tester,
+          widgetService: _PendingWidgetService(repositories),
+        );
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+        widgetData[WidgetUpdateService.widgetRefreshRequiredKey] = true;
+        final pendingKey = completed
+            ? WidgetUpdateService.widgetPendingCompletionsKey
+            : WidgetUpdateService.widgetPendingUncompletionsKey;
+        widgetData[pendingKey] = jsonEncode(['task-1']);
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          repositories.tasks.single.status,
+          completed ? TaskStatus.completed : TaskStatus.active,
+        );
+        final checkbox = find.descendant(
+          of: find.byKey(const ValueKey('calendar-task-task-1')),
+          matching: find.byType(Checkbox),
+        );
+        expect(tester.widget<Checkbox>(checkbox).value, completed);
+        expect(widgetData[pendingKey], isNull);
+        expect(
+          widgetData[WidgetUpdateService.widgetRefreshRequiredKey],
+          isNull,
+        );
+        await tester.pumpWidget(const SizedBox.shrink());
+      },
+    );
+  }
 
   testWidgets(
     'settings editor updates home without changing tasks or the selected tag',
@@ -234,6 +303,18 @@ class _WidgetService extends Fake implements WidgetUpdateService {
   Future<void> refresh() async {}
 }
 
+class _PendingWidgetService extends WidgetUpdateService {
+  _PendingWidgetService(_Repositories repositories)
+    : super(
+        taskRepository: repositories,
+        settingsRepository: repositories,
+        tagRepository: repositories,
+      );
+
+  @override
+  Future<void> refresh() => applyPendingWidgetCompletions();
+}
+
 class _Notifications extends Fake implements LocalNotificationService {
   @override
   Future<void> scheduleTaskNotification({
@@ -292,6 +373,23 @@ class _Repositories extends Fake
   }
 
   @override
+  Future<Task> updateTaskStatus(String id, TaskStatus status) async {
+    final old = (await getTaskById(id))!;
+    return updateTask(
+      Task(
+        id: old.id,
+        origin: old.origin,
+        status: status,
+        title: old.title,
+        dueDate: old.dueDate,
+        createdAt: old.createdAt,
+        updatedAt: old.updatedAt,
+        tagIds: old.tagIds,
+      ),
+    );
+  }
+
+  @override
   Future<Task> markDeleted(String id) async {
     final old = (await getTaskById(id))!;
     return updateTask(
@@ -326,7 +424,7 @@ class _Repositories extends Fake
     TaskStatus? status,
     TaskOrigin? origin,
     bool includeArchived = false,
-  }) async => tasks;
+  }) async => List.of(tasks);
 
   @override
   Future<List<SubTask>> getSubTasks(String taskId) async => [];

@@ -26,7 +26,11 @@ enum KuWidgetStoreError: LocalizedError {
 
 enum KuWidgetStore {
     static var group: String {
-        Bundle.main.object(forInfoDictionaryKey: "KuWidgetAppGroup") as? String ?? "group.com.example.kuTaskManagement"
+        let configured = Bundle.main.object(forInfoDictionaryKey: "KuWidgetAppGroup") as? String ?? "group.com.example.kuTaskManagement"
+        // AltStore re-signs both targets with the installer's team-specific group.
+        // Its official re-signing operation records those groups in ALTAppGroups.
+        let resigned = Bundle.main.object(forInfoDictionaryKey: "ALTAppGroups") as? [String] ?? []
+        return resigned.first { $0.contains(configured) } ?? configured
     }
     static var defaults: UserDefaults { UserDefaults(suiteName: group)! }
     static func container() throws -> URL {

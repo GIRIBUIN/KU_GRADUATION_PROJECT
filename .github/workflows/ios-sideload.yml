@@ -1,0 +1,35 @@
+name: iPhone IPA for sideloading (unsigned)
+'on':
+  push:
+    branches: ['codex/ios-sideload-ipa']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  iphone-ipa:
+    runs-on: macos-14
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: subosito/flutter-action@v2
+        with: {flutter-version: '3.41.9', cache: true}
+      - name: Configure unsigned app and WidgetKit extension
+        run: |
+          gem install --user-install xcodeproj -v 1.27.0 --no-document
+          KU_APPLE_UNSIGNED=1 ruby scripts/configure_apple_widgets.rb ios
+          flutter pub get
+      - run: flutter analyze --no-pub
+      - run: flutter test --no-pub
+      - run: python3 -m unittest discover -s test/packaging -p 'test_*.py'
+      - name: Compile release for physical iPhones
+        run: flutter build ios --release --no-pub --no-codesign --build-name=0.2.0 --build-number=6
+      - name: Validate device architecture and package IPA
+        run: python3 scripts/package_ios.py --prepare-sideload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KU-Todo-0.2.0-iPhone-IPA-UNSIGNED-requires-AltStore
+          path: |
+            build/downloads/*.ipa
+            build/downloads/*.json
+          if-no-files-found: error

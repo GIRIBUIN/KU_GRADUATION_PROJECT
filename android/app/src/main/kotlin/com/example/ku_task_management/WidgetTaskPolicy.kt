@@ -35,6 +35,7 @@ data class WidgetOptions(
     val largeText: Boolean = false,
     val opacity: Int = 100,
     val page: Int = 0,
+    val theme: String = "light",
 )
 
 object WidgetTaskPolicy {

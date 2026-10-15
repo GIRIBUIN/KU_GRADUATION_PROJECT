@@ -222,14 +222,15 @@ class WidgetTaskStoreTest {
         val id = shadow.createWidget(CalendarWidgetProvider::class.java, R.layout.widget_calendar)
         val widget = shadow.getViewFor(id)
         val weeks = widget.findViewById<android.widget.LinearLayout>(R.id.calendar_weeks)
-        assertEquals(6, weeks.childCount)
-        val cells = (0 until 6).flatMap { week ->
+        val expected = WidgetCalendarLayout.forSize(java.time.LocalDate.now(), 300, 340)
+        assertEquals(expected.weeks, weeks.childCount)
+        val cells = (0 until weeks.childCount).flatMap { week ->
             val row = weeks.getChildAt(week) as android.widget.LinearLayout
             assertEquals(7, row.childCount)
             (0 until 7).map { row.getChildAt(it) }
         }
-        assertEquals(42, cells.size)
-        assertEquals(1, cells.count { it.findViewById<View>(R.id.calendar_day_dot).visibility == View.VISIBLE })
+        assertEquals(expected.weeks * 7, cells.size)
+        assertEquals(1, cells.count { it.findViewById<View>(R.id.calendar_day_event_group).visibility == View.VISIBLE })
         val chosen = cells.single { it.contentDescription.toString().startsWith("${date.monthValue}월 15일,") }
         assertTrue(chosen.contentDescription.toString().contains("일정 1개"))
         preview(widget, "calendar-widget", 440, 360)
@@ -238,8 +239,7 @@ class WidgetTaskStoreTest {
         assertEquals(WidgetWorkspaceActivity::class.java.name, launched.component!!.className)
         assertEquals("calendar", launched.getStringExtra("action"))
         assertEquals(date.toString(), launched.getStringExtra("selected_date"))
-        val first = java.time.LocalDate.now().withDayOfMonth(1)
-        val firstGridDay = first.minusDays((first.dayOfWeek.value % 7).toLong())
+        val firstGridDay = expected.start
         // Each day has its own PendingIntent identity; the last cell cannot overwrite the first.
         cells.first().performClick()
         assertEquals(firstGridDay.toString(), shadowOf(context).nextStartedActivity.getStringExtra("selected_date"))
@@ -277,6 +277,10 @@ class WidgetTaskStoreTest {
         val manager = android.appwidget.AppWidgetManager.getInstance(context)
         val shadow = shadowOf(manager)
         val widgetId = shadow.createWidget(CalendarWidgetProvider::class.java, R.layout.widget_calendar)
+        manager.updateAppWidgetOptions(widgetId, android.os.Bundle().apply {
+            putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 220)
+            putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 240)
+        })
         store.saveOptions(widgetId, WidgetOptions(period = "all", showCompleted = false, dark = true, tag = "course"))
         WidgetWorkspaceRenderer.refreshAll(context)
         fun dots() = descendants(shadow.getViewFor(widgetId)).count { it.id == R.id.calendar_day_dot && it.visibility == View.VISIBLE }
@@ -357,9 +361,9 @@ class WidgetTaskStoreTest {
         fun controls() = descendants(activity.findViewById(android.R.id.content))
         fun button(text: String) = controls().filterIsInstance<Button>().single { it.text.toString() == text }
         val visible = controls().filterIsInstance<Button>().filter { it.isShown }.map { it.text.toString() }
-        assertEquals(5, visible.size)
-        assertTrue(visible.containsAll(listOf("닫기", "태그 선택 (0)", "더 보기 ▾", "저장")))
-        assertTrue(visible.any { it.startsWith("기한:") })
+        assertEquals(6, visible.size)
+        assertTrue(visible.containsAll(listOf("닫기", "태그 선택 (0)", "더 보기 ▾", "저장", "기한 없음")))
+        assertNotNull(controls().singleOrNull { it.tag == "widget_due_picker" })
         controls().filterIsInstance<EditText>().single { it.hint == "제목" }.setText("간단히 추가")
         controls().filterIsInstance<EditText>().single { it.hint == "메모" }.setText("유지할 메모")
         assertFalse(button("우선순위: 없음").isShown)
@@ -394,9 +398,7 @@ class WidgetTaskStoreTest {
         val activity = controller.get()
         val controls = descendants(activity.findViewById(android.R.id.content))
         controls.filterIsInstance<EditText>().single { it.hint == "제목" }.setText("기한 없는 할 일")
-        controls.filterIsInstance<Button>().single { it.text.startsWith("기한:") }.performClick()
-        org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog()
-            .getButton(android.app.AlertDialog.BUTTON_NEUTRAL).performClick()
+        controls.filterIsInstance<Button>().single { it.tag == "widget_due_none" }.performClick()
         shadowOf(Looper.getMainLooper()).idle()
         controls.filterIsInstance<Button>().single { it.text == "저장" }.performClick()
         awaitCondition { activity.isFinishing }
@@ -432,7 +434,7 @@ class WidgetTaskStoreTest {
     }
 
     @Test @GraphicsMode(GraphicsMode.Mode.NATIVE)
-    fun smallCalendarStillShowsAllSixWeeksAndFortyTwoDates() {
+    fun smallCalendarFitsTheAvailableWeeksAndDates() {
         val manager = android.appwidget.AppWidgetManager.getInstance(context)
         val shadow = shadowOf(manager)
         val id = shadow.createWidget(CalendarWidgetProvider::class.java, R.layout.widget_calendar)
@@ -443,9 +445,10 @@ class WidgetTaskStoreTest {
         val widget = shadow.getViewFor(id)
         preview(widget, "calendar-small", 180, 240)
         val weeks = widget.findViewById<android.widget.LinearLayout>(R.id.calendar_weeks)
-        assertEquals(6, weeks.childCount)
-        assertEquals(42, descendants(weeks).count { it.id == R.id.calendar_day_cell })
-        assertTrue(weeks.getChildAt(5).bottom <= weeks.height)
+        val expected = WidgetCalendarLayout.forSize(java.time.LocalDate.now(), 180, 240)
+        assertEquals(expected.weeks, weeks.childCount)
+        assertEquals(expected.weeks * 7, descendants(weeks).count { it.id == R.id.calendar_day_cell })
+        assertTrue(weeks.getChildAt(weeks.childCount - 1).bottom <= weeks.height)
         for (cell in descendants(weeks).filter { it.id == R.id.calendar_day_cell }) {
             val number = cell.findViewById<View>(R.id.calendar_day_number)
             val dot = cell.findViewById<View>(R.id.calendar_day_dot)
@@ -535,6 +538,120 @@ class WidgetTaskStoreTest {
             assertTrue(views.filterIsInstance<Button>().any { it.text == "+ 추가" })
             controller.pause().stop().destroy()
         }
+    }
+
+    @Test @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Config(qualifiers = "w360dp-h800dp-mdpi")
+    fun calendarShrinksToOneWeekAndWideCellsShowEventTitlesAndOverflow() {
+        val today = java.time.LocalDate.now()
+        val due = today.atTime(18, 0).atZone(java.time.ZoneId.systemDefault()).toEpochSecond()
+        create("프로젝트 미팅", due); create("자료 정리", due)
+        for ((width, height) in listOf(360 to 400, 360 to 240, 220 to 240, 140 to 96)) {
+            val widget = WidgetCalendarRenderer.createViews(context, 0, width, height).apply(context, android.widget.FrameLayout(context))
+            preview(widget, "calendar-${width}x$height", width, height)
+            val weeks = widget.findViewById<ViewGroup>(R.id.calendar_weeks)
+            val expected = WidgetCalendarLayout.forSize(today, width, height)
+            assertEquals(expected.weeks, weeks.childCount)
+            assertTrue(weeks.getChildAt(weeks.childCount - 1).bottom <= weeks.height)
+            val cell = descendants(weeks).single { it.id == R.id.calendar_day_cell &&
+                it.contentDescription.toString().startsWith("${today.monthValue}월 ${today.dayOfMonth}일,") }
+            val date = cell.findViewById<View>(R.id.calendar_day_number)
+            assertTrue(date.width > 0 && date.height > 0 && date.bottom <= cell.height)
+            if (expected.showTitles) {
+                assertEquals("+1", cell.findViewById<android.widget.TextView>(R.id.calendar_day_extra).text)
+                assertTrue(cell.findViewById<android.widget.TextView>(R.id.calendar_day_event).text.isNotBlank())
+            } else assertEquals(View.VISIBLE, cell.findViewById<View>(R.id.calendar_day_dot).visibility)
+        }
+        val manager = android.appwidget.AppWidgetManager.getInstance(context)
+        val id = shadowOf(manager).createWidget(CalendarWidgetProvider::class.java, R.layout.widget_calendar)
+        manager.updateAppWidgetOptions(id, android.os.Bundle().apply {
+            putParcelableArrayList(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_SIZES,
+                arrayListOf(android.util.SizeF(140f, 96f), android.util.SizeF(360f, 400f)))
+        })
+        assertNotNull(shadowOf(manager).getViewFor(id))
+    }
+
+    @Test @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Config(qualifiers = "w360dp-h1000dp-mdpi")
+    fun dueCalendarScrollsInsideTwoWeeksAndSavesOnlyTheTappedDate() {
+        val controller = Robolectric.buildActivity(WidgetWorkspaceActivity::class.java,
+            Intent(context, WidgetWorkspaceActivity::class.java).putExtra("action", "add")).setup()
+        val activity = controller.get()
+        val host = activity.findViewById<ViewGroup>(android.R.id.content).findViewWithTag<View>("widget_popup_backdrop")
+        preview(host, "popup-inline-due", 360, 1000)
+        val views = descendants(host)
+        val viewport = views.single { it.tag == "widget_due_viewport" } as android.widget.ScrollView
+        assertEquals(72, viewport.height)
+        assertEquals(12 * 36, viewport.scrollY)
+        val card = views.single { it.tag == "widget_popup_card" }
+        assertTrue(card.height <= 620)
+        val more = views.filterIsInstance<Button>().single { it.text == "더 보기 ▾" }
+        val save = views.filterIsInstance<Button>().single { it.text == "저장" }
+        val moreAt = IntArray(2); val saveAt = IntArray(2)
+        more.getLocationOnScreen(moreAt); save.getLocationOnScreen(saveAt)
+        assertTrue("Unnecessary gap before save", saveAt[1] - moreAt[1] - more.height <= 12)
+        views.filterIsInstance<EditText>().single { it.hint == "제목" }.setText("스크롤 날짜 선택")
+        viewport.scrollBy(0, 36 * 4)
+        assertEquals(72, viewport.height)
+        val browsingState = android.os.Bundle()
+        controller.saveInstanceState(browsingState)
+        val untouchedDue = java.time.Instant.ofEpochSecond(browsingState.getBundle("draft")!!.getLong("due"))
+            .atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+        assertEquals(java.time.LocalDate.now(), untouchedDue)
+        val selected = java.time.LocalDate.now().plusWeeks(4)
+        views.single { it.tag == "widget_due_date_$selected" }.performClick()
+        save.performClick()
+        awaitCondition { activity.isFinishing }
+        val result = java.time.Instant.ofEpochSecond(store.tasks().single().due!!).atZone(java.time.ZoneId.systemDefault())
+        assertEquals(selected, result.toLocalDate())
+        assertEquals(java.time.LocalTime.of(23, 59), result.toLocalTime())
+        assertNull(shadowOf(activity).nextStartedActivity)
+        controller.pause().stop().destroy()
+    }
+
+    @Test @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Config(qualifiers = "w360dp-h800dp-mdpi")
+    fun fourThemesPersistPerWidgetAndGlassActuallyRendersWithAlpha() {
+        for ((id, theme) in listOf("light", "dark", "gray", "glass").withIndex()) {
+            val opacity = if (theme == "glass") 70 else 100
+            store.saveOptions(id, WidgetOptions(theme = theme, dark = theme == "dark", opacity = opacity))
+            assertEquals(theme, store.options(id, "calendar").theme)
+            val widget = WidgetCalendarRenderer.createViews(context, id, 360, 340).apply(context, android.widget.FrameLayout(context))
+            preview(widget, "calendar-theme-$theme", 360, 340)
+            val bitmap = android.graphics.Bitmap.createBitmap(360, 340, android.graphics.Bitmap.Config.ARGB_8888)
+            widget.draw(android.graphics.Canvas(bitmap))
+            val color = bitmap.getPixel(22, 320)
+            val expected = WidgetPalette.from(store.options(id, "calendar"))
+            assertEquals(android.graphics.Color.alpha(expected.surfaceWithOpacity(opacity)), android.graphics.Color.alpha(color))
+            assertEquals("Rounded corner must remain transparent", 0, android.graphics.Color.alpha(bitmap.getPixel(4, 4)))
+            assertEquals(expected.text, widget.findViewById<android.widget.TextView>(R.id.calendar_month).currentTextColor)
+            bitmap.recycle()
+            val controller = Robolectric.buildActivity(WidgetWorkspaceActivity::class.java,
+                Intent(context, WidgetWorkspaceActivity::class.java).putExtra("action", "add").putExtra("widget_id", id)).setup()
+            val activity = controller.get()
+            preview(activity.findViewById(android.R.id.content), "popup-theme-$theme", 360, 800)
+            val title = descendants(activity.findViewById(android.R.id.content)).filterIsInstance<EditText>().single { it.hint == "제목" }
+            assertEquals(expected.text, title.currentTextColor)
+            controller.pause().stop().destroy()
+        }
+        HomeWidgetPlugin.getData(context).edit().putString("workspace_options_9", "{\"dark\":true}").commit()
+        assertTrue(WidgetPalette.from(store.options(9, "today")).dark)
+    }
+
+    @Test @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun themeSelectorAppliesGlassPresetAndKeepsOtherWidgetsIndependent() {
+        val controller = Robolectric.buildActivity(WidgetWorkspaceActivity::class.java,
+            Intent(context, WidgetWorkspaceActivity::class.java).putExtra("action", "settings").putExtra("widget_id", 42)).setup()
+        val activity = controller.get()
+        fun buttons() = descendants(activity.findViewById(android.R.id.content)).filterIsInstance<Button>()
+        buttons().single { it.text == "테마: 밝게" }.performClick()
+        org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog().listView.performItemClick(null, 3, 3)
+        buttons().single { it.text == "설정 저장" }.performClick()
+        assertEquals("glass", store.options(42, "today").theme)
+        assertEquals(70, store.options(42, "today").opacity)
+        assertEquals("light", store.options(43, "today").theme)
+        assertNull(shadowOf(activity).nextStartedActivity)
+        controller.pause().stop().destroy()
     }
 
     private fun tap(view: View, x: Float, y: Float) {

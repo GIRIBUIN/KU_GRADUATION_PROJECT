@@ -36,12 +36,12 @@ object WidgetWorkspaceRenderer {
         val views = RemoteViews(context.packageName, if (compact) R.layout.widget_workspace_compact else R.layout.widget_workspace)
         val store = WidgetTaskStore(context)
         val options = store.options(widgetId, kind)
-        val foreground = Color.parseColor(if (options.dark) "#F3F4F6" else "#111827")
-        val muted = Color.parseColor(if (options.dark) "#CBD5E1" else "#6B7280")
-        val surface = Color.parseColor(if (options.dark) "#182337" else "#FFFFFF")
-        views.setInt(R.id.workspace_surface, "setBackgroundColor", surface)
-        views.setInt(R.id.workspace_surface, "setBackgroundColor",
-            (surface and 0x00ffffff) or ((options.opacity.coerceIn(20, 100) * 255 / 100) shl 24))
+        val palette = WidgetPalette.from(options)
+        val foreground = palette.text
+        val muted = palette.muted
+        views.setInt(R.id.widget_card_background, "setColorFilter", palette.surface)
+        views.setInt(R.id.widget_card_background, "setImageAlpha", Color.alpha(palette.surfaceWithOpacity(options.opacity)))
+        views.setTextColor(R.id.workspace_date, palette.accent)
         views.setTextColor(R.id.workspace_title, foreground)
         views.setTextColor(R.id.workspace_summary, muted)
         views.setTextColor(R.id.workspace_more, muted)
@@ -88,7 +88,7 @@ object WidgetWorkspaceRenderer {
                 row.setTextViewText(R.id.workspace_row_detail,
                     (if (task.academic && task.course.isNotEmpty()) "${task.course} · " else "") + dueLabel(task.due, now))
                 row.setTextColor(R.id.workspace_row_detail,
-                    if (task.due != null && task.due < now && !task.completed) Color.parseColor("#E72E2E") else muted)
+                    if (task.due != null && task.due < now && !task.completed) palette.red else muted)
                 row.setOnClickPendingIntent(R.id.workspace_row_body, expand)
                 views.addView(R.id.workspace_rows, row)
             }

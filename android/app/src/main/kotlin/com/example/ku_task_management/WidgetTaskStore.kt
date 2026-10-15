@@ -108,7 +108,7 @@ class WidgetTaskStore(private val context: Context) {
             json.optString("origin", "all"), json.optString("tag"), json.optString("folder"),
             json.optString("sort", "due"), json.optBoolean("showCompleted", kind != "today"),
             json.optBoolean("dark"), json.optBoolean("largeText"), json.optInt("opacity", 100),
-            json.optInt("page", 0))
+            json.optInt("page", 0), json.optString("theme", if (json.optBoolean("dark")) "dark" else "light"))
     }
 
     fun saveOptions(widgetId: Int, options: WidgetOptions) {
@@ -117,6 +117,7 @@ class WidgetTaskStore(private val context: Context) {
             put("folder", options.folder); put("sort", options.sort); put("showCompleted", options.showCompleted)
             put("dark", options.dark); put("largeText", options.largeText); put("opacity", options.opacity)
             put("page", options.page)
+            put("theme", if (options.dark && options.theme == "light") "dark" else options.theme)
         }.toString()).commit()
     }
 

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="WidgetPickerDialogDark" parent="android:style/Theme.Material.Dialog.Alert">
+        <item name="android:datePickerStyle">@style/WidgetCompactDatePickerDark</item>
+        <item name="android:timePickerStyle">@style/WidgetCompactTimePickerDark</item>
+        <item name="android:colorAccent">#93C5FD</item>
+    </style>
+    <style name="WidgetCompactDatePickerDark" parent="android:style/Widget.Material.DatePicker">
+        <item name="android:datePickerMode">spinner</item>
+        <item name="android:calendarViewShown">false</item>
+    </style>
+    <style name="WidgetCompactTimePickerDark" parent="android:style/Widget.Material.TimePicker">
+        <item name="android:timePickerMode">spinner</item>
+    </style>
+</resources>

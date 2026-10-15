@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent" android:layout_height="match_parent"
-    android:background="@drawable/widget_background" android:clipToOutline="true" android:padding="2dp">
+    android:padding="2dp">
+    <ImageView android:id="@+id/widget_card_background" android:layout_width="match_parent"
+        android:layout_height="match_parent" android:src="@drawable/widget_frame" android:scaleType="fitXY"
+        android:importantForAccessibility="no" />
     <LinearLayout android:id="@+id/workspace_surface" android:layout_width="match_parent"
         android:layout_height="match_parent" android:orientation="vertical" android:padding="6dp"
         android:contentDescription="일정 목록 확대하기">
@@ -21,4 +24,4 @@
         <TextView android:id="@+id/workspace_more" android:layout_width="match_parent" android:layout_height="12dp"
             android:gravity="end|center_vertical" android:textSize="9sp" android:includeFontPadding="false" android:visibility="gone" />
     </LinearLayout>
-</LinearLayout>
+</FrameLayout>

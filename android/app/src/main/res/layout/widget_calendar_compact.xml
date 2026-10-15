@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent"
+    android:layout_height="match_parent" android:padding="2dp">
+    <ImageView android:id="@+id/widget_card_background" android:layout_width="match_parent"
+        android:layout_height="match_parent" android:src="@drawable/widget_frame" android:scaleType="fitXY"
+        android:importantForAccessibility="no" />
+    <LinearLayout android:id="@+id/calendar_surface" android:layout_width="match_parent" android:layout_height="match_parent"
+        android:orientation="vertical" android:padding="6dp" android:contentDescription="캘린더 확대하기">
+        <LinearLayout android:id="@+id/calendar_header" android:layout_width="match_parent" android:layout_height="24dp"
+            android:orientation="horizontal" android:gravity="center_vertical">
+            <TextView android:id="@+id/calendar_month" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                android:textSize="14sp" android:textStyle="bold" android:maxLines="1" android:ellipsize="end" />
+            <TextView android:id="@+id/calendar_today" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="10sp" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="18dp" android:orientation="horizontal">
+            <TextView android:id="@+id/calendar_sun" style="@style/WidgetCalendarWeekday" android:text="일" />
+            <TextView android:id="@+id/calendar_mon" style="@style/WidgetCalendarWeekday" android:text="월" />
+            <TextView android:id="@+id/calendar_tue" style="@style/WidgetCalendarWeekday" android:text="화" />
+            <TextView android:id="@+id/calendar_wed" style="@style/WidgetCalendarWeekday" android:text="수" />
+            <TextView android:id="@+id/calendar_thu" style="@style/WidgetCalendarWeekday" android:text="목" />
+            <TextView android:id="@+id/calendar_fri" style="@style/WidgetCalendarWeekday" android:text="금" />
+            <TextView android:id="@+id/calendar_sat" style="@style/WidgetCalendarWeekday" android:text="토" />
+        </LinearLayout>
+        <LinearLayout android:id="@+id/calendar_weeks" android:layout_width="match_parent" android:layout_height="0dp"
+            android:layout_weight="1" android:orientation="vertical" />
+        <TextView android:id="@+id/calendar_empty" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="11sp" android:visibility="gone" />
+    </LinearLayout>
+</FrameLayout>

@@ -4,9 +4,7 @@ import android.Manifest
 import android.app.Activity
 import android.app.ActivityOptions
 import android.app.AlertDialog
-import android.app.DatePickerDialog
 import android.app.PendingIntent
-import android.app.TimePickerDialog
 import android.appwidget.AppWidgetManager
 import android.content.ActivityNotFoundException
 import android.content.Intent
@@ -33,7 +31,6 @@ import android.widget.*
 import es.antonborri.home_widget.HomeWidgetPlugin
 import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalTime
 import java.time.ZoneId
 import java.util.Locale
 import java.util.concurrent.Executors
@@ -48,7 +45,6 @@ class WidgetWorkspaceActivity : Activity() {
     private var kind = "today"
     private var screen = "list"
     private var selectedDate = LocalDate.now()
-    private var listCount = 5
     private var busy = false
     private var voiceTarget: EditText? = null
     private var currentTaskId: String? = null
@@ -61,8 +57,9 @@ class WidgetWorkspaceActivity : Activity() {
     private val handler = Handler(Looper.getMainLooper())
     private val worker = Executors.newSingleThreadExecutor()
     private var alive = true
-    private val ink = Color.rgb(17, 24, 39)
-    private val blue = Color.rgb(18, 98, 214)
+    private var palette = WidgetPalette.from(WidgetOptions())
+    private val ink get() = palette.text
+    private val blue get() = palette.accent
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -149,10 +146,21 @@ class WidgetWorkspaceActivity : Activity() {
         val availableWidth = visible.width()
         val availableHeight = visible.height()
         val width = (availableWidth - dp(48)).coerceAtLeast(1).coerceAtMost(dp(540))
-        val preferred = if (screen == "list") dp(260 + listCount.coerceAtMost(6) * 56)
-            else if (screen == "edit" && editorAdvanced?.visibility != View.VISIBLE) dp(440) else dp(560)
+        val innerWidth = (width - rootPanel.paddingLeft - rootPanel.paddingRight).coerceAtLeast(1)
+        body.measure(View.MeasureSpec.makeMeasureSpec(innerWidth, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+        var preferred = rootPanel.paddingTop + rootPanel.paddingBottom + body.measuredHeight
+        for (index in 0 until rootPanel.childCount) {
+            val child = rootPanel.getChildAt(index)
+            if (child is ScrollView || child.visibility == View.GONE) continue
+            val parameters = child.layoutParams as? android.view.ViewGroup.MarginLayoutParams
+            child.measure(View.MeasureSpec.makeMeasureSpec(innerWidth, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec((parameters?.height ?: 0).coerceAtLeast(0),
+                    if ((parameters?.height ?: 0) > 0) View.MeasureSpec.EXACTLY else View.MeasureSpec.UNSPECIFIED))
+            preferred += child.measuredHeight + (parameters?.topMargin ?: 0) + (parameters?.bottomMargin ?: 0)
+        }
         // Reserve usable space on every side, including when the IME or landscape reduces the viewport.
-        val height = preferred.coerceAtMost((availableHeight * .68f).toInt().coerceAtLeast(1))
+        val height = preferred.coerceAtMost((availableHeight * .62f).toInt().coerceAtLeast(1))
         val x = visible.left + (availableWidth - width) / 2
         val y = visible.top + (availableHeight - height) / 2
         val previous = rootPanel.layoutParams as? FrameLayout.LayoutParams
@@ -164,6 +172,8 @@ class WidgetWorkspaceActivity : Activity() {
     }
 
     private fun panel(title: String): LinearLayout {
+        val options = store.options(widgetId, kind)
+        palette = WidgetPalette.from(options)
         focusTick?.let { handler.removeCallbacks(it) }
         focusTick = null
         draft = null
@@ -171,7 +181,7 @@ class WidgetWorkspaceActivity : Activity() {
         editorAdvanced = null; editorMore = null
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL; setPadding(dp(18), dp(12), dp(18), dp(12))
-            background = shape(Color.WHITE)
+            background = shape(palette.surfaceWithOpacity(options.opacity))
             tag = "widget_popup_card"; isClickable = true
             isFocusableInTouchMode = true
             descendantFocusability = android.view.ViewGroup.FOCUS_BEFORE_DESCENDANTS
@@ -258,7 +268,7 @@ class WidgetWorkspaceActivity : Activity() {
             if (matches.isEmpty()) rows.addView(label("표시할 일정이 없습니다. + 추가 또는 필터를 사용하세요.", 13))
             for (task in matches) {
                 val line = row()
-                val check = CheckBox(this).apply {
+                val check = themedCheckBox().apply {
                     isChecked = task.completed; contentDescription = "${task.title} 완료 상태"
                     isEnabled = task.status in setOf("active", "completed")
                     setOnClickListener { work(after = { list() }) { store.changeStatus(task.id, if (task.completed) "active" else "completed") } }
@@ -280,7 +290,6 @@ class WidgetWorkspaceActivity : Activity() {
         val latest = allTasks.mapNotNull { it.syncedAt }.maxOrNull()
         if (latest != null) body.addView(label("학업 일정 최근 반영: " + Instant.ofEpochSecond(latest).atZone(ZoneId.systemDefault())
             .format(java.time.format.DateTimeFormatter.ofPattern("M/d HH:mm")), 11))
-        listCount = tasks.size
         sizeWindow()
     }
 
@@ -312,7 +321,8 @@ class WidgetWorkspaceActivity : Activity() {
         panel("캘린더")
         val options = store.options(widgetId, kind).copy(period = "all")
         val tasks = WidgetTaskPolicy.select(store.tasks(), options, System.currentTimeMillis() / 1000, store.pins())
-        val calendar = CalendarView(this)
+        val calendar = CalendarView(android.view.ContextThemeWrapper(this,
+            if (palette.dark) android.R.style.Theme_Material else android.R.style.Theme_Material_Light))
         calendar.date = selectedDate.atTime(12, 0).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
         val toolbar = row()
         toolbar.addView(button("+ 추가", primary = true) {
@@ -335,7 +345,7 @@ class WidgetWorkspaceActivity : Activity() {
             if (matches.isEmpty()) rows.addView(label("이 날짜에 등록된 일정이 없습니다.", 13))
             for (task in matches) {
                 val line = row()
-                line.addView(CheckBox(this).apply {
+                line.addView(themedCheckBox().apply {
                     isChecked = task.completed; contentDescription = "${task.title} 완료 상태"
                     setOnClickListener { work(after = { calendar() }) { store.changeStatus(task.id, if (task.completed) "active" else "completed") } }
                 }, LinearLayout.LayoutParams(dp(48), dp(56)))
@@ -398,22 +408,18 @@ class WidgetWorkspaceActivity : Activity() {
         var folder = if (restored?.containsKey("folder") == true) restored.getString("folder")
             else task?.folders?.firstOrNull() ?: if (id == null) widgetOptions.folder.takeIf { it.isNotEmpty() } else null
         var reminderControl: Button? = null
-        val dueButton = button("기한: ${WidgetWorkspaceRenderer.dueLabel(due)}") {}
-        dueButton.setOnClickListener {
-            if (task?.academic == true) toast("학업 마감은 원본을 유지합니다. 알림 시각을 변경할 수 있습니다.")
-            else pickDate(due) {
-                due = it; dueButton.text = "기한: ${WidgetWorkspaceRenderer.dueLabel(due)}"
-                if (due == null) { reminder = null; reminderControl?.text = reminderLabel(null) }
-            }
+        val duePicker = WidgetDuePicker(this, due, palette, editable = task?.academic != true) {
+            due = it
+            if (due == null) { reminder = null; reminderControl?.text = reminderLabel(null) }
         }
-        body.addView(dueButton)
-        val memo = input("메모", restored?.getString("memo") ?: task?.memo ?: "").apply { minLines = 2; maxLines = 5 }
+        body.addView(duePicker)
+        val memo = input("메모", restored?.getString("memo") ?: task?.memo ?: "").apply { minLines = 1; maxLines = 4 }
         body.addView(memo)
         val tagButton = button("태그 선택 (${selectedTags.size})") {}
         tagButton.setOnClickListener {
             val tags = store.metadata("tags")
             val chosen = selectedTags.toMutableSet()
-            AlertDialog.Builder(this).setTitle("태그")
+            dialogBuilder().setTitle("태그")
                 .setMultiChoiceItems(tags.map { it.second }.toTypedArray(), BooleanArray(tags.size) { tags[it].first in selectedTags }) { _, which, checked ->
                     if (checked) chosen.add(tags[which].first) else chosen.remove(tags[which].first)
                 }.setNegativeButton("취소", null).setPositiveButton("확인") { _, _ ->
@@ -481,7 +487,7 @@ class WidgetWorkspaceActivity : Activity() {
         }, weight())
         body.addView(helpers)
         if (id != null) {
-            val pin = CheckBox(this).apply {
+            val pin = themedCheckBox().apply {
                 text = "중요 일정으로 고정"; isChecked = id in store.pins(); setTextColor(ink)
                 setOnCheckedChangeListener { _, checked -> store.pin(id, checked); WidgetWorkspaceRenderer.refreshAll(this@WidgetWorkspaceActivity) }
             }
@@ -494,7 +500,7 @@ class WidgetWorkspaceActivity : Activity() {
                 fun postponeDraft(days: Long) {
                     if (due == null) { toast("먼저 마감일을 지정해주세요."); return }
                     due = WidgetTaskPolicy.postponedDue(task.copy(due = due), days)
-                    dueButton.text = "기한: ${WidgetWorkspaceRenderer.dueLabel(due)}"
+                    duePicker.setDue(due)
                 }
                 postpone.addView(button("하루 미루기") { postponeDraft(1) }, weight())
                 postpone.addView(button("일주일 미루기") { postponeDraft(7) }, weight())
@@ -510,7 +516,7 @@ class WidgetWorkspaceActivity : Activity() {
             }
             body.addView(snooze)
             body.addView(button("집중 타이머") {
-                if (!hasDraftChanges()) focus(id) else AlertDialog.Builder(this)
+                if (!hasDraftChanges()) focus(id) else dialogBuilder()
                     .setTitle("수정 중인 내용을 버리고 이동할까요?")
                     .setNegativeButton("계속 작성", null)
                     .setPositiveButton("이동") { _, _ -> focus(id) }.show()
@@ -522,14 +528,14 @@ class WidgetWorkspaceActivity : Activity() {
             })
             subTasks(id)
             body.addView(button(if (task.academic) "목록에서 삭제" else "삭제") {
-                AlertDialog.Builder(this).setTitle("일정을 삭제할까요?")
+                dialogBuilder().setTitle("일정을 삭제할까요?")
                     .setMessage("삭제·제외 목록에서 복구할 수 있습니다.")
                     .setNegativeButton("취소", null).setPositiveButton("삭제") { _, _ ->
                         work(after = { list() }) { store.changeStatus(id, "deleted") }
                     }.show()
             })
             if (task.academic && !task.completed) body.addView(button("동기화에서 제외") {
-                AlertDialog.Builder(this).setTitle("이 학업 일정을 제외할까요?")
+                dialogBuilder().setTitle("이 학업 일정을 제외할까요?")
                     .setMessage("원본 키를 유지해 다음 동기화에서 신규로 가져오지 않습니다. 삭제·제외 목록에서 복구할 수 있습니다.")
                     .setNegativeButton("취소", null).setPositiveButton("제외") { _, _ ->
                         work(after = { list() }) { store.changeStatus(id, "excluded") }
@@ -574,7 +580,7 @@ class WidgetWorkspaceActivity : Activity() {
             container.removeAllViews()
             for ((id, title, done) in store.subTasks(taskId)) {
                 val line = row()
-                val check = CheckBox(this).apply {
+                val check = themedCheckBox().apply {
                     text = title; isChecked = done; setTextColor(ink)
                     setOnClickListener { work(after = { reload() }) { store.saveSubTask(taskId, id, title, !done) } }
                 }
@@ -583,7 +589,7 @@ class WidgetWorkspaceActivity : Activity() {
                     work(after = { reload() }) { store.saveSubTask(taskId, id, text, done) }
                 } }, LinearLayout.LayoutParams(dp(60), dp(44)))
                 line.addView(button("삭제") {
-                    AlertDialog.Builder(this).setMessage("하위 작업을 삭제할까요?").setNegativeButton("취소", null)
+                    dialogBuilder().setMessage("하위 작업을 삭제할까요?").setNegativeButton("취소", null)
                         .setPositiveButton("삭제") { _, _ -> work(after = { reload() }) { store.deleteSubTask(taskId, id) } }.show()
                 }, LinearLayout.LayoutParams(dp(60), dp(44)))
                 container.addView(line)
@@ -613,13 +619,19 @@ class WidgetWorkspaceActivity : Activity() {
         selector("폴더", listOf("전체") + folders.map { it.second }, listOf("") + folders.map { it.first }, { options.folder }) { options = options.copy(folder = it) }
         selector("정렬", listOf("마감일", "우선순위", "앱의 사용자 순서"), listOf("due", "priority", "order"), { options.sort }) { options = options.copy(sort = it) }
         fun check(title: String, selected: Boolean, change: (Boolean) -> Unit) {
-            body.addView(CheckBox(this).apply { text = title; setTextColor(ink); isChecked = selected; setOnCheckedChangeListener { _, v -> change(v) } })
+            body.addView(themedCheckBox().apply { text = title; setTextColor(ink); isChecked = selected; setOnCheckedChangeListener { _, v -> change(v) } })
         }
         check("완료된 일정 표시", options.showCompleted) { options = options.copy(showCompleted = it) }
-        check("어두운 배경", options.dark) { options = options.copy(dark = it) }
+        var opacitySlider: SeekBar? = null
+        selector("테마", listOf("밝게", "어둡게", "회색", "반투명"), listOf("light", "dark", "gray", "glass"),
+            { if (options.dark && options.theme == "light") "dark" else options.theme }) {
+            options = options.copy(theme = it, dark = it == "dark", opacity = if (it == "glass") 70 else 100)
+            opacitySlider?.progress = options.opacity - 20
+        }
         check("큰 글자", options.largeText) { options = options.copy(largeText = it) }
         body.addView(label("배경 불투명도", 13))
         body.addView(SeekBar(this).apply {
+            opacitySlider = this
             max = 80; progress = options.opacity - 20
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(bar: SeekBar?, progress: Int, fromUser: Boolean) { options = options.copy(opacity = progress + 20) }
@@ -671,21 +683,17 @@ class WidgetWorkspaceActivity : Activity() {
         body.addView(button("일정으로 돌아가기") { safely { list() } })
     }
 
-    private fun pickDate(initial: Long?, selected: (Long?) -> Unit) {
-        val date = initial?.let { Instant.ofEpochSecond(it).atZone(ZoneId.systemDefault()) } ?: java.time.ZonedDateTime.now()
-        DatePickerDialog(this, R.style.WidgetPickerDialog, { _, year, month, day ->
-            TimePickerDialog(this, R.style.WidgetPickerDialog, { _, hour, minute -> selected(LocalDate.of(year, month + 1, day)
-                .atTime(hour, minute).atZone(ZoneId.systemDefault()).toEpochSecond()) }, date.hour, date.minute, true).show()
-        }, date.year, date.monthValue - 1, date.dayOfMonth).apply {
-            setButton(AlertDialog.BUTTON_NEUTRAL, "기한 없음") { _, _ -> selected(null) }
-        }.show()
+    private fun themedCheckBox() = CheckBox(this).apply {
+        buttonTintList = android.content.res.ColorStateList(
+            arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()), intArrayOf(palette.accent, palette.muted))
     }
+    private fun dialogBuilder() = AlertDialog.Builder(this, if (palette.dark) R.style.WidgetPickerDialogDark else R.style.WidgetPickerDialog)
     private fun choose(title: String, values: List<String>, selected: (Int) -> Unit) {
-        AlertDialog.Builder(this).setTitle(title).setItems(values.toTypedArray()) { _, which -> selected(which) }.setNegativeButton("취소", null).show()
+        dialogBuilder().setTitle(title).setItems(values.toTypedArray()) { _, which -> selected(which) }.setNegativeButton("취소", null).show()
     }
     private fun textDialog(title: String, value: String, save: (String) -> Unit) {
         val text = input(title, value)
-        val dialog = AlertDialog.Builder(this).setTitle(title).setView(text).setNegativeButton("취소", null).setPositiveButton("저장", null).create()
+        val dialog = dialogBuilder().setTitle(title).setView(text).setNegativeButton("취소", null).setPositiveButton("저장", null).create()
         dialog.setOnShowListener { dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
             if (text.text.isBlank()) text.error = "제목을 입력해주세요." else { save(text.text.toString()); dialog.dismiss() }
         } }
@@ -720,7 +728,7 @@ class WidgetWorkspaceActivity : Activity() {
 
     private fun closeWorkspace() {
         if (busy) return
-        if (!hasDraftChanges()) finish() else AlertDialog.Builder(this).setTitle("작성 중인 내용을 버릴까요?")
+        if (!hasDraftChanges()) finish() else dialogBuilder().setTitle("작성 중인 내용을 버릴까요?")
             .setMessage("저장 버튼을 누르면 위젯에 바로 반영됩니다.").setNegativeButton("계속 작성", null)
             .setPositiveButton("버리기") { _, _ -> finish() }.show()
     }
@@ -751,15 +759,16 @@ class WidgetWorkspaceActivity : Activity() {
         if (bold) setTypeface(typeface, Typeface.BOLD)
     }
     private fun input(hint: String, value: String = "") = EditText(this).apply {
-        this.hint = hint; setText(value); textSize = 15f; setTextColor(ink); setHintTextColor(Color.GRAY)
+        this.hint = hint; setText(value); textSize = 15f; setTextColor(ink)
         imeOptions = imeOptions or EditorInfo.IME_FLAG_NO_FULLSCREEN
-        setPadding(dp(10), dp(8), dp(10), dp(8)); background = shape(Color.rgb(245, 247, 251))
+        setPadding(dp(10), dp(8), dp(10), dp(8)); background = shape(palette.input); setHintTextColor(palette.muted)
         layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) }
     }
     private fun button(text: String, primary: Boolean = false, action: () -> Unit) = Button(this).apply {
         this.text = text; isAllCaps = false; textSize = 13f; minimumHeight = dp(44)
-        setTextColor(if (primary) Color.WHITE else blue); background = shape(if (primary) blue else Color.rgb(239, 245, 255))
-        layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5); bottomMargin = dp(5) }
+        setTextColor(if (primary) Color.WHITE else blue); background = shape(if (primary) palette.primary else palette.button)
+        stateListAnimator = null; elevation = 0f
+        layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(3); bottomMargin = dp(3) }
         setOnClickListener { if (!busy) action() }
     }
     private fun shape(color: Int) = GradientDrawable().apply { setColor(color); cornerRadius = dp(14).toFloat() }

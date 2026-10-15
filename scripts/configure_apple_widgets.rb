@@ -96,6 +96,13 @@ platforms.each do |platform|
   unless embed.files_references.include?(widget.product_reference)
     embed.add_file_reference(widget.product_reference).settings = { 'ATTRIBUTES' => ['RemoveHeadersOnCopy'] }
   end
+  # Flutter's embed_and_thin reads Runner.app/Info.plist. Copying the extension
+  # after it creates an Xcode dependency cycle through that same app bundle.
+  thin = runner.build_phases.find { |phase| phase.display_name == 'Thin Binary' }
+  if thin
+    runner.build_phases.delete(embed)
+    runner.build_phases.insert(runner.build_phases.index(thin), embed)
+  end
   if desktop_only
     runner.dependencies.select { |dependency| dependency.target == widget }.each(&:remove_from_project)
     embed.files.each(&:remove_from_project)

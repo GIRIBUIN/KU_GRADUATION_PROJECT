@@ -10,6 +10,9 @@ root = File.expand_path('..', __dir__)
   raise 'Missing app-extension product type' unless widget.product_type == 'com.apple.product-type.app-extension'
   raise 'Missing dependency' unless runner.dependencies.any? { |dependency| dependency.target == widget }
   raise 'Missing embedded widget' unless runner.copy_files_build_phases.any? { |phase| phase.dst_subfolder_spec == '13' && phase.files_references.include?(widget.product_reference) }
+  thin = runner.build_phases.find { |phase| phase.display_name == 'Thin Binary' }
+  embed = runner.copy_files_build_phases.find { |phase| phase.files_references.include?(widget.product_reference) }
+  raise 'Embed widgets before Flutter Thin Binary to avoid an Xcode dependency cycle' if thin && runner.build_phases.index(embed) > runner.build_phases.index(thin)
   [runner, widget].each do |target|
     sources = target.source_build_phase.files_references.map(&:path)
     %w[WidgetStore.swift WidgetIntents.swift].each do |source|

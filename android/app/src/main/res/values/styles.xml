@@ -3,10 +3,23 @@
     <style name="WidgetWorkspaceTheme" parent="android:style/Theme.Material.Light.Dialog.NoActionBar">
         <item name="android:windowIsFloating">true</item>
         <item name="android:windowBackground">@android:color/transparent</item>
-        <item name="android:backgroundDimAmount">0.25</item>
+        <item name="android:backgroundDimAmount">0.18</item>
+        <item name="android:windowAnimationStyle">@style/WidgetWorkspaceAnimation</item>
         <item name="android:colorAccent">#1262D6</item>
         <item name="android:windowCloseOnTouchOutside">false</item>
         <item name="android:fontFamily">sans</item>
+    </style>
+    <style name="WidgetWorkspaceAnimation">
+        <item name="android:windowEnterAnimation">@anim/widget_popup_enter</item>
+        <item name="android:windowExitAnimation">@anim/widget_popup_exit</item>
+    </style>
+    <style name="WidgetCalendarWeekday">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textSize">11sp</item>
+        <item name="android:textColor">#7B8798</item>
     </style>
     <!-- Theme applied to the Android Window while the process is starting when the OS's Dark Mode setting is off -->
     <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">

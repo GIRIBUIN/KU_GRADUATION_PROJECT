@@ -23,7 +23,9 @@ import android.speech.RecognizerIntent
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.widget.*
 import es.antonborri.home_widget.HomeWidgetPlugin
@@ -41,6 +43,9 @@ class WidgetWorkspaceActivity : Activity() {
     private lateinit var rootPanel: LinearLayout
     private var widgetId = 0
     private var kind = "today"
+    private var screen = "list"
+    private var selectedDate = LocalDate.now()
+    private var listCount = 5
     private var busy = false
     private var voiceTarget: EditText? = null
     private var currentTaskId: String? = null
@@ -59,6 +64,11 @@ class WidgetWorkspaceActivity : Activity() {
         store = WidgetTaskStore(this)
         widgetId = intent.getIntExtra("widget_id", 0)
         kind = intent.getStringExtra("kind") ?: "today"
+        selectedDate = runCatching { LocalDate.parse(savedInstanceState?.getString("selected_date")
+            ?: intent.getStringExtra("selected_date")) }.getOrDefault(LocalDate.now())
+        window.addFlags(WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH)
+        if (Build.VERSION.SDK_INT >= 33) onBackInvokedDispatcher.registerOnBackInvokedCallback(
+            android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT) { closeWorkspace() }
         sizeWindow()
         val action = savedInstanceState?.getString("screen") ?: intent.getStringExtra("action") ?: "list"
         val id = savedInstanceState?.getString("task_id") ?: intent.getStringExtra("task_id")
@@ -75,16 +85,22 @@ class WidgetWorkspaceActivity : Activity() {
                 store.saveOptions(widgetId, options.copy(page = (options.page + if (action == "next") 1 else -1).coerceAtLeast(0)))
             }
             "settings" -> safely { settings() }
-            "add", "edit" -> safely { editor(id, savedInstanceState?.getBundle("draft")) }
+            "calendar" -> safely { calendar() }
+            "add", "edit" -> safely {
+                editor(id, savedInstanceState?.getBundle("draft"))
+                initialDraft = savedInstanceState?.getBundle("initial_draft") ?: initialDraft
+            }
             else -> safely { list() }
         }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        outState.putString("screen", if (draft == null) "list" else "edit")
+        outState.putString("screen", if (draft != null) "edit" else if (screen == "calendar") "calendar" else "list")
+        outState.putString("selected_date", selectedDate.toString())
         outState.putString("task_id", currentTaskId)
         draft?.let { outState.putBundle("draft", it()) }
+        initialDraft?.let { outState.putBundle("initial_draft", it) }
     }
 
     override fun onDestroy() {
@@ -107,8 +123,13 @@ class WidgetWorkspaceActivity : Activity() {
     }
 
     private fun sizeWindow() {
+        val fraction = if (screen == "edit") .88 else if (screen == "calendar") .84 else .76
+        val maximum = (resources.displayMetrics.heightPixels * fraction).toInt()
+            .coerceAtMost(dp(if (screen == "edit") 780 else 720))
+        val height = if (screen == "list") dp(280 + listCount.coerceAtMost(8) * 60).coerceAtMost(maximum) else maximum
         window.setLayout((resources.displayMetrics.widthPixels * .94).toInt().coerceAtMost(dp(580)),
-            (resources.displayMetrics.heightPixels * .88).toInt())
+            height)
+        window.setGravity(Gravity.CENTER)
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
     }
 
@@ -160,23 +181,14 @@ class WidgetWorkspaceActivity : Activity() {
     }
 
     private fun list() {
-        panel("일정 위젯")
+        screen = "list"
         val options = store.options(widgetId, kind)
+        panel(WidgetWorkspaceRenderer.periodLabel(options.period))
         val toolbar = row()
-        toolbar.addView(button("+ 추가") { safely { editor(null) } }, weight())
-        toolbar.addView(button("필터·설정") { safely { settings() } }, weight())
-        toolbar.addView(button("집중") { focus() }, weight())
+        toolbar.addView(button("+ 추가", primary = true) { safely { editor(null) } }, weight())
+        toolbar.addView(button("캘린더") { safely { calendar() } }, weight())
+        toolbar.addView(button("더 보기") { moreMenu() }, weight())
         body.addView(toolbar)
-        val shortcuts = row()
-        shortcuts.addView(button("전체") { changePeriod("all") }, weight())
-        shortcuts.addView(button("중요") { changePeriod("pinned") }, weight())
-        shortcuts.addView(button("삭제·제외") { changePeriod("trash") }, weight())
-        body.addView(shortcuts)
-        val views = row()
-        views.addView(button("캘린더") { safely { calendar() } }, weight())
-        views.addView(button("중요도·긴급도") { safely { matrix() } }, weight())
-        body.addView(views)
-        body.addView(label("${WidgetWorkspaceRenderer.periodLabel(options.period)} · ${WidgetWorkspaceRenderer.originLabel(options.origin)}", 13))
         val search = input("일정 검색")
         body.addView(search)
         val rows = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -184,6 +196,10 @@ class WidgetWorkspaceActivity : Activity() {
         val allTasks = store.tasks()
         val tasks = WidgetTaskPolicy.select(allTasks, options, System.currentTimeMillis() / 1000, store.pins(),
             store.appSetting("urgentDueDays", "3").toIntOrNull() ?: 3)
+        val progress = WidgetTaskPolicy.select(allTasks, options.copy(showCompleted = true),
+            System.currentTimeMillis() / 1000, store.pins(), store.appSetting("urgentDueDays", "3").toIntOrNull() ?: 3)
+        body.addView(label("${WidgetWorkspaceRenderer.originLabel(options.origin)} · ${tasks.size}개 일정" +
+            if (options.period == "trash") "" else " · ${progress.count { it.completed }}/${progress.size} 완료", 12), 1)
         fun populate(query: String) {
             rows.removeAllViews()
             val matches = tasks.filter { it.title.contains(query, true) || it.course.contains(query, true) || it.memo.contains(query, true) }
@@ -210,11 +226,29 @@ class WidgetWorkspaceActivity : Activity() {
             override fun afterTextChanged(s: Editable?) {}
         })
         val latest = allTasks.mapNotNull { it.syncedAt }.maxOrNull()
-        body.addView(label("기기에 저장된 일정 · 오프라인 사용 가능" +
-            (latest?.let { "\n학업 항목 최근 반영: " + Instant.ofEpochSecond(it).atZone(ZoneId.systemDefault())
-                .format(java.time.format.DateTimeFormatter.ofPattern("M/d HH:mm")) } ?: ""), 11))
-        body.addView(button("마지막 완료·삭제 되돌리기") { work(after = { list() }) { if (!store.undo()) error("되돌릴 변경 사항이 없습니다.") } })
+        if (latest != null) body.addView(label("학업 일정 최근 반영: " + Instant.ofEpochSecond(latest).atZone(ZoneId.systemDefault())
+            .format(java.time.format.DateTimeFormatter.ofPattern("M/d HH:mm")), 11))
+        listCount = tasks.size
+        sizeWindow()
     }
+
+    private fun moreMenu() {
+        choose("일정 관리", listOf("필터·설정", "전체 일정", "중요 일정", "삭제·제외된 일정", "중요도·긴급도",
+            "집중 타이머", "마지막 변경 되돌리기", "새로고침")) { index -> safely {
+            when (index) {
+                0 -> settings()
+                1 -> changePeriod("all")
+                2 -> changePeriod("pinned")
+                3 -> changePeriod("trash")
+                4 -> matrix()
+                5 -> focus()
+                6 -> work(after = { home() }) { if (!store.undo()) error("되돌릴 변경 사항이 없습니다.") }
+                7 -> work(after = { home() }) { store.tasks() }
+            }
+        } }
+    }
+
+    private fun home() { if (kind == "calendar") calendar() else list() }
 
     private fun changePeriod(period: String) {
         store.saveOptions(widgetId, store.options(widgetId, kind).copy(period = period, page = 0))
@@ -222,32 +256,44 @@ class WidgetWorkspaceActivity : Activity() {
     }
 
     private fun calendar() {
+        screen = "calendar"
         panel("캘린더")
-        var selected = LocalDate.now()
         val options = store.options(widgetId, kind).copy(period = "all")
         val tasks = WidgetTaskPolicy.select(store.tasks(), options, System.currentTimeMillis() / 1000, store.pins())
         val calendar = CalendarView(this)
+        calendar.date = selectedDate.atTime(12, 0).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val toolbar = row()
+        toolbar.addView(button("+ 추가", primary = true) {
+            editor(null, Bundle().apply { putLong("due", selectedDate.atTime(23, 59).atZone(ZoneId.systemDefault()).toEpochSecond()) })
+        }, weight())
+        toolbar.addView(button("목록") { list() }, weight())
+        toolbar.addView(button("더 보기") { moreMenu() }, weight())
+        body.addView(toolbar)
         body.addView(calendar, LinearLayout.LayoutParams(-1, dp(320)))
         val dayLabel = label("", 15, true)
         body.addView(dayLabel)
-        val add = button("선택 날짜에 + 추가", primary = true) {
-            editor(null, Bundle().apply { putLong("due", selected.atTime(23, 59).atZone(ZoneId.systemDefault()).toEpochSecond()) })
-        }
-        body.addView(add)
         val rows = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         body.addView(rows)
         fun update() {
-            dayLabel.text = "${selected.monthValue}월 ${selected.dayOfMonth}일"
+            dayLabel.text = "${selectedDate.monthValue}월 ${selectedDate.dayOfMonth}일"
             rows.removeAllViews()
             val matches = tasks.filter { it.due?.let { due ->
-                Instant.ofEpochSecond(due).atZone(ZoneId.systemDefault()).toLocalDate() == selected
+                Instant.ofEpochSecond(due).atZone(ZoneId.systemDefault()).toLocalDate() == selectedDate
             } == true }
             if (matches.isEmpty()) rows.addView(label("이 날짜에 등록된 일정이 없습니다.", 13))
-            for (task in matches) rows.addView(button((if (task.completed) "✓ " else "") + task.title + " · " + WidgetWorkspaceRenderer.dueLabel(task.due)) {
-                safely { editor(task.id) }
-            })
+            for (task in matches) {
+                val line = row()
+                line.addView(CheckBox(this).apply {
+                    isChecked = task.completed; contentDescription = "${task.title} 완료 상태"
+                    setOnClickListener { work(after = { calendar() }) { store.changeStatus(task.id, if (task.completed) "active" else "completed") } }
+                }, LinearLayout.LayoutParams(dp(48), dp(56)))
+                line.addView(label(task.title + "\n" + WidgetWorkspaceRenderer.dueLabel(task.due), 14).apply {
+                    setOnClickListener { safely { editor(task.id) } }
+                }, LinearLayout.LayoutParams(0, -2, 1f))
+                rows.addView(line)
+            }
         }
-        calendar.setOnDateChangeListener { _, year, month, day -> selected = LocalDate.of(year, month + 1, day); update() }
+        calendar.setOnDateChangeListener { _, year, month, day -> selectedDate = LocalDate.of(year, month + 1, day); update() }
         update()
         body.addView(button("목록으로") { list() })
     }
@@ -272,6 +318,7 @@ class WidgetWorkspaceActivity : Activity() {
     }
 
     private fun editor(id: String?, restored: Bundle? = null) {
+        screen = "edit"
         currentTaskId = id
         val task = id?.let { store.task(it) }
         if (task != null && task.status in setOf("deleted", "excluded")) {
@@ -479,6 +526,7 @@ class WidgetWorkspaceActivity : Activity() {
     }
 
     private fun settings() {
+        screen = "settings"
         panel("위젯 표시 설정")
         var options = store.options(widgetId, kind)
         fun selector(title: String, labels: List<String>, values: List<String>, current: () -> String, change: (String) -> Unit) {
@@ -486,7 +534,7 @@ class WidgetWorkspaceActivity : Activity() {
             control.setOnClickListener { choose(title, labels) { i -> change(values[i]); control.text = "$title: ${labels[i]}" } }
             body.addView(control)
         }
-        selector("기간", listOf("오늘", "이번 주", "마감 임박", "기한 초과", "전체", "중요", "삭제·제외"),
+        if (kind != "calendar") selector("기간", listOf("오늘", "이번 주", "마감 임박", "기한 초과", "전체", "중요", "삭제·제외"),
             listOf("today", "week", "urgent", "overdue", "all", "pinned", "trash"), { options.period }) { options = options.copy(period = it) }
         selector("유형", listOf("전체", "학업", "개인"), listOf("all", "ecampus", "personal"), { options.origin }) { options = options.copy(origin = it) }
         val tags = store.metadata("tags")
@@ -509,9 +557,10 @@ class WidgetWorkspaceActivity : Activity() {
                 override fun onStopTrackingTouch(bar: SeekBar?) {}
             })
         })
-        body.addView(label("이 위젯에만 적용됩니다. 홈 화면에서 위젯 크기를 늘리면 더 많은 일정이 표시됩니다.", 12))
+        body.addView(label(if (kind == "calendar") "이 캘린더에만 적용됩니다. 날짜별 일정은 달력의 날짜를 눌러 확인하세요."
+            else "이 위젯에만 적용됩니다. 홈 화면에서 위젯 크기를 늘리면 더 많은 일정이 표시됩니다.", 12))
         body.addView(button("설정 저장", primary = true) {
-            store.saveOptions(widgetId, options.copy(page = 0)); WidgetWorkspaceRenderer.refreshAll(this); safely { list() }
+            store.saveOptions(widgetId, options.copy(page = 0)); WidgetWorkspaceRenderer.refreshAll(this); safely { home() }
         })
     }
 
@@ -588,6 +637,15 @@ class WidgetWorkspaceActivity : Activity() {
     @Deprecated("Platform back callback for this lightweight native dialog")
     override fun onBackPressed() { closeWorkspace() }
 
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        val slop = ViewConfiguration.get(this).scaledWindowTouchSlop
+        val decor = window.decorView
+        val outside = event.action == MotionEvent.ACTION_OUTSIDE || (event.action == MotionEvent.ACTION_DOWN &&
+            (event.x < -slop || event.y < -slop || event.x > decor.width + slop || event.y > decor.height + slop))
+        if (outside) { closeWorkspace(); return true }
+        return super.onTouchEvent(event)
+    }
+
     private fun closeWorkspace() {
         if (busy) return
         if (!hasDraftChanges()) finish() else AlertDialog.Builder(this).setTitle("작성 중인 내용을 버릴까요?")
@@ -635,13 +693,14 @@ class WidgetWorkspaceActivity : Activity() {
 
     companion object {
         fun pending(context: android.content.Context, action: String, taskId: String? = null,
-                    widgetId: Int = 0, kind: String = "today"): PendingIntent {
+                    widgetId: Int = 0, kind: String = "today", selectedDate: String? = null): PendingIntent {
             val direct = action in setOf("toggle", "undo", "previous", "next", "refresh")
             val destination = if (direct) WidgetActionReceiver::class.java else WidgetWorkspaceActivity::class.java
             val intent = Intent(context, destination).apply {
                 data = Uri.Builder().scheme("kutodo-widget").authority("workspace").appendPath(widgetId.toString())
-                    .appendPath(action).appendPath(taskId ?: "").build()
+                    .appendPath(action).appendPath(taskId ?: "").appendPath(selectedDate ?: "").build()
                 putExtra("action", action); putExtra("task_id", taskId); putExtra("widget_id", widgetId); putExtra("kind", kind)
+                putExtra("selected_date", selectedDate)
                 addFlags(if (direct) Intent.FLAG_RECEIVER_FOREGROUND else Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE

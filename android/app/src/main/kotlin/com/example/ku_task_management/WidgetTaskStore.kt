@@ -104,9 +104,9 @@ class WidgetTaskStore(private val context: Context) {
     fun options(widgetId: Int, kind: String): WidgetOptions {
         val raw = prefs.getString("workspace_options_$widgetId", null)
         val json = try { JSONObject(raw ?: "{}") } catch (_: Exception) { JSONObject() }
-        return WidgetOptions(json.optString("period", if (kind == "weekly") "week" else "today"),
+        return WidgetOptions(json.optString("period", when (kind) { "weekly" -> "week"; "calendar" -> "all"; else -> "today" }),
             json.optString("origin", "all"), json.optString("tag"), json.optString("folder"),
-            json.optString("sort", "due"), json.optBoolean("showCompleted", kind == "weekly"),
+            json.optString("sort", "due"), json.optBoolean("showCompleted", kind != "today"),
             json.optBoolean("dark"), json.optBoolean("largeText"), json.optInt("opacity", 100),
             json.optInt("page", 0))
     }

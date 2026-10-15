@@ -16,7 +16,7 @@ import 'widget_format.dart';
 import 'widget_today_selection.dart';
 import 'widget_week_selection.dart';
 
-/// Flutter → 위젯 DB 경로/호환용 JSON 저장 및 오늘/주간 위젯 갱신.
+/// Flutter → 위젯 DB 경로/호환용 JSON 저장 및 오늘/주간/캘린더 위젯 갱신.
 /// Android workspace providers read the shared DB directly for offline edits.
 class WidgetUpdateService {
   WidgetUpdateService({
@@ -31,6 +31,7 @@ class WidgetUpdateService {
 
   static const todayAndroidProviderName = 'ScheduleWidgetProvider';
   static const weeklyAndroidProviderName = 'WeeklyScheduleWidgetProvider';
+  static const calendarAndroidProviderName = 'CalendarWidgetProvider';
   static const widgetRefreshRequiredKey = 'widget_refresh_required';
   static const widgetPendingCompletionsKey = 'widget_pending_completions';
   static const widgetPendingUncompletionsKey = 'widget_pending_uncompletions';
@@ -89,7 +90,7 @@ class WidgetUpdateService {
     }
   }
 
-  /// 두 위젯 JSON을 각각 저장하고 Android Provider를 업데이트한다.
+  /// 기존 두 위젯 JSON을 저장하고 세 Android Provider를 업데이트한다.
   Future<void> refresh() async {
     await applyPendingWidgetCompletions();
     // Source dates or statuses can also change during an in-app e-campus sync.
@@ -123,6 +124,7 @@ class WidgetUpdateService {
       weeklyData.toJsonString(),
     );
     await HomeWidget.updateWidget(androidName: weeklyAndroidProviderName);
+    await HomeWidget.updateWidget(androidName: calendarAndroidProviderName);
   }
 
   /// 오늘 할 일정 위젯(ScheduleWidgetProvider)용 스냅샷.

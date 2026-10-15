@@ -181,15 +181,21 @@ class WidgetTaskStoreTest {
     }
 
     @Test @GraphicsMode(GraphicsMode.Mode.NATIVE)
-    fun remoteViewsRenderResizeAndOpenWidgetEditor() {
+    fun compactListHasNoManagementButtonsAndExpandsWithoutChangingTasks() {
         val today = java.time.LocalDate.now().atTime(23, 59).atZone(java.time.ZoneId.systemDefault()).toEpochSecond()
-        repeat(9) { create("자료구조 과제 ${it + 1}", today) }
+        val titles = listOf("자료구조 과제 정리", "팀 프로젝트 회의 준비", "운영체제 복습", "발표 자료 검토",
+            "시험 범위 정리", "회의 내용 기록", "논문 읽기", "실습 보고서", "다음 주 계획")
+        titles.forEach { create(it, today) }
         val manager = android.appwidget.AppWidgetManager.getInstance(context)
         val shadow = shadowOf(manager)
         val id = shadow.createWidget(ScheduleWidgetProvider::class.java, R.layout.widget_workspace)
         val small = shadow.getViewFor(id)
         val smallCount = small.findViewById<android.widget.LinearLayout>(R.id.workspace_rows).childCount
         assertTrue(smallCount > 0)
+        val compactLabels = descendants(small).filterIsInstance<android.widget.TextView>().map { it.text.toString() }
+        assertFalse(compactLabels.any { it in setOf("+ 추가", "설정", "확대 보기", "되돌리기", "‹", "›", "↻") })
+        assertEquals("+${9 - smallCount}개 일정", small.findViewById<android.widget.TextView>(R.id.workspace_more).text.toString())
+        assertFalse(small.findViewById<View>(R.id.workspace_row_check).hasOnClickListeners())
         preview(small, "today-widget", 440, 300)
         manager.updateAppWidgetOptions(id, android.os.Bundle().apply {
             putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 480)
@@ -197,10 +203,150 @@ class WidgetTaskStoreTest {
         val large = shadow.getViewFor(id)
         assertTrue(large.findViewById<android.widget.LinearLayout>(R.id.workspace_rows).childCount > smallCount)
         preview(large, "large-widget", 440, 480)
+        val weeklyId = shadow.createWidget(WeeklyScheduleWidgetProvider::class.java, R.layout.widget_workspace)
+        preview(shadow.getViewFor(weeklyId), "weekly-widget", 440, 300)
         large.findViewById<View>(R.id.workspace_row_body).performClick()
         val launched = shadowOf(context).nextStartedActivity
         assertEquals(WidgetWorkspaceActivity::class.java.name, launched.component!!.className)
-        assertEquals("edit", launched.getStringExtra("action"))
+        assertEquals("list", launched.getStringExtra("action"))
+        assertTrue(store.tasks().none { it.completed })
+    }
+
+    @Test @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun calendarGridShowsDatesAndScheduleDotsAndOpensTheChosenDay() {
+        val date = java.time.LocalDate.now().withDayOfMonth(15)
+        val due = date.atTime(18, 0).atZone(java.time.ZoneId.systemDefault()).toEpochSecond()
+        create("달력에서 확인할 일정", due)
+        val manager = android.appwidget.AppWidgetManager.getInstance(context)
+        val shadow = shadowOf(manager)
+        val id = shadow.createWidget(CalendarWidgetProvider::class.java, R.layout.widget_calendar)
+        val widget = shadow.getViewFor(id)
+        val weeks = widget.findViewById<android.widget.LinearLayout>(R.id.calendar_weeks)
+        assertEquals(6, weeks.childCount)
+        val cells = (0 until 6).flatMap { week ->
+            val row = weeks.getChildAt(week) as android.widget.LinearLayout
+            assertEquals(7, row.childCount)
+            (0 until 7).map { row.getChildAt(it) }
+        }
+        assertEquals(42, cells.size)
+        assertEquals(1, cells.count { it.findViewById<View>(R.id.calendar_day_dot).visibility == View.VISIBLE })
+        val chosen = cells.single { it.contentDescription.toString().startsWith("${date.monthValue}월 15일,") }
+        assertTrue(chosen.contentDescription.toString().contains("일정 1개"))
+        preview(widget, "calendar-widget", 440, 360)
+        chosen.performClick()
+        val launched = shadowOf(context).nextStartedActivity
+        assertEquals(WidgetWorkspaceActivity::class.java.name, launched.component!!.className)
+        assertEquals("calendar", launched.getStringExtra("action"))
+        assertEquals(date.toString(), launched.getStringExtra("selected_date"))
+        val first = java.time.LocalDate.now().withDayOfMonth(1)
+        val firstGridDay = first.minusDays((first.dayOfWeek.value % 7).toLong())
+        // Each day has its own PendingIntent identity; the last cell cannot overwrite the first.
+        cells.first().performClick()
+        assertEquals(firstGridDay.toString(), shadowOf(context).nextStartedActivity.getStringExtra("selected_date"))
+        manager.updateAppWidgetOptions(id, android.os.Bundle().apply {
+            putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 400)
+        })
+        preview(shadow.getViewFor(id), "calendar-widget-large", 440, 400)
+    }
+
+    @Test @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun calendarPopupAddsToSelectedDayWithoutOpeningMainActivity() {
+        val selected = java.time.LocalDate.now().plusMonths(1).withDayOfMonth(9)
+        val intent = Intent(context, WidgetWorkspaceActivity::class.java).putExtra("action", "calendar")
+            .putExtra("kind", "calendar").putExtra("selected_date", selected.toString())
+        val controller = Robolectric.buildActivity(WidgetWorkspaceActivity::class.java, intent).setup()
+        val activity = controller.get()
+        fun content() = descendants(activity.findViewById(android.R.id.content))
+        assertEquals(selected, java.time.Instant.ofEpochMilli(content().filterIsInstance<android.widget.CalendarView>().single().date)
+            .atZone(java.time.ZoneId.systemDefault()).toLocalDate())
+        preview(activity.findViewById(android.R.id.content), "expanded-calendar", 480, 840)
+        content().filterIsInstance<Button>().single { it.text == "+ 추가" }.performClick()
+        content().filterIsInstance<EditText>().single { it.hint == "제목" }.setText("선택 날짜 일정")
+        content().filterIsInstance<Button>().single { it.text == "저장" }.performClick()
+        awaitCondition { activity.isFinishing }
+        val saved = store.tasks().single()
+        assertEquals(selected, java.time.Instant.ofEpochSecond(saved.due!!).atZone(java.time.ZoneId.systemDefault()).toLocalDate())
+        assertNull(shadowOf(activity).nextStartedActivity)
+        controller.pause().stop().destroy()
+    }
+
+    @Test @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun calendarDotsFollowFiltersAndRefreshAfterCompletionInPopup() {
+        val selected = java.time.LocalDate.now()
+        val id = create(due = selected.atTime(20, 0).atZone(java.time.ZoneId.systemDefault()).toEpochSecond())
+        val manager = android.appwidget.AppWidgetManager.getInstance(context)
+        val shadow = shadowOf(manager)
+        val widgetId = shadow.createWidget(CalendarWidgetProvider::class.java, R.layout.widget_calendar)
+        store.saveOptions(widgetId, WidgetOptions(period = "all", showCompleted = false, dark = true, tag = "course"))
+        WidgetWorkspaceRenderer.refreshAll(context)
+        fun dots() = descendants(shadow.getViewFor(widgetId)).count { it.id == R.id.calendar_day_dot && it.visibility == View.VISIBLE }
+        assertEquals(1, dots())
+        preview(shadow.getViewFor(widgetId), "calendar-widget-dark", 440, 360)
+        val controller = Robolectric.buildActivity(WidgetWorkspaceActivity::class.java,
+            Intent(context, WidgetWorkspaceActivity::class.java).putExtra("action", "calendar")
+                .putExtra("kind", "calendar").putExtra("widget_id", widgetId).putExtra("selected_date", selected.toString())).setup()
+        val activity = controller.get()
+        descendants(activity.findViewById(android.R.id.content)).filterIsInstance<android.widget.CheckBox>().single().performClick()
+        awaitCondition { store.task(id).completed && dots() == 0 }
+        assertNull(shadowOf(activity).nextStartedActivity)
+        controller.pause().stop().destroy()
+    }
+
+    @Test @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun expandedListCanCompleteAndOpenExistingManagementMenu() {
+        val due = java.time.LocalDate.now().atTime(23, 59).atZone(java.time.ZoneId.systemDefault()).toEpochSecond()
+        val id = create("팝업에서 완료할 일정", due)
+        val controller = Robolectric.buildActivity(WidgetWorkspaceActivity::class.java,
+            Intent(context, WidgetWorkspaceActivity::class.java).putExtra("action", "list")).setup()
+        val activity = controller.get()
+        fun content() = descendants(activity.findViewById(android.R.id.content))
+        preview(activity.findViewById(android.R.id.content), "expanded-list", 480, 360)
+        content().filterIsInstance<android.widget.CheckBox>().single().performClick()
+        awaitCondition { store.task(id).completed && content().filterIsInstance<android.widget.CheckBox>().isEmpty() }
+        content().filterIsInstance<Button>().single { it.text == "더 보기" }.performClick()
+        val dialog = org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog()
+        val items = shadowOf(dialog).items.map { it.toString() }
+        assertTrue(items.containsAll(listOf("필터·설정", "삭제·제외된 일정", "중요도·긴급도", "집중 타이머", "새로고침")))
+        dialog.dismiss()
+        assertNull(shadowOf(activity).nextStartedActivity)
+        controller.pause().stop().destroy()
+    }
+
+    @Test @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun outsideTapClosesPopupButConfirmsUnsavedDraft() {
+        val controller = Robolectric.buildActivity(WidgetWorkspaceActivity::class.java,
+            Intent(context, WidgetWorkspaceActivity::class.java).putExtra("action", "add")).setup()
+        val activity = controller.get()
+        descendants(activity.findViewById(android.R.id.content)).filterIsInstance<EditText>()
+            .single { it.hint == "제목" }.setText("작성 중인 일정")
+        val event = android.view.MotionEvent.obtain(0, 0, android.view.MotionEvent.ACTION_OUTSIDE, -100f, -100f, 0)
+        activity.onTouchEvent(event)
+        assertFalse(activity.isFinishing)
+        val dialog = org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog()
+        assertEquals("작성 중인 내용을 버릴까요?", shadowOf(dialog).title.toString())
+        dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
+        shadowOf(Looper.getMainLooper()).idle()
+        assertTrue(activity.isFinishing)
+        assertTrue(store.tasks().isEmpty())
+        event.recycle()
+        controller.pause().stop().destroy()
+
+        val cleanController = Robolectric.buildActivity(WidgetWorkspaceActivity::class.java,
+            Intent(context, WidgetWorkspaceActivity::class.java)).setup()
+        val cleanEvent = android.view.MotionEvent.obtain(0, 0, android.view.MotionEvent.ACTION_OUTSIDE, -100f, -100f, 0)
+        cleanController.get().onTouchEvent(cleanEvent)
+        assertTrue(cleanController.get().isFinishing)
+        cleanEvent.recycle()
+        cleanController.pause().stop().destroy()
+    }
+
+    private fun awaitCondition(condition: () -> Boolean) {
+        for (attempt in 0 until 1000) {
+            shadowOf(Looper.getMainLooper()).idle()
+            if (condition()) return
+            Thread.sleep(10)
+        }
+        assertTrue("Widget work did not complete", condition())
     }
 
     private fun preview(view: View, name: String, width: Int, height: Int) {

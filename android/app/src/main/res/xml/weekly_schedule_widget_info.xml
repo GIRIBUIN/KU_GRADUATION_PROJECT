@@ -4,7 +4,7 @@
     android:initialLayout="@layout/widget_workspace"
     android:minWidth="250dp"
     android:minHeight="180dp"
-    android:previewLayout="@layout/weekly_schedule_widget"
+    android:previewImage="@drawable/widget_weekly_preview"
     android:resizeMode="horizontal|vertical"
     android:targetCellWidth="4"
     android:targetCellHeight="3"

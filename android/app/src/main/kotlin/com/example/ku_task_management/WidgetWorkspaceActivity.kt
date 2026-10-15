@@ -52,6 +52,8 @@ class WidgetWorkspaceActivity : Activity() {
     private var pendingSave: (() -> Unit)? = null
     private var draft: (() -> Bundle)? = null
     private var initialDraft: Bundle? = null
+    private var editorAdvanced: LinearLayout? = null
+    private var editorMore: Button? = null
     private var focusTick: Runnable? = null
     private val handler = Handler(Looper.getMainLooper())
     private val worker = Executors.newSingleThreadExecutor()
@@ -89,6 +91,7 @@ class WidgetWorkspaceActivity : Activity() {
             "add", "edit" -> safely {
                 editor(id, savedInstanceState?.getBundle("draft"))
                 initialDraft = savedInstanceState?.getBundle("initial_draft") ?: initialDraft
+                setEditorAdvanced(savedInstanceState?.getBoolean("editor_advanced") == true)
             }
             else -> safely { list() }
         }
@@ -101,6 +104,7 @@ class WidgetWorkspaceActivity : Activity() {
         outState.putString("task_id", currentTaskId)
         draft?.let { outState.putBundle("draft", it()) }
         initialDraft?.let { outState.putBundle("initial_draft", it) }
+        outState.putBoolean("editor_advanced", editorAdvanced?.visibility == View.VISIBLE)
     }
 
     override fun onDestroy() {
@@ -123,9 +127,10 @@ class WidgetWorkspaceActivity : Activity() {
     }
 
     private fun sizeWindow() {
-        val fraction = if (screen == "edit") .88 else if (screen == "calendar") .84 else .76
+        val expandedEditor = screen == "edit" && editorAdvanced?.visibility == View.VISIBLE
+        val fraction = if (expandedEditor) .88 else if (screen == "calendar") .84 else .76
         val maximum = (resources.displayMetrics.heightPixels * fraction).toInt()
-            .coerceAtMost(dp(if (screen == "edit") 780 else 720))
+            .coerceAtMost(dp(if (expandedEditor) 780 else if (screen == "edit") 560 else 720))
         val height = if (screen == "list") dp(280 + listCount.coerceAtMost(8) * 60).coerceAtMost(maximum) else maximum
         window.setLayout((resources.displayMetrics.widthPixels * .94).toInt().coerceAtMost(dp(580)),
             height)
@@ -138,6 +143,7 @@ class WidgetWorkspaceActivity : Activity() {
         focusTick = null
         draft = null
         initialDraft = null
+        editorAdvanced = null; editorMore = null
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL; setPadding(dp(18), dp(12), dp(18), dp(12))
             background = shape(Color.WHITE)
@@ -329,7 +335,6 @@ class WidgetWorkspaceActivity : Activity() {
             return
         }
         panel(if (id == null) "새 일정" else "일정 수정")
-        if (id == null) body.addView(label("개인 일정으로 저장됩니다.", 12))
         val title = input("제목", restored?.getString("title") ?: task?.title ?: "")
         title.setSingleLine(false); title.maxLines = 3
         body.addView(title)
@@ -347,22 +352,16 @@ class WidgetWorkspaceActivity : Activity() {
             ?: widgetOptions.tag.takeIf { it.isNotEmpty() }?.let { setOf(it) } ?: emptySet()).toMutableSet()
         var folder = if (restored?.containsKey("folder") == true) restored.getString("folder")
             else task?.folders?.firstOrNull() ?: if (id == null) widgetOptions.folder.takeIf { it.isNotEmpty() } else null
-        val dueButton = button(WidgetWorkspaceRenderer.dueLabel(due)) {}
+        var reminderControl: Button? = null
+        val dueButton = button("기한: ${WidgetWorkspaceRenderer.dueLabel(due)}") {}
         dueButton.setOnClickListener {
             if (task?.academic == true) toast("학업 마감은 원본을 유지합니다. 알림 시각을 변경할 수 있습니다.")
-            else pickDate(due) { due = it; dueButton.text = WidgetWorkspaceRenderer.dueLabel(due) }
-        }
-        body.addView(dueButton)
-        if (task?.academic != true) body.addView(button("마감 없음") { due = null; dueButton.text = "마감 없음" })
-        if (task?.academic == true) body.addView(label("${task.course}\n학업 마감은 원본을 유지합니다.", 12))
-        val priorityButton = button("우선순위: ${priorityLabel(priority)}") {}
-        priorityButton.setOnClickListener {
-            choose("우선순위", listOf("없음", "높음", "보통", "낮음")) { index ->
-                priority = listOf(null, "high", "medium", "low")[index]
-                priorityButton.text = "우선순위: ${priorityLabel(priority)}"
+            else pickDate(due) {
+                due = it; dueButton.text = "기한: ${WidgetWorkspaceRenderer.dueLabel(due)}"
+                if (due == null) { reminder = null; reminderControl?.text = reminderLabel(null) }
             }
         }
-        body.addView(priorityButton)
+        body.addView(dueButton)
         val memo = input("메모", restored?.getString("memo") ?: task?.memo ?: "").apply { minLines = 2; maxLines = 5 }
         body.addView(memo)
         val tagButton = button("태그 선택 (${selectedTags.size})") {}
@@ -378,6 +377,23 @@ class WidgetWorkspaceActivity : Activity() {
                 }.show()
         }
         body.addView(tagButton)
+        // Keep the four everyday fields visible; folding never recreates the draft.
+        val form = body
+        val advanced = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
+        editorAdvanced = advanced
+        editorMore = button("더 보기 ▾") { setEditorAdvanced(advanced.visibility != View.VISIBLE) }
+        form.addView(editorMore)
+        form.addView(advanced)
+        body = advanced
+        if (task?.academic == true) body.addView(label("${task.course}\n학업 마감은 원본을 유지합니다.", 12))
+        val priorityButton = button("우선순위: ${priorityLabel(priority)}") {}
+        priorityButton.setOnClickListener {
+            choose("우선순위", listOf("없음", "높음", "보통", "낮음")) { index ->
+                priority = listOf(null, "high", "medium", "low")[index]
+                priorityButton.text = "우선순위: ${priorityLabel(priority)}"
+            }
+        }
+        body.addView(priorityButton)
         var folders = store.metadata("folders")
         val folderButton = button("폴더: ${folders.firstOrNull { it.first == folder }?.second ?: "없음"}") {}
         folderButton.setOnClickListener {
@@ -401,6 +417,7 @@ class WidgetWorkspaceActivity : Activity() {
         } }, weight())
         body.addView(metadataActions)
         val reminderButton = button(reminderLabel(reminder)) {}
+        reminderControl = reminderButton
         reminderButton.setOnClickListener {
             choose("마감 알림", listOf("끄기", "마감 시각", "10분 전", "30분 전", "1시간 전", "1일 전")) { index ->
                 reminder = listOf(null, 0, 10, 30, 60, 1440)[index]
@@ -432,7 +449,7 @@ class WidgetWorkspaceActivity : Activity() {
                 fun postponeDraft(days: Long) {
                     if (due == null) { toast("먼저 마감일을 지정해주세요."); return }
                     due = WidgetTaskPolicy.postponedDue(task.copy(due = due), days)
-                    dueButton.text = WidgetWorkspaceRenderer.dueLabel(due)
+                    dueButton.text = "기한: ${WidgetWorkspaceRenderer.dueLabel(due)}"
                 }
                 postpone.addView(button("하루 미루기") { postponeDraft(1) }, weight())
                 postpone.addView(button("일주일 미루기") { postponeDraft(7) }, weight())
@@ -474,6 +491,7 @@ class WidgetWorkspaceActivity : Activity() {
                     }.show()
             })
         }
+        body = form
         draft = {
             Bundle().apply {
                 putString("title", title.text.toString()); putString("memo", memo.text.toString())
@@ -494,6 +512,13 @@ class WidgetWorkspaceActivity : Activity() {
                 requestNotificationPermission()
             } else save()
         })
+    }
+
+    private fun setEditorAdvanced(expanded: Boolean) {
+        editorAdvanced?.visibility = if (expanded) View.VISIBLE else View.GONE
+        editorMore?.text = if (expanded) "접기 ▴" else "더 보기 ▾"
+        editorMore?.contentDescription = if (expanded) "추가 일정 옵션 접기" else "추가 일정 옵션 펼치기"
+        sizeWindow()
     }
 
     private fun subTasks(taskId: String) {
@@ -601,12 +626,14 @@ class WidgetWorkspaceActivity : Activity() {
         body.addView(button("일정으로 돌아가기") { safely { list() } })
     }
 
-    private fun pickDate(initial: Long?, selected: (Long) -> Unit) {
+    private fun pickDate(initial: Long?, selected: (Long?) -> Unit) {
         val date = initial?.let { Instant.ofEpochSecond(it).atZone(ZoneId.systemDefault()) } ?: java.time.ZonedDateTime.now()
         DatePickerDialog(this, { _, year, month, day ->
             TimePickerDialog(this, { _, hour, minute -> selected(LocalDate.of(year, month + 1, day)
                 .atTime(hour, minute).atZone(ZoneId.systemDefault()).toEpochSecond()) }, date.hour, date.minute, true).show()
-        }, date.year, date.monthValue - 1, date.dayOfMonth).show()
+        }, date.year, date.monthValue - 1, date.dayOfMonth).apply {
+            setButton(AlertDialog.BUTTON_NEUTRAL, "기한 없음") { _, _ -> selected(null) }
+        }.show()
     }
     private fun choose(title: String, values: List<String>, selected: (Int) -> Unit) {
         AlertDialog.Builder(this).setTitle(title).setItems(values.toTypedArray()) { _, which -> selected(which) }.setNegativeButton("취소", null).show()

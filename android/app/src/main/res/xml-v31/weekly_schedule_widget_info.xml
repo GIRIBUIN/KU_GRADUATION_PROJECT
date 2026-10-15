@@ -4,6 +4,8 @@
     android:initialLayout="@layout/widget_workspace"
     android:minWidth="276dp"
     android:minHeight="203dp"
+    android:minResizeWidth="140dp"
+    android:minResizeHeight="72dp"
     android:previewImage="@drawable/widget_weekly_preview"
     android:resizeMode="horizontal|vertical"
     android:targetCellWidth="4"

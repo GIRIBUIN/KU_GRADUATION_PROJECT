@@ -167,7 +167,7 @@ class WidgetTaskStoreTest {
         val activity = controller.get()
         val views = descendants(activity.findViewById(android.R.id.content))
         views.filterIsInstance<EditText>().first { it.hint == "제목" }.setText("위젯에서 생성")
-        preview(activity.findViewById(android.R.id.content), "expanded-add", 480, 840)
+        preview(activity.findViewById(android.R.id.content), "expanded-add", 480, 540)
         views.filterIsInstance<Button>().first { it.text == "저장" }.performClick()
         for (attempt in 0 until 1000) {
             shadowOf(Looper.getMainLooper()).idle()
@@ -347,6 +347,111 @@ class WidgetTaskStoreTest {
             Thread.sleep(10)
         }
         assertTrue("Widget work did not complete", condition())
+    }
+
+    @Test @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun editorShowsOnlyEverydayFieldsAndRetainsOptionsWhenFolded() {
+        val controller = Robolectric.buildActivity(WidgetWorkspaceActivity::class.java,
+            Intent(context, WidgetWorkspaceActivity::class.java).putExtra("action", "add")).setup()
+        val activity = controller.get()
+        fun controls() = descendants(activity.findViewById(android.R.id.content))
+        fun button(text: String) = controls().filterIsInstance<Button>().single { it.text.toString() == text }
+        val visible = controls().filterIsInstance<Button>().filter { it.isShown }.map { it.text.toString() }
+        assertEquals(5, visible.size)
+        assertTrue(visible.containsAll(listOf("닫기", "태그 선택 (0)", "더 보기 ▾", "저장")))
+        assertTrue(visible.any { it.startsWith("기한:") })
+        controls().filterIsInstance<EditText>().single { it.hint == "제목" }.setText("간단히 추가")
+        controls().filterIsInstance<EditText>().single { it.hint == "메모" }.setText("유지할 메모")
+        assertFalse(button("우선순위: 없음").isShown)
+        button("더 보기 ▾").performClick()
+        assertTrue(button("우선순위: 없음").isShown)
+        button("우선순위: 없음").performClick()
+        org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog().let { dialog ->
+            dialog.listView.performItemClick(null, 1, 1)
+        }
+        shadowOf(Looper.getMainLooper()).idle()
+        assertTrue(button("우선순위: 높음").isShown)
+        preview(activity.findViewById(android.R.id.content), "expanded-add-more", 480, 780)
+        button("접기 ▴").performClick()
+        assertFalse(button("우선순위: 높음").isShown)
+        button("저장").performClick()
+        awaitCondition { activity.isFinishing }
+        val task = store.tasks().single()
+        assertEquals("간단히 추가", task.title)
+        assertEquals("유지할 메모", task.memo)
+        assertEquals("high", task.priority)
+        assertNull(shadowOf(activity).nextStartedActivity)
+        controller.pause().stop().destroy()
+    }
+
+    @Test @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun noDeadlineCanBeChosenWithoutOpeningMoreOrDisablingAnInvisibleReminder() {
+        SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READWRITE).use {
+            it.execSQL("UPDATE app_settings SET value='true' WHERE key='defaultNotificationEnabled'")
+        }
+        val controller = Robolectric.buildActivity(WidgetWorkspaceActivity::class.java,
+            Intent(context, WidgetWorkspaceActivity::class.java).putExtra("action", "add")).setup()
+        val activity = controller.get()
+        val controls = descendants(activity.findViewById(android.R.id.content))
+        controls.filterIsInstance<EditText>().single { it.hint == "제목" }.setText("기한 없는 할 일")
+        controls.filterIsInstance<Button>().single { it.text.startsWith("기한:") }.performClick()
+        org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog()
+            .getButton(android.app.AlertDialog.BUTTON_NEUTRAL).performClick()
+        shadowOf(Looper.getMainLooper()).idle()
+        controls.filterIsInstance<Button>().single { it.text == "저장" }.performClick()
+        awaitCondition { activity.isFinishing }
+        val task = store.tasks().single()
+        assertNull(task.due)
+        assertNull(store.reminder(task.id))
+        controller.pause().stop().destroy()
+    }
+
+    @Test @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun listAdaptsFromSmallTileToWideCardWithoutClippingRows() {
+        val due = java.time.LocalDate.now().atTime(23, 59).atZone(java.time.ZoneId.systemDefault()).toEpochSecond()
+        repeat(15) { create("크기별 일정 ${it + 1}", due) }
+        val manager = android.appwidget.AppWidgetManager.getInstance(context)
+        val shadow = shadowOf(manager)
+        val id = shadow.createWidget(ScheduleWidgetProvider::class.java, R.layout.widget_workspace)
+        val counts = mutableListOf<Int>()
+        for ((width, height) in listOf(140 to 72, 220 to 180, 360 to 480)) {
+            manager.updateAppWidgetOptions(id, android.os.Bundle().apply {
+                putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, width)
+                putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, height)
+            })
+            val widget = shadow.getViewFor(id)
+            preview(widget, "list-${width}x$height", width, height)
+            val rows = widget.findViewById<android.widget.LinearLayout>(R.id.workspace_rows)
+            counts.add(rows.childCount)
+            assertTrue(rows.childCount > 0)
+            assertTrue("Row clipped at ${width}x$height", rows.getChildAt(rows.childCount - 1).bottom <= rows.height)
+            widget.findViewById<View>(R.id.workspace_surface).performClick()
+            assertEquals("list", shadowOf(context).nextStartedActivity.getStringExtra("action"))
+        }
+        assertTrue(counts[0] < counts[1]); assertTrue(counts[1] < counts[2])
+    }
+
+    @Test @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun smallCalendarStillShowsAllSixWeeksAndFortyTwoDates() {
+        val manager = android.appwidget.AppWidgetManager.getInstance(context)
+        val shadow = shadowOf(manager)
+        val id = shadow.createWidget(CalendarWidgetProvider::class.java, R.layout.widget_calendar)
+        manager.updateAppWidgetOptions(id, android.os.Bundle().apply {
+            putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 180)
+            putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 240)
+        })
+        val widget = shadow.getViewFor(id)
+        preview(widget, "calendar-small", 180, 240)
+        val weeks = widget.findViewById<android.widget.LinearLayout>(R.id.calendar_weeks)
+        assertEquals(6, weeks.childCount)
+        assertEquals(42, descendants(weeks).count { it.id == R.id.calendar_day_cell })
+        assertTrue(weeks.getChildAt(5).bottom <= weeks.height)
+        for (cell in descendants(weeks).filter { it.id == R.id.calendar_day_cell }) {
+            val number = cell.findViewById<View>(R.id.calendar_day_number)
+            val dot = cell.findViewById<View>(R.id.calendar_day_dot)
+            assertTrue(number.top >= 0)
+            assertTrue(dot.bottom <= cell.height)
+        }
     }
 
     private fun preview(view: View, name: String, width: Int, height: Int) {

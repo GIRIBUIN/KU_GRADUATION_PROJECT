@@ -28,7 +28,12 @@ object WidgetWorkspaceRenderer {
             WidgetCalendarRenderer.render(context, manager, widgetId)
             return
         }
-        val views = RemoteViews(context.packageName, R.layout.widget_workspace)
+        val dimensions = manager.getAppWidgetOptions(widgetId)
+        val height = dimensions.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, if (kind == "weekly") 203 else 180)
+        val width = dimensions.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, if (kind == "weekly") 276 else 180)
+        val compact = height < 210 || width < 220
+        val singleLine = height < 140
+        val views = RemoteViews(context.packageName, if (compact) R.layout.widget_workspace_compact else R.layout.widget_workspace)
         val store = WidgetTaskStore(context)
         val options = store.options(widgetId, kind)
         val foreground = Color.parseColor(if (options.dark) "#F3F4F6" else "#111827")
@@ -60,17 +65,22 @@ object WidgetWorkspaceRenderer {
             val allTasks = store.tasks()
             val urgentDays = store.appSetting("urgentDueDays", "3").toIntOrNull() ?: 3
             val tasks = WidgetTaskPolicy.select(allTasks, options, now, pins, urgentDays)
-            val height = manager.getAppWidgetOptions(widgetId).getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT,
-                if (kind == "weekly") 340 else 280)
             val largeRows = options.largeText || context.resources.configuration.fontScale > 1.3f
-            val count = ((height - 110) / if (largeRows) 72 else 52).coerceIn(1, 12)
+            val rowLayout = when {
+                singleLine -> R.layout.widget_workspace_row_single
+                largeRows -> R.layout.widget_workspace_row_large
+                compact -> R.layout.widget_workspace_row_compact
+                else -> R.layout.widget_workspace_row
+            }
+            val rowHeight = when { singleLine -> 26; largeRows -> 72; compact -> 40; else -> 52 }
+            val count = ((height - if (compact) 46 else 110) / rowHeight).coerceIn(1, 12)
             for (task in tasks.take(count)) {
-                val row = RemoteViews(context.packageName, if (largeRows) R.layout.widget_workspace_row_large else R.layout.widget_workspace_row)
+                val row = RemoteViews(context.packageName, rowLayout)
                 row.setTextViewText(R.id.workspace_row_title,
                     (if (task.id in pins) "★ " else "") + task.title)
                 row.setTextColor(R.id.workspace_row_title, if (task.completed) muted else foreground)
                 row.setTextViewTextSize(R.id.workspace_row_title, TypedValue.COMPLEX_UNIT_SP,
-                    if (options.largeText) 16f else 14f)
+                    if (singleLine) 12f else if (options.largeText) 16f else if (compact) 13f else 14f)
                 row.setInt(R.id.workspace_row_title, "setPaintFlags", Paint.ANTI_ALIAS_FLAG or
                     if (task.completed) Paint.STRIKE_THRU_TEXT_FLAG else 0)
                 row.setImageViewResource(R.id.workspace_row_check,

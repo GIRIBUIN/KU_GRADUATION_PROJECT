@@ -40,15 +40,15 @@ object WidgetCalendarRenderer {
             }
             val height = manager.getAppWidgetOptions(widgetId).getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 320)
             // Six rows also cover months beginning on Saturday without clipping the final week.
-            val tall = height >= 350
+            val compact = height < 290
             val first = month.atDay(1)
             val start = first.minusDays((first.dayOfWeek.value % 7).toLong())
             for (week in 0 until 6) {
-                val row = RemoteViews(context.packageName, if (tall) R.layout.widget_calendar_week_large else R.layout.widget_calendar_week)
+                val row = RemoteViews(context.packageName, R.layout.widget_calendar_week)
                 for (day in 0 until 7) {
                     val date = start.plusDays((week * 7 + day).toLong())
                     val matches = byDate[date].orEmpty()
-                    val cell = RemoteViews(context.packageName, R.layout.widget_calendar_day)
+                    val cell = RemoteViews(context.packageName, if (compact) R.layout.widget_calendar_day_compact else R.layout.widget_calendar_day)
                     cell.setTextViewText(R.id.calendar_day_number, date.dayOfMonth.toString())
                     val currentMonth = YearMonth.from(date) == month
                     cell.setTextColor(R.id.calendar_day_number, when {
@@ -58,7 +58,7 @@ object WidgetCalendarRenderer {
                         else -> foreground
                     })
                     cell.setTextViewTextSize(R.id.calendar_day_number, android.util.TypedValue.COMPLEX_UNIT_SP,
-                        if (options.largeText) 16f else 14f)
+                        if (compact) 12f else if (options.largeText) 16f else 14f)
                     cell.setInt(R.id.calendar_day_number, "setBackgroundResource",
                         if (date == today) R.drawable.widget_calendar_today else android.R.color.transparent)
                     cell.setViewVisibility(R.id.calendar_day_dot, if (matches.isEmpty()) View.INVISIBLE else View.VISIBLE)

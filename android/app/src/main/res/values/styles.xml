@@ -3,11 +3,26 @@
     <style name="WidgetWorkspaceTheme" parent="android:style/Theme.Material.Light.Dialog.NoActionBar">
         <item name="android:windowIsFloating">true</item>
         <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowMinWidthMajor">100%</item>
+        <item name="android:windowMinWidthMinor">100%</item>
         <item name="android:backgroundDimAmount">0.18</item>
         <item name="android:windowAnimationStyle">@style/WidgetWorkspaceAnimation</item>
         <item name="android:colorAccent">#1262D6</item>
         <item name="android:windowCloseOnTouchOutside">false</item>
         <item name="android:fontFamily">sans</item>
+    </style>
+    <style name="WidgetPickerDialog" parent="android:style/Theme.Material.Light.Dialog.Alert">
+        <item name="android:datePickerStyle">@style/WidgetCompactDatePicker</item>
+        <item name="android:timePickerStyle">@style/WidgetCompactTimePicker</item>
+        <item name="android:colorAccent">#1262D6</item>
+    </style>
+    <style name="WidgetCompactDatePicker" parent="android:style/Widget.Material.Light.DatePicker">
+        <item name="android:datePickerMode">spinner</item>
+        <item name="android:calendarViewShown">false</item>
+    </style>
+    <style name="WidgetCompactTimePicker" parent="android:style/Widget.Material.Light.TimePicker">
+        <item name="android:timePickerMode">spinner</item>
     </style>
     <style name="WidgetWorkspaceAnimation">
         <item name="android:windowEnterAnimation">@anim/widget_popup_enter</item>

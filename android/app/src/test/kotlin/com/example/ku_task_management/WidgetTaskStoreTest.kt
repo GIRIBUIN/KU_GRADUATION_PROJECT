@@ -455,15 +455,95 @@ class WidgetTaskStoreTest {
     }
 
     private fun preview(view: View, name: String, width: Int, height: Int) {
-        view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
-            View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY))
-        view.layout(0, 0, width, height)
+        // Settle card bounds after the host's size/visible-area listener requests its next layout pass.
+        repeat(3) {
+            view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY))
+            view.layout(0, 0, width, height)
+        }
         val bitmap = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888)
         view.draw(android.graphics.Canvas(bitmap))
         val directory = File(System.getProperty("widget.preview.dir") ?: "../../build/widget-previews")
         directory.mkdirs()
         File(directory, "$name.png").outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
         bitmap.recycle()
+    }
+
+    @Test @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Config(qualifiers = "w360dp-h800dp-mdpi")
+    fun popupCardsLeaveClickableBackdropForCalendarAndEveryAddEntry() {
+        create("위젯에서 확인할 일정", java.time.LocalDate.now().atTime(23, 59).atZone(java.time.ZoneId.systemDefault()).toEpochSecond())
+        for ((kind, action) in listOf("today" to "list", "weekly" to "list", "calendar" to "calendar",
+                "today" to "add", "weekly" to "add")) {
+            val controller = Robolectric.buildActivity(WidgetWorkspaceActivity::class.java,
+                Intent(context, WidgetWorkspaceActivity::class.java).putExtra("kind", kind).putExtra("action", action)).setup()
+            val activity = controller.get()
+            val content = activity.findViewById<ViewGroup>(android.R.id.content)
+            val host = content.findViewWithTag<android.widget.FrameLayout>("widget_popup_backdrop")
+            preview(host, "popup-$kind-$action", 360, 800)
+            val card = content.findViewWithTag<View>("widget_popup_card")
+            // Insets or decor must never consume the space reserved for dismissal.
+            assertTrue(card.left >= 24)
+            assertTrue(360 - card.right >= 24)
+            assertTrue(card.top > 0)
+            assertTrue(card.bottom < 800)
+            assertTrue(card.height <= 800 * .68f)
+            tap(host, card.left + 2f, card.top + 2f)
+            assertFalse("Card padding should consume the tap", activity.isFinishing)
+            tap(host, 4f, 400f)
+            assertTrue("Backdrop must close $kind/$action", activity.isFinishing)
+            assertNull(shadowOf(activity).nextStartedActivity)
+            controller.pause().stop().destroy()
+        }
+    }
+
+    @Test @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Config(qualifiers = "w360dp-h800dp-mdpi")
+    fun expandedEditorKeepsBackdropAndSaveButtonWhenVisibleAreaShrinks() {
+        val controller = Robolectric.buildActivity(WidgetWorkspaceActivity::class.java,
+            Intent(context, WidgetWorkspaceActivity::class.java).putExtra("action", "add")).setup()
+        val activity = controller.get()
+        val content = activity.findViewById<ViewGroup>(android.R.id.content)
+        val host = content.findViewWithTag<android.widget.FrameLayout>("widget_popup_backdrop")
+        descendants(content).filterIsInstance<Button>().single { it.text == "더 보기 ▾" }.performClick()
+        descendants(content).filterIsInstance<EditText>().single { it.hint == "제목" }.requestFocus()
+        preview(host, "popup-add-reduced-viewport", 360, 350)
+        val card = content.findViewWithTag<View>("widget_popup_card")
+        assertTrue(card.top > 0)
+        assertTrue("Card bounds ${card.left},${card.top},${card.right},${card.bottom} exceed reduced viewport", card.bottom < 350)
+        assertTrue(card.height <= 350 * .68f)
+        val save = descendants(card).filterIsInstance<Button>().single { it.text == "저장" }
+        assertTrue(save.isShown)
+        assertTrue(save.bottom <= card.height - card.paddingBottom)
+        for (input in descendants(card).filterIsInstance<EditText>()) {
+            assertTrue(input.imeOptions and android.view.inputmethod.EditorInfo.IME_FLAG_NO_FULLSCREEN != 0)
+        }
+        tap(host, 4f, 170f)
+        assertTrue(activity.isFinishing)
+        controller.pause().stop().destroy()
+    }
+
+    @Test @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun todayAndWeeklyHaveNoCalendarEntryIncludingOlderIntents() {
+        for (kind in listOf("today", "weekly")) for (action in listOf("list", "calendar")) {
+            val controller = Robolectric.buildActivity(WidgetWorkspaceActivity::class.java,
+                Intent(context, WidgetWorkspaceActivity::class.java).putExtra("kind", kind).putExtra("action", action)).setup()
+            val activity = controller.get()
+            val views = descendants(activity.findViewById(android.R.id.content))
+            assertFalse(views.filterIsInstance<Button>().any { it.text == "캘린더" })
+            assertTrue(views.none { it is android.widget.CalendarView })
+            assertTrue(views.filterIsInstance<Button>().any { it.text == "+ 추가" })
+            controller.pause().stop().destroy()
+        }
+    }
+
+    private fun tap(view: View, x: Float, y: Float) {
+        val time = android.os.SystemClock.uptimeMillis()
+        val down = android.view.MotionEvent.obtain(time, time, android.view.MotionEvent.ACTION_DOWN, x, y, 0)
+        val up = android.view.MotionEvent.obtain(time, time + 30, android.view.MotionEvent.ACTION_UP, x, y, 0)
+        view.dispatchTouchEvent(down); view.dispatchTouchEvent(up)
+        shadowOf(Looper.getMainLooper()).idle()
+        down.recycle(); up.recycle()
     }
 
     private fun descendants(root: View): List<View> = listOf(root) + if (root is ViewGroup)

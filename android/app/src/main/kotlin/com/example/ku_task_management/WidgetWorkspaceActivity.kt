@@ -13,6 +13,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.Rect
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
@@ -27,6 +28,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.WindowManager
+import android.view.inputmethod.EditorInfo
 import android.widget.*
 import es.antonborri.home_widget.HomeWidgetPlugin
 import java.time.Instant
@@ -41,6 +43,7 @@ class WidgetWorkspaceActivity : Activity() {
     private lateinit var store: WidgetTaskStore
     private lateinit var body: LinearLayout
     private lateinit var rootPanel: LinearLayout
+    private var backdrop: FrameLayout? = null
     private var widgetId = 0
     private var kind = "today"
     private var screen = "list"
@@ -69,6 +72,7 @@ class WidgetWorkspaceActivity : Activity() {
         selectedDate = runCatching { LocalDate.parse(savedInstanceState?.getString("selected_date")
             ?: intent.getStringExtra("selected_date")) }.getOrDefault(LocalDate.now())
         window.addFlags(WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH)
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
         if (Build.VERSION.SDK_INT >= 33) onBackInvokedDispatcher.registerOnBackInvokedCallback(
             android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT) { closeWorkspace() }
         sizeWindow()
@@ -87,7 +91,7 @@ class WidgetWorkspaceActivity : Activity() {
                 store.saveOptions(widgetId, options.copy(page = (options.page + if (action == "next") 1 else -1).coerceAtLeast(0)))
             }
             "settings" -> safely { settings() }
-            "calendar" -> safely { calendar() }
+            "calendar" -> safely { if (kind == "calendar") calendar() else list() }
             "add", "edit" -> safely {
                 editor(id, savedInstanceState?.getBundle("draft"))
                 initialDraft = savedInstanceState?.getBundle("initial_draft") ?: initialDraft
@@ -119,6 +123,7 @@ class WidgetWorkspaceActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        sizeWindow()
         focusTick?.let { handler.removeCallbacks(it); handler.post(it) }
     }
 
@@ -126,16 +131,36 @@ class WidgetWorkspaceActivity : Activity() {
         super.onConfigurationChanged(config); sizeWindow()
     }
 
-    private fun sizeWindow() {
-        val expandedEditor = screen == "edit" && editorAdvanced?.visibility == View.VISIBLE
-        val fraction = if (expandedEditor) .88 else if (screen == "calendar") .84 else .76
-        val maximum = (resources.displayMetrics.heightPixels * fraction).toInt()
-            .coerceAtMost(dp(if (expandedEditor) 780 else if (screen == "edit") 560 else 720))
-        val height = if (screen == "list") dp(280 + listCount.coerceAtMost(8) * 60).coerceAtMost(maximum) else maximum
-        window.setLayout((resources.displayMetrics.widthPixels * .94).toInt().coerceAtMost(dp(580)),
-            height)
-        window.setGravity(Gravity.CENTER)
-        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+    private fun sizeWindow(viewportWidth: Int = 0, viewportHeight: Int = 0) {
+        // The transparent host catches real backdrop taps; only the inner card is opaque.
+        if (window.attributes.width != WindowManager.LayoutParams.MATCH_PARENT ||
+                window.attributes.height != WindowManager.LayoutParams.MATCH_PARENT)
+            window.setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT)
+        if (window.attributes.gravity != Gravity.CENTER) window.setGravity(Gravity.CENTER)
+        val host = backdrop ?: return
+        val hostWidth = viewportWidth.takeIf { it > 0 } ?: host.width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
+        val hostHeight = viewportHeight.takeIf { it > 0 } ?: host.height.takeIf { it > 0 } ?: resources.displayMetrics.heightPixels
+        val origin = IntArray(2)
+        val visible = Rect()
+        host.getLocationOnScreen(origin)
+        host.getWindowVisibleDisplayFrame(visible)
+        visible.offset(-origin[0], -origin[1])
+        if (!visible.intersect(0, 0, hostWidth, hostHeight)) visible.set(0, 0, hostWidth, hostHeight)
+        val availableWidth = visible.width()
+        val availableHeight = visible.height()
+        val width = (availableWidth - dp(48)).coerceAtLeast(1).coerceAtMost(dp(540))
+        val preferred = if (screen == "list") dp(260 + listCount.coerceAtMost(6) * 56)
+            else if (screen == "edit" && editorAdvanced?.visibility != View.VISIBLE) dp(440) else dp(560)
+        // Reserve usable space on every side, including when the IME or landscape reduces the viewport.
+        val height = preferred.coerceAtMost((availableHeight * .68f).toInt().coerceAtLeast(1))
+        val x = visible.left + (availableWidth - width) / 2
+        val y = visible.top + (availableHeight - height) / 2
+        val previous = rootPanel.layoutParams as? FrameLayout.LayoutParams
+        if (previous == null || previous.width != width || previous.height != height || previous.leftMargin != x || previous.topMargin != y) {
+            rootPanel.layoutParams = FrameLayout.LayoutParams(width, height, Gravity.TOP or Gravity.LEFT).apply {
+                leftMargin = x; topMargin = y
+            }
+        }
     }
 
     private fun panel(title: String): LinearLayout {
@@ -147,6 +172,9 @@ class WidgetWorkspaceActivity : Activity() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL; setPadding(dp(18), dp(12), dp(18), dp(12))
             background = shape(Color.WHITE)
+            tag = "widget_popup_card"; isClickable = true
+            isFocusableInTouchMode = true
+            descendantFocusability = android.view.ViewGroup.FOCUS_BEFORE_DESCENDANTS
         }
         rootPanel = root
         val header = row()
@@ -157,7 +185,25 @@ class WidgetWorkspaceActivity : Activity() {
         body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         scroll.addView(body)
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
-        setContentView(root); sizeWindow()
+        val host = object : FrameLayout(this) {
+            override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+                sizeWindow(View.MeasureSpec.getSize(widthMeasureSpec), View.MeasureSpec.getSize(heightMeasureSpec))
+                super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+            }
+        }.apply {
+            tag = "widget_popup_backdrop"
+            setOnClickListener { closeWorkspace() }
+            // A backdrop tap must dismiss immediately, rather than first taking focus from an EditText.
+            setOnTouchListener { view, event ->
+                if (event.actionMasked == MotionEvent.ACTION_UP) view.performClick()
+                true
+            }
+            isFocusable = false
+            addView(root, FrameLayout.LayoutParams(1, 1))
+            viewTreeObserver.addOnGlobalLayoutListener { sizeWindow() }
+        }
+        backdrop = host
+        setContentView(host); root.requestFocus(); sizeWindow()
         return body
     }
 
@@ -192,7 +238,7 @@ class WidgetWorkspaceActivity : Activity() {
         panel(WidgetWorkspaceRenderer.periodLabel(options.period))
         val toolbar = row()
         toolbar.addView(button("+ 추가", primary = true) { safely { editor(null) } }, weight())
-        toolbar.addView(button("캘린더") { safely { calendar() } }, weight())
+        if (kind == "calendar") toolbar.addView(button("캘린더") { safely { calendar() } }, weight())
         toolbar.addView(button("더 보기") { moreMenu() }, weight())
         body.addView(toolbar)
         val search = input("일정 검색")
@@ -301,7 +347,6 @@ class WidgetWorkspaceActivity : Activity() {
         }
         calendar.setOnDateChangeListener { _, year, month, day -> selectedDate = LocalDate.of(year, month + 1, day); update() }
         update()
-        body.addView(button("목록으로") { list() })
     }
 
     private fun matrix() {
@@ -628,8 +673,8 @@ class WidgetWorkspaceActivity : Activity() {
 
     private fun pickDate(initial: Long?, selected: (Long?) -> Unit) {
         val date = initial?.let { Instant.ofEpochSecond(it).atZone(ZoneId.systemDefault()) } ?: java.time.ZonedDateTime.now()
-        DatePickerDialog(this, { _, year, month, day ->
-            TimePickerDialog(this, { _, hour, minute -> selected(LocalDate.of(year, month + 1, day)
+        DatePickerDialog(this, R.style.WidgetPickerDialog, { _, year, month, day ->
+            TimePickerDialog(this, R.style.WidgetPickerDialog, { _, hour, minute -> selected(LocalDate.of(year, month + 1, day)
                 .atTime(hour, minute).atZone(ZoneId.systemDefault()).toEpochSecond()) }, date.hour, date.minute, true).show()
         }, date.year, date.monthValue - 1, date.dayOfMonth).apply {
             setButton(AlertDialog.BUTTON_NEUTRAL, "기한 없음") { _, _ -> selected(null) }
@@ -707,6 +752,7 @@ class WidgetWorkspaceActivity : Activity() {
     }
     private fun input(hint: String, value: String = "") = EditText(this).apply {
         this.hint = hint; setText(value); textSize = 15f; setTextColor(ink); setHintTextColor(Color.GRAY)
+        imeOptions = imeOptions or EditorInfo.IME_FLAG_NO_FULLSCREEN
         setPadding(dp(10), dp(8), dp(10), dp(8)); background = shape(Color.rgb(245, 247, 251))
         layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) }
     }

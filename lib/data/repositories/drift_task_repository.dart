@@ -131,10 +131,10 @@ class DriftTaskRepository implements TaskRepository {
         sortOrder: existing.sortOrder,
         createdAt: existing.createdAt,
         updatedAt: now,
-        completedAt: status == TaskStatus.completed
+        completedAt: status == TaskStatus.completed ? now : null,
+        deletedAt: status == TaskStatus.deleted || status == TaskStatus.excluded
             ? now
-            : existing.completedAt,
-        deletedAt: status == TaskStatus.deleted ? now : existing.deletedAt,
+            : null,
       ),
     );
   }

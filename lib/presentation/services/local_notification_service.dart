@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
@@ -139,6 +141,17 @@ class LocalNotificationService {
 
   Future<void> cancelTaskNotification(String taskId) async {
     await initialize();
+    // Widget edits can schedule a reminder without starting the Flutter engine.
+    // Cancel that alarm before the app edits/reschedules the same task.
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      try {
+        await const MethodChannel(
+          'ku.todo/widget-reminders',
+        ).invokeMethod<void>('cancel', {'taskId': taskId});
+      } on MissingPluginException {
+        // Test hosts and platforms without the Android widget bridge.
+      }
+    }
     await _plugin.cancel(id: notificationIdForTask(taskId));
   }
 

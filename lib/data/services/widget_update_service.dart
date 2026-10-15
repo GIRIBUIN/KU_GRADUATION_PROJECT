@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -14,7 +16,8 @@ import 'widget_format.dart';
 import 'widget_today_selection.dart';
 import 'widget_week_selection.dart';
 
-/// Flutter → home_widget JSON 저장 및 오늘/주간 위젯 갱신.
+/// Flutter → 위젯 DB 경로/호환용 JSON 저장 및 오늘/주간 위젯 갱신.
+/// Android workspace providers read the shared DB directly for offline edits.
 class WidgetUpdateService {
   WidgetUpdateService({
     required TaskRepository taskRepository,
@@ -38,9 +41,12 @@ class WidgetUpdateService {
   final TagRepository _tagRepository;
   final DateTime Function() _now;
 
-  /// 주간 위젯에서만 쌓인 완료/해제 요청을 Drift에 반영한다.
+  /// 이전 버전의 주간 위젯에 남은 완료/해제 요청을 반영한다.
+  /// 새 Android 위젯의 변경은 즉시 같은 DB에 기록된다.
   Future<void> applyPendingWidgetCompletions() async {
-    final uncompletionIds = await _readPendingTaskIds(widgetPendingUncompletionsKey);
+    final uncompletionIds = await _readPendingTaskIds(
+      widgetPendingUncompletionsKey,
+    );
     for (final taskId in uncompletionIds) {
       final task = await _taskRepository.getTaskById(taskId);
       if (task == null || task.status != TaskStatus.completed) {
@@ -50,7 +56,9 @@ class WidgetUpdateService {
     }
     await HomeWidget.saveWidgetData(widgetPendingUncompletionsKey, null);
 
-    final completionIds = await _readPendingTaskIds(widgetPendingCompletionsKey);
+    final completionIds = await _readPendingTaskIds(
+      widgetPendingCompletionsKey,
+    );
     for (final taskId in completionIds) {
       final task = await _taskRepository.getTaskById(taskId);
       if (task == null || task.status != TaskStatus.active) {
@@ -84,6 +92,17 @@ class WidgetUpdateService {
   /// 두 위젯 JSON을 각각 저장하고 Android Provider를 업데이트한다.
   Future<void> refresh() async {
     await applyPendingWidgetCompletions();
+    // Source dates or statuses can also change during an in-app e-campus sync.
+    // Reconcile widget-owned alarms before publishing the refreshed snapshots.
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      try {
+        await const MethodChannel(
+          'ku.todo/widget-reminders',
+        ).invokeMethod<void>('reconcile');
+      } on MissingPluginException {
+        // Test hosts and older/platforms without the Android workspace bridge.
+      }
+    }
     final now = _now();
     final documentsDir = await getApplicationDocumentsDirectory();
     await HomeWidget.saveWidgetData(
@@ -158,7 +177,10 @@ class WidgetUpdateService {
     );
   }
 
-  WeeklyWidgetTaskSnapshot _toWeeklySnapshot(Task task, {required DateTime now}) {
+  WeeklyWidgetTaskSnapshot _toWeeklySnapshot(
+    Task task, {
+    required DateTime now,
+  }) {
     final dueDate = task.dueDate!;
     return WeeklyWidgetTaskSnapshot(
       id: task.id,

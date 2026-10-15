@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@drawable/widget_background" android:orientation="vertical" android:padding="3dp">
+    <LinearLayout android:id="@+id/workspace_surface" android:layout_width="match_parent"
+        android:layout_height="match_parent" android:orientation="vertical" android:padding="12dp">
+        <LinearLayout android:id="@+id/workspace_header" android:layout_width="match_parent"
+            android:layout_height="36dp" android:gravity="center_vertical" android:orientation="horizontal">
+            <TextView android:id="@+id/workspace_title" android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:text="오늘 할 일정" android:textSize="17sp" android:textStyle="bold" android:maxLines="1" />
+            <TextView android:id="@+id/workspace_date" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="11sp" android:textColor="@color/widget_primary" />
+        </LinearLayout>
+        <TextView android:id="@+id/workspace_summary" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="11sp" />
+        <ProgressBar android:id="@+id/workspace_progress" style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent" android:layout_height="3dp" android:layout_marginTop="5dp"
+            android:progressDrawable="@drawable/widget_progress_bar" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="36dp" android:orientation="horizontal">
+            <TextView android:id="@+id/workspace_add" android:layout_width="0dp" android:layout_height="match_parent"
+                android:layout_weight="1" android:gravity="center" android:text="+ 추가" android:textColor="@color/widget_primary" android:textSize="13sp" android:textStyle="bold" android:contentDescription="위젯에서 일정 추가" />
+            <TextView android:id="@+id/workspace_expand" android:layout_width="0dp" android:layout_height="match_parent"
+                android:layout_weight="1" android:gravity="center" android:text="확대 보기" android:textColor="@color/widget_primary" android:textSize="12sp" />
+            <TextView android:id="@+id/workspace_settings" android:layout_width="0dp" android:layout_height="match_parent"
+                android:layout_weight="1" android:gravity="center" android:text="설정" android:textColor="@color/widget_primary" android:textSize="12sp" />
+        </LinearLayout>
+        <LinearLayout android:id="@+id/workspace_rows" android:layout_width="match_parent" android:layout_height="0dp"
+            android:layout_weight="1" android:orientation="vertical" />
+        <TextView android:id="@+id/workspace_empty" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:padding="6dp" android:textSize="12sp" android:visibility="gone" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="36dp" android:gravity="center_vertical" android:orientation="horizontal">
+            <TextView android:id="@+id/workspace_previous" android:layout_width="36dp" android:layout_height="match_parent"
+                android:gravity="center" android:text="‹" android:textSize="22sp" android:textColor="@color/widget_primary" android:contentDescription="이전 일정 페이지" />
+            <TextView android:id="@+id/workspace_page" android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:gravity="center" android:textSize="11sp" />
+            <TextView android:id="@+id/workspace_next" android:layout_width="36dp" android:layout_height="match_parent"
+                android:gravity="center" android:text="›" android:textSize="22sp" android:textColor="@color/widget_primary" android:contentDescription="다음 일정 페이지" />
+            <TextView android:id="@+id/workspace_undo" android:layout_width="60dp" android:layout_height="match_parent"
+                android:gravity="center" android:text="되돌리기" android:textColor="@color/widget_primary" android:textSize="11sp" />
+            <TextView android:id="@+id/workspace_refresh" android:layout_width="36dp" android:layout_height="match_parent"
+                android:gravity="center" android:text="↻" android:textSize="22sp" android:textColor="@color/widget_primary" android:contentDescription="기기 일정 새로고침" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

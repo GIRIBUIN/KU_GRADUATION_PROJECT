@@ -43,6 +43,16 @@ void main() {
   });
 
   group('DriftTaskRepository', () {
+    test('completion undo clears completedAt for widget progress', () async {
+      await repository.createTask(_task(id: 'undo-test'));
+      await repository.updateTaskStatus('undo-test', TaskStatus.completed);
+      final restored = await repository.updateTaskStatus(
+        'undo-test',
+        TaskStatus.active,
+      );
+      expect(restored.completedAt, isNull);
+      expect(restored.deletedAt, isNull);
+    });
     test(
       'creates and reads a task with e-campus metadata and relations',
       () async {

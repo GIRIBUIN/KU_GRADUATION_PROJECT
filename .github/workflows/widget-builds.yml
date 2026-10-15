@@ -1,0 +1,72 @@
+name: Widget builds
+'on':
+  push:
+    branches: ['codex/widgets-cross-platform']
+  workflow_dispatch:
+  pull_request:
+    paths: ['lib/**', 'test/**', 'apple/**', 'ios/**', 'macos/**', 'linux/**', 'windows/**', 'scripts/**', 'pubspec.*', '.github/workflows/widget-builds.yml']
+permissions:
+  contents: read
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: windows-2022, platform: windows}
+          - {os: ubuntu-22.04, platform: linux}
+          - {os: macos-14, platform: macos}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: subosito/flutter-action@v2
+        with: {flutter-version: '3.41.9', cache: true}
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y clang lld cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev
+      - if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force build/tooling | Out-Null
+          Invoke-WebRequest https://dist.nuget.org/win-x86-commandline/v6.14.0/nuget.exe -OutFile build/tooling/nuget.exe
+          (Resolve-Path build/tooling).Path | Out-File -FilePath $env:GITHUB_PATH -Append
+      - if: runner.os == 'macOS'
+        run: |
+          gem install --user-install xcodeproj -v 1.27.0 --no-document
+          KU_MACOS_DESKTOP_ONLY=1 KU_APPLE_UNSIGNED=1 ruby scripts/configure_apple_widgets.rb macos
+      - run: flutter pub get
+      - run: flutter analyze --no-pub
+      - run: flutter test --no-pub
+      - if: runner.os != 'macOS'
+        run: flutter build ${{ matrix.platform }} --release --no-pub --build-name=0.2.0 --build-number=6
+      - if: runner.os == 'macOS'
+        run: |
+          flutter build macos --release --no-pub --build-name=0.2.0 --build-number=6 --dart-define=KU_NATIVE_APPLE_WIDGETS=false
+          codesign --force --deep --sign - --entitlements macos/Runner/KuWidgetsRelease.entitlements build/macos/Build/Products/Release/*.app
+      - run: python3 scripts/package_desktop.py ${{ matrix.platform }}
+        if: runner.os != 'Windows'
+      - run: python scripts/package_desktop.py windows
+        if: runner.os == 'Windows'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KU-Todo-0.2.0-${{ matrix.platform }}
+          path: build/downloads/*
+          if-no-files-found: error
+  apple-native-compile:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: subosito/flutter-action@v2
+        with: {flutter-version: '3.41.9', cache: true}
+      - run: |
+          gem install --user-install xcodeproj -v 1.27.0 --no-document
+          KU_APPLE_UNSIGNED=1 ruby scripts/configure_apple_widgets.rb
+          flutter pub get
+          flutter build ios --simulator --debug --no-codesign --build-name=0.2.0 --build-number=6
+          flutter build macos --release --no-pub --build-name=0.2.0 --build-number=6
+      - run: ditto -c -k --sequesterRsrc --keepParent build/ios/iphonesimulator/Runner.app build/ios-simulator-only.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: iOS-SIMULATOR-ONLY-not-for-iPhone-installation
+          path: build/ios-simulator-only.zip

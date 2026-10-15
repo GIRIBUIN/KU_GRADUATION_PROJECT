@@ -1,6 +1,8 @@
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
+import '../services/apple_widget_bridge.dart';
+
 part 'app_database.g.dart';
 
 class Tasks extends Table {
@@ -118,7 +120,21 @@ class AppSettings extends Table {
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
-  AppDatabase.defaults() : super(driftDatabase(name: 'ku_task_management'));
+  AppDatabase.defaults()
+    : super(
+        driftDatabase(
+          name: 'ku_task_management',
+          native: DriftNativeOptions(
+            databasePath: AppleWidgetBridge.databasePath == null
+                ? null
+                : () async => AppleWidgetBridge.databasePath!,
+            setup: (database) {
+              database.execute('PRAGMA busy_timeout = 5000');
+              database.execute('PRAGMA journal_mode = WAL');
+            },
+          ),
+        ),
+      );
 
   @override
   int get schemaVersion => 5;

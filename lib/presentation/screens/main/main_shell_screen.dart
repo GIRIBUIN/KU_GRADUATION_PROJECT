@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:http/http.dart' as http;
@@ -91,10 +92,7 @@ class _MainShellScreenState extends State<MainShellScreen>
 
   /// 주간 위젯에서 체크한 뒤 앱 복귀 시 목록·위젯 JSON을 다시 맞춘다.
   Future<void> _refreshIfWidgetChangedTasks() async {
-    final needsRefresh = await HomeWidget.getWidgetData<bool>(
-      WidgetUpdateService.widgetRefreshRequiredKey,
-      defaultValue: false,
-    );
+    final needsRefresh = await WidgetUpdateService.consumeWidgetChanges();
     if (needsRefresh != true || !mounted) {
       return;
     }
@@ -104,10 +102,6 @@ class _MainShellScreenState extends State<MainShellScreen>
     if (!mounted) {
       return;
     }
-    await HomeWidget.saveWidgetData(
-      WidgetUpdateService.widgetRefreshRequiredKey,
-      null,
-    );
     if (mounted) {
       _refreshTasksAndMetadata();
     }
@@ -199,6 +193,7 @@ class _MainShellScreenState extends State<MainShellScreen>
   }
 
   Future<void> _listenForWidgetLaunch() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
     final launchedUri = await HomeWidget.initiallyLaunchedFromHomeWidget();
     if (launchedUri != null) {
       _openHomeFromWidget();

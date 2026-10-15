@@ -46,6 +46,12 @@ class LocalNotificationService {
       android: androidSettings,
       iOS: darwinSettings,
       macOS: darwinSettings,
+      linux: LinuxInitializationSettings(defaultActionName: '열기'),
+      windows: WindowsInitializationSettings(
+        appName: 'KU Todo',
+        appUserModelId: 'KU.Todo.Desktop',
+        guid: 'a2b76a68-c672-4dda-9ac7-b0f87156f0cb',
+      ),
     );
 
     await _plugin.initialize(settings: settings);
@@ -109,6 +115,9 @@ class LocalNotificationService {
     if (schedule == null) {
       return;
     }
+    // The Linux notification protocol has no persistent scheduling API.
+    // Keep the stored reminder for platforms with an OS scheduler; never claim it was scheduled here.
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.linux) return;
 
     if (requestPermissionBeforeScheduling) {
       final granted = await requestPermission();
@@ -133,6 +142,8 @@ class LocalNotificationService {
         ),
         iOS: DarwinNotificationDetails(),
         macOS: DarwinNotificationDetails(),
+        windows: WindowsNotificationDetails(),
+        linux: LinuxNotificationDetails(),
       ),
       androidScheduleMode: androidScheduleMode,
       payload: task.id,

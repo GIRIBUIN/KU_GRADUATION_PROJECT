@@ -15,6 +15,7 @@ import 'home_task_summary.dart';
 import 'widget_format.dart';
 import 'widget_today_selection.dart';
 import 'widget_week_selection.dart';
+import 'apple_widget_bridge.dart';
 
 /// Flutter → 위젯 DB 경로/호환용 JSON 저장 및 오늘/주간/캘린더 위젯 갱신.
 /// Android workspace providers read the shared DB directly for offline edits.
@@ -45,6 +46,7 @@ class WidgetUpdateService {
   /// 이전 버전의 주간 위젯에 남은 완료/해제 요청을 반영한다.
   /// 새 Android 위젯의 변경은 즉시 같은 DB에 기록된다.
   Future<void> applyPendingWidgetCompletions() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
     final uncompletionIds = await _readPendingTaskIds(
       widgetPendingUncompletionsKey,
     );
@@ -92,6 +94,11 @@ class WidgetUpdateService {
 
   /// 기존 두 위젯 JSON을 저장하고 세 Android Provider를 업데이트한다.
   Future<void> refresh() async {
+    if (AppleWidgetBridge.supported) {
+      await AppleWidgetBridge.reload();
+      return;
+    }
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
     await applyPendingWidgetCompletions();
     // Source dates or statuses can also change during an in-app e-campus sync.
     // Reconcile widget-owned alarms before publishing the refreshed snapshots.
@@ -125,6 +132,20 @@ class WidgetUpdateService {
     );
     await HomeWidget.updateWidget(androidName: weeklyAndroidProviderName);
     await HomeWidget.updateWidget(androidName: calendarAndroidProviderName);
+  }
+
+  static Future<bool> consumeWidgetChanges() async {
+    if (AppleWidgetBridge.supported) return AppleWidgetBridge.consumeChanges();
+    if (kIsWeb) return false;
+    if (defaultTargetPlatform != TargetPlatform.android) return true;
+    final changed = await HomeWidget.getWidgetData<bool>(
+      widgetRefreshRequiredKey,
+      defaultValue: false,
+    );
+    if (changed == true) {
+      await HomeWidget.saveWidgetData(widgetRefreshRequiredKey, null);
+    }
+    return changed == true;
   }
 
   /// 오늘 할 일정 위젯(ScheduleWidgetProvider)용 스냅샷.

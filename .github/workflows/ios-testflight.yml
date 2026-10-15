@@ -1,0 +1,38 @@
+name: iOS TestFlight (Apple signing required)
+'on':
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  distribute:
+    runs-on: macos-14
+    environment: apple-signing
+    env:
+      APPLE_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      IOS_APP_PROFILE_BASE64: ${{ secrets.IOS_APP_PROFILE_BASE64 }}
+      IOS_WIDGET_PROFILE_BASE64: ${{ secrets.IOS_WIDGET_PROFILE_BASE64 }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      IOS_BUNDLE_ID: ${{ secrets.IOS_BUNDLE_ID }}
+      IOS_APP_GROUP: ${{ secrets.IOS_APP_GROUP }}
+      APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: subosito/flutter-action@v2
+        with: {flutter-version: '3.41.9', cache: true}
+      - run: python3 scripts/apple_signing.py prepare
+      - run: |
+          gem install --user-install xcodeproj -v 1.27.0 --no-document
+          ruby scripts/configure_apple_widgets.rb ios
+          flutter pub get
+          flutter test --no-pub
+          flutter build ipa --release --build-name=0.2.0 --build-number="$KU_BUILD_NUMBER" --export-options-plist="$KU_EXPORT_OPTIONS"
+      - run: python3 scripts/apple_signing.py upload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Signed-iOS-IPA-for-TestFlight
+          path: build/ios/ipa/*.ipa
+          if-no-files-found: error

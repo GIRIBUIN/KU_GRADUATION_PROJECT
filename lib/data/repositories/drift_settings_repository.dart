@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart';
 import '../local/app_database.dart' as db;
 import '../local/mappers/metadata_mappers.dart';
 import 'settings_repository.dart';
@@ -15,7 +16,16 @@ class DriftSettingsRepository implements SettingsRepository {
   @override
   Future<AppSettings> getSettings() async {
     final rows = await _database.select(_database.appSettings).get();
-    return _mapper.fromMap({for (final row in rows) row.key: row.value});
+    final tags = await _database.select(_database.tags).get();
+    return _mapper
+        .fromMap({for (final row in rows) row.key: row.value})
+        .copyWith(
+          tagFolderIds: const {},
+          tagSortOrders: {
+            for (final tag in tags)
+              if (tag.deletedAt == null) tag.id: tag.sortOrder,
+          },
+        );
   }
 
   @override
@@ -24,7 +34,21 @@ class DriftSettingsRepository implements SettingsRepository {
     final now = DateTime.now();
 
     await _database.transaction(() async {
+      await _database
+          .update(_database.tags)
+          .write(db.TagsCompanion(sortOrder: const Value(0)));
+      for (final entry in settings.tagSortOrders.entries) {
+        await (_database.update(
+          _database.tags,
+        )..where((t) => t.id.equals(entry.key))).write(
+          db.TagsCompanion(
+            sortOrder: Value(entry.value),
+            updatedAt: Value(now),
+          ),
+        );
+      }
       for (final entry in values.entries) {
+        if (['tagFolderIds', 'tagSortOrders'].contains(entry.key)) continue;
         await _database
             .into(_database.appSettings)
             .insertOnConflictUpdate(

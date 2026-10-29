@@ -160,7 +160,7 @@ void main() {
 
       expect(await repository.getTaskById('task-1'), isNull);
       expect(await database.select(database.taskTags).get(), isEmpty);
-      expect(await database.select(database.taskFolders).get(), isEmpty);
+      expect(await database.select(database.tasks).get(), isEmpty);
     });
 
     test('creates tasks at the end and updates user order', () async {

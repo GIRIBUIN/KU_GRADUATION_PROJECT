@@ -1,9 +1,10 @@
+import 'package:drift/drift.dart' show Value;
 import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ku_task_management/data/local/app_database.dart'
-    show AppDatabase, TaskFoldersCompanion, TaskTagsCompanion, TasksCompanion;
+    show AppDatabase, TaskTagsCompanion, TasksCompanion;
 import 'package:ku_task_management/data/models/task_models.dart';
 import 'package:ku_task_management/data/models/home_section.dart';
 import 'package:ku_task_management/data/local/mappers/metadata_mappers.dart';
@@ -34,8 +35,6 @@ void main() {
         .insert(
           TasksCompanion.insert(
             id: 'task-1',
-            origin: TaskOrigin.ecampus.name,
-            status: TaskStatus.active.name,
             title: '자료구조 과제',
             createdAt: now,
             updatedAt: now,
@@ -54,7 +53,13 @@ void main() {
       await tagRepository.createTag(tag);
       await database
           .into(database.taskTags)
-          .insert(TaskTagsCompanion.insert(taskId: 'task-1', tagId: 'tag-1'));
+          .insert(
+            TaskTagsCompanion.insert(
+              taskId: 'task-1',
+              tagId: 'tag-1',
+              updatedAt: now,
+            ),
+          );
 
       final updated = await tagRepository.updateTag(
         _tag(id: 'tag-1', name: '전공 필수'),
@@ -67,7 +72,12 @@ void main() {
       await tagRepository.deleteTag('tag-1');
 
       expect(await tagRepository.getTagById('tag-1'), isNull);
-      expect(await database.select(database.taskTags).get(), isEmpty);
+      expect(
+        await (database.select(
+          database.taskTags,
+        )..where((t) => t.deletedAt.isNull())).get(),
+        isEmpty,
+      );
     });
   });
 
@@ -78,14 +88,9 @@ void main() {
         final folder = _folder(id: 'folder-1', name: '이번 주');
 
         await folderRepository.createFolder(folder);
-        await database
-            .into(database.taskFolders)
-            .insert(
-              TaskFoldersCompanion.insert(
-                taskId: 'task-1',
-                folderId: 'folder-1',
-              ),
-            );
+        await (database.update(database.tasks)
+              ..where((t) => t.id.equals('task-1')))
+            .write(const TasksCompanion(folderId: Value('folder-1')));
 
         final updated = await folderRepository.updateFolder(
           _folder(id: 'folder-1', name: '이번 주 집중'),
@@ -99,7 +104,10 @@ void main() {
         await folderRepository.deleteFolder('folder-1');
 
         expect(await folderRepository.getFolderById('folder-1'), isNull);
-        expect(await database.select(database.taskFolders).get(), isEmpty);
+        expect(
+          (await database.select(database.tasks).get()).single.folderId,
+          isNull,
+        );
       },
     );
 
@@ -134,10 +142,7 @@ void main() {
 
       expect(updated.id, 'notification-2');
       expect(updated.daysBeforeDue, 3);
-      expect(
-        (await database.select(database.notificationSettings).get()).length,
-        1,
-      );
+      expect((await database.select(database.taskReminders).get()).length, 1);
 
       await notificationRepository.deleteByTaskId('task-1');
 
@@ -150,8 +155,6 @@ void main() {
           .insert(
             TasksCompanion.insert(
               id: 'task-2',
-              origin: TaskOrigin.personal.name,
-              status: TaskStatus.active.name,
               title: '운영체제 과제',
               createdAt: now,
               updatedAt: now,
@@ -195,6 +198,7 @@ void main() {
       expect(defaults.tagSortOrders, isEmpty);
       expect(defaults.ecampusFolderId, isNull);
 
+      await tagRepository.createTag(_tag(id: 'tag-2', name: 'Global'));
       final saved = await settingsRepository.saveSettings(
         const AppSettings(
           autoSyncEnabled: false,
@@ -231,10 +235,10 @@ void main() {
       expect(saved.hiddenHomeSections, {HomeSection.urgentTasks});
       expect(saved.hiddenTagIds, {'tag-2'});
       expect(saved.hiddenFolderIds, {'folder-1'});
-      expect(saved.tagFolderIds, {'tag-2': 'folder-1'});
+      expect(saved.tagFolderIds, isEmpty);
       expect(saved.tagSortOrders, {'tag-2': 1});
       expect(saved.ecampusFolderId, 'folder-ecampus');
-      expect((await database.select(database.appSettings).get()).length, 14);
+      expect((await database.select(database.appSettings).get()).length, 12);
 
       final restartedRepository = DriftSettingsRepository(database: database);
       final persisted = await restartedRepository.getSettings();
@@ -250,7 +254,7 @@ void main() {
       expect(persisted.hiddenHomeSections, saved.hiddenHomeSections);
       expect(persisted.hiddenTagIds, {'tag-2'});
       expect(persisted.hiddenFolderIds, {'folder-1'});
-      expect(persisted.tagFolderIds, {'tag-2': 'folder-1'});
+      expect(persisted.tagFolderIds, isEmpty);
       expect(persisted.tagSortOrders, {'tag-2': 1});
       expect(persisted.ecampusFolderId, 'folder-ecampus');
 
@@ -271,7 +275,7 @@ void main() {
       expect(cleared.hiddenTagIds, isEmpty);
       expect(cleared.hiddenFolderIds, isEmpty);
       expect(cleared.tagFolderIds, isEmpty);
-      expect(cleared.tagSortOrders, isEmpty);
+      expect(cleared.tagSortOrders, {'tag-2': 0});
       expect(cleared.ecampusFolderId, isNull);
     });
 

@@ -25,3 +25,9 @@ abstract class TaskRepository {
 
   Future<void> deletePermanently(String id);
 }
+
+/// Implemented by a storage backend that can commit a selected import atomically.
+abstract interface class TransactionalTaskRepository {
+  Future<T> atomic<T>(Future<T> Function() action);
+  Future<void> recordImport(String id, int count, DateTime at);
+}

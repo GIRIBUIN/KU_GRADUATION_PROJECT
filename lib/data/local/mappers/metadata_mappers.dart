@@ -55,7 +55,7 @@ class FolderMapper {
       name: row.name,
       color: row.color,
       icon: row.icon,
-      parentFolderId: row.parentFolderId,
+
       sortOrder: row.sortOrder,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
@@ -68,7 +68,6 @@ class FolderMapper {
       name: Value(folder.name),
       color: Value(folder.color),
       icon: Value(folder.icon),
-      parentFolderId: Value(folder.parentFolderId),
       sortOrder: Value(folder.sortOrder),
       createdAt: Value(folder.createdAt),
       updatedAt: Value(folder.updatedAt),
@@ -78,33 +77,25 @@ class FolderMapper {
 
 class NotificationSettingMapper {
   const NotificationSettingMapper();
-
-  models.NotificationSetting fromRow(db.NotificationSetting row) {
-    return models.NotificationSetting(
-      id: row.id,
-      taskId: row.taskId,
-      enabled: row.enabled,
-      daysBeforeDue: _normalizeNotificationOffsetMinutes(
-        row.daysBeforeDue,
-        row.notifyTime,
-      ),
-      notifyTime: row.notifyTime,
-      scheduledAt: row.scheduledAt,
-    );
-  }
-
-  db.NotificationSettingsCompanion toCompanion(
-    models.NotificationSetting notification,
-  ) {
-    return db.NotificationSettingsCompanion(
-      id: Value(notification.id),
-      taskId: Value(notification.taskId),
-      enabled: Value(notification.enabled),
-      daysBeforeDue: Value(notification.daysBeforeDue),
-      notifyTime: Value(notification.notifyTime),
-      scheduledAt: Value(notification.scheduledAt),
-    );
-  }
+  models.NotificationSetting fromRow(
+    db.TaskReminder row, {
+    DateTime? scheduledAt,
+  }) => models.NotificationSetting(
+    id: row.id,
+    taskId: row.taskId,
+    enabled: row.enabled,
+    daysBeforeDue: row.offsetMinutes,
+    notifyTime: 'relative',
+    scheduledAt: scheduledAt,
+  );
+  db.TaskRemindersCompanion toCompanion(models.NotificationSetting value) =>
+      db.TaskRemindersCompanion(
+        id: Value(value.id),
+        taskId: Value(value.taskId),
+        enabled: Value(value.enabled),
+        offsetMinutes: Value(value.daysBeforeDue),
+        updatedAt: Value(DateTime.now()),
+      );
 }
 
 class AppSettingsMapper {

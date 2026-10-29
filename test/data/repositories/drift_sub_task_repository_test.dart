@@ -43,7 +43,7 @@ void main() {
 
       final subTasks = await subTaskRepository.getSubTasks('task-1');
 
-      expect(subTasks.map((subTask) => subTask.id), ['sub-1', 'sub-2']);
+      expect(subTasks.map((subTask) => subTask.id), ['sub-2', 'sub-1']);
     });
 
     test('updates subtask title and done state', () async {

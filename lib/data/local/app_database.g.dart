@@ -3,11 +3,11 @@
 part of 'app_database.dart';
 
 // ignore_for_file: type=lint
-class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
+class $FoldersTable extends Folders with TableInfo<$FoldersTable, Folder> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
-  $TasksTable(this.attachedDatabase, [this._alias]);
+  $FoldersTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
@@ -17,19 +17,505 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _originMeta = const VerificationMeta('origin');
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
-  late final GeneratedColumn<String> origin = GeneratedColumn<String>(
-    'origin',
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
     aliasedName,
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  static const VerificationMeta _colorMeta = const VerificationMeta('color');
   @override
-  late final GeneratedColumn<String> status = GeneratedColumn<String>(
-    'status',
+  late final GeneratedColumn<String> color = GeneratedColumn<String>(
+    'color',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _iconMeta = const VerificationMeta('icon');
+  @override
+  late final GeneratedColumn<String> icon = GeneratedColumn<String>(
+    'icon',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    color,
+    icon,
+    sortOrder,
+    deletedAt,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'folders';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Folder> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('color')) {
+      context.handle(
+        _colorMeta,
+        color.isAcceptableOrUnknown(data['color']!, _colorMeta),
+      );
+    }
+    if (data.containsKey('icon')) {
+      context.handle(
+        _iconMeta,
+        icon.isAcceptableOrUnknown(data['icon']!, _iconMeta),
+      );
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Folder map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Folder(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      color: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}color'],
+      ),
+      icon: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}icon'],
+      ),
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $FoldersTable createAlias(String alias) {
+    return $FoldersTable(attachedDatabase, alias);
+  }
+}
+
+class Folder extends DataClass implements Insertable<Folder> {
+  final String id;
+  final String name;
+  final String? color;
+  final String? icon;
+  final int sortOrder;
+  final DateTime? deletedAt;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const Folder({
+    required this.id,
+    required this.name,
+    this.color,
+    this.icon,
+    required this.sortOrder,
+    this.deletedAt,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || color != null) {
+      map['color'] = Variable<String>(color);
+    }
+    if (!nullToAbsent || icon != null) {
+      map['icon'] = Variable<String>(icon);
+    }
+    map['sort_order'] = Variable<int>(sortOrder);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  FoldersCompanion toCompanion(bool nullToAbsent) {
+    return FoldersCompanion(
+      id: Value(id),
+      name: Value(name),
+      color: color == null && nullToAbsent
+          ? const Value.absent()
+          : Value(color),
+      icon: icon == null && nullToAbsent ? const Value.absent() : Value(icon),
+      sortOrder: Value(sortOrder),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory Folder.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Folder(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      color: serializer.fromJson<String?>(json['color']),
+      icon: serializer.fromJson<String?>(json['icon']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'color': serializer.toJson<String?>(color),
+      'icon': serializer.toJson<String?>(icon),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  Folder copyWith({
+    String? id,
+    String? name,
+    Value<String?> color = const Value.absent(),
+    Value<String?> icon = const Value.absent(),
+    int? sortOrder,
+    Value<DateTime?> deletedAt = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => Folder(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    color: color.present ? color.value : this.color,
+    icon: icon.present ? icon.value : this.icon,
+    sortOrder: sortOrder ?? this.sortOrder,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  Folder copyWithCompanion(FoldersCompanion data) {
+    return Folder(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      color: data.color.present ? data.color.value : this.color,
+      icon: data.icon.present ? data.icon.value : this.icon,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Folder(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('color: $color, ')
+          ..write('icon: $icon, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    name,
+    color,
+    icon,
+    sortOrder,
+    deletedAt,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Folder &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.color == this.color &&
+          other.icon == this.icon &&
+          other.sortOrder == this.sortOrder &&
+          other.deletedAt == this.deletedAt &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class FoldersCompanion extends UpdateCompanion<Folder> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String?> color;
+  final Value<String?> icon;
+  final Value<int> sortOrder;
+  final Value<DateTime?> deletedAt;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const FoldersCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.color = const Value.absent(),
+    this.icon = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  FoldersCompanion.insert({
+    required String id,
+    required String name,
+    this.color = const Value.absent(),
+    this.icon = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<Folder> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? color,
+    Expression<String>? icon,
+    Expression<int>? sortOrder,
+    Expression<DateTime>? deletedAt,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (color != null) 'color': color,
+      if (icon != null) 'icon': icon,
+      if (sortOrder != null) 'sort_order': sortOrder,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  FoldersCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<String?>? color,
+    Value<String?>? icon,
+    Value<int>? sortOrder,
+    Value<DateTime?>? deletedAt,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return FoldersCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      color: color ?? this.color,
+      icon: icon ?? this.icon,
+      sortOrder: sortOrder ?? this.sortOrder,
+      deletedAt: deletedAt ?? this.deletedAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (color.present) {
+      map['color'] = Variable<String>(color.value);
+    }
+    if (icon.present) {
+      map['icon'] = Variable<String>(icon.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FoldersCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('color: $color, ')
+          ..write('icon: $icon, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TasksTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
     aliasedName,
     false,
     type: DriftSqlType.string,
@@ -75,15 +561,52 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _parentTaskIdMeta = const VerificationMeta(
-    'parentTaskId',
+  static const VerificationMeta _folderIdMeta = const VerificationMeta(
+    'folderId',
   );
   @override
-  late final GeneratedColumn<String> parentTaskId = GeneratedColumn<String>(
-    'parent_task_id',
+  late final GeneratedColumn<String> folderId = GeneratedColumn<String>(
+    'folder_id',
     aliasedName,
     true,
     type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES folders (id)',
+    ),
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _completedAtMeta = const VerificationMeta(
+    'completedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> completedAt = GeneratedColumn<DateTime>(
+    'completed_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
@@ -108,129 +631,19 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _completedAtMeta = const VerificationMeta(
-    'completedAt',
-  );
-  @override
-  late final GeneratedColumn<DateTime> completedAt = GeneratedColumn<DateTime>(
-    'completed_at',
-    aliasedName,
-    true,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
-    'deletedAt',
-  );
-  @override
-  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
-    'deleted_at',
-    aliasedName,
-    true,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
-    'sortOrder',
-  );
-  @override
-  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
-    'sort_order',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultValue: const Constant(0),
-  );
-  static const VerificationMeta _ecampusSourceKeyMeta = const VerificationMeta(
-    'ecampusSourceKey',
-  );
-  @override
-  late final GeneratedColumn<String> ecampusSourceKey = GeneratedColumn<String>(
-    'ecampus_source_key',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
-  );
-  static const VerificationMeta _ecampusSourceTitleMeta =
-      const VerificationMeta('ecampusSourceTitle');
-  @override
-  late final GeneratedColumn<String> ecampusSourceTitle =
-      GeneratedColumn<String>(
-        'ecampus_source_title',
-        aliasedName,
-        true,
-        type: DriftSqlType.string,
-        requiredDuringInsert: false,
-      );
-  static const VerificationMeta _ecampusSourceDueDateMeta =
-      const VerificationMeta('ecampusSourceDueDate');
-  @override
-  late final GeneratedColumn<DateTime> ecampusSourceDueDate =
-      GeneratedColumn<DateTime>(
-        'ecampus_source_due_date',
-        aliasedName,
-        true,
-        type: DriftSqlType.dateTime,
-        requiredDuringInsert: false,
-      );
-  static const VerificationMeta _ecampusSourceCourseMeta =
-      const VerificationMeta('ecampusSourceCourse');
-  @override
-  late final GeneratedColumn<String> ecampusSourceCourse =
-      GeneratedColumn<String>(
-        'ecampus_source_course',
-        aliasedName,
-        true,
-        type: DriftSqlType.string,
-        requiredDuringInsert: false,
-      );
-  static const VerificationMeta _ecampusSourceTypeMeta = const VerificationMeta(
-    'ecampusSourceType',
-  );
-  @override
-  late final GeneratedColumn<String> ecampusSourceType =
-      GeneratedColumn<String>(
-        'ecampus_source_type',
-        aliasedName,
-        true,
-        type: DriftSqlType.string,
-        requiredDuringInsert: false,
-      );
-  static const VerificationMeta _ecampusLastSyncedAtMeta =
-      const VerificationMeta('ecampusLastSyncedAt');
-  @override
-  late final GeneratedColumn<DateTime> ecampusLastSyncedAt =
-      GeneratedColumn<DateTime>(
-        'ecampus_last_synced_at',
-        aliasedName,
-        true,
-        type: DriftSqlType.dateTime,
-        requiredDuringInsert: false,
-      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
-    origin,
-    status,
     title,
     dueDate,
     priority,
     memo,
-    parentTaskId,
-    createdAt,
-    updatedAt,
+    folderId,
+    sortOrder,
     completedAt,
     deletedAt,
-    sortOrder,
-    ecampusSourceKey,
-    ecampusSourceTitle,
-    ecampusSourceDueDate,
-    ecampusSourceCourse,
-    ecampusSourceType,
-    ecampusLastSyncedAt,
+    createdAt,
+    updatedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -248,22 +661,6 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     } else if (isInserting) {
       context.missing(_idMeta);
-    }
-    if (data.containsKey('origin')) {
-      context.handle(
-        _originMeta,
-        origin.isAcceptableOrUnknown(data['origin']!, _originMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_originMeta);
-    }
-    if (data.containsKey('status')) {
-      context.handle(
-        _statusMeta,
-        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_statusMeta);
     }
     if (data.containsKey('title')) {
       context.handle(
@@ -291,13 +688,31 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         memo.isAcceptableOrUnknown(data['memo']!, _memoMeta),
       );
     }
-    if (data.containsKey('parent_task_id')) {
+    if (data.containsKey('folder_id')) {
       context.handle(
-        _parentTaskIdMeta,
-        parentTaskId.isAcceptableOrUnknown(
-          data['parent_task_id']!,
-          _parentTaskIdMeta,
+        _folderIdMeta,
+        folderId.isAcceptableOrUnknown(data['folder_id']!, _folderIdMeta),
+      );
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    if (data.containsKey('completed_at')) {
+      context.handle(
+        _completedAtMeta,
+        completedAt.isAcceptableOrUnknown(
+          data['completed_at']!,
+          _completedAtMeta,
         ),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
       );
     }
     if (data.containsKey('created_at')) {
@@ -316,81 +731,6 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     } else if (isInserting) {
       context.missing(_updatedAtMeta);
     }
-    if (data.containsKey('completed_at')) {
-      context.handle(
-        _completedAtMeta,
-        completedAt.isAcceptableOrUnknown(
-          data['completed_at']!,
-          _completedAtMeta,
-        ),
-      );
-    }
-    if (data.containsKey('deleted_at')) {
-      context.handle(
-        _deletedAtMeta,
-        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
-      );
-    }
-    if (data.containsKey('sort_order')) {
-      context.handle(
-        _sortOrderMeta,
-        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
-      );
-    }
-    if (data.containsKey('ecampus_source_key')) {
-      context.handle(
-        _ecampusSourceKeyMeta,
-        ecampusSourceKey.isAcceptableOrUnknown(
-          data['ecampus_source_key']!,
-          _ecampusSourceKeyMeta,
-        ),
-      );
-    }
-    if (data.containsKey('ecampus_source_title')) {
-      context.handle(
-        _ecampusSourceTitleMeta,
-        ecampusSourceTitle.isAcceptableOrUnknown(
-          data['ecampus_source_title']!,
-          _ecampusSourceTitleMeta,
-        ),
-      );
-    }
-    if (data.containsKey('ecampus_source_due_date')) {
-      context.handle(
-        _ecampusSourceDueDateMeta,
-        ecampusSourceDueDate.isAcceptableOrUnknown(
-          data['ecampus_source_due_date']!,
-          _ecampusSourceDueDateMeta,
-        ),
-      );
-    }
-    if (data.containsKey('ecampus_source_course')) {
-      context.handle(
-        _ecampusSourceCourseMeta,
-        ecampusSourceCourse.isAcceptableOrUnknown(
-          data['ecampus_source_course']!,
-          _ecampusSourceCourseMeta,
-        ),
-      );
-    }
-    if (data.containsKey('ecampus_source_type')) {
-      context.handle(
-        _ecampusSourceTypeMeta,
-        ecampusSourceType.isAcceptableOrUnknown(
-          data['ecampus_source_type']!,
-          _ecampusSourceTypeMeta,
-        ),
-      );
-    }
-    if (data.containsKey('ecampus_last_synced_at')) {
-      context.handle(
-        _ecampusLastSyncedAtMeta,
-        ecampusLastSyncedAt.isAcceptableOrUnknown(
-          data['ecampus_last_synced_at']!,
-          _ecampusLastSyncedAtMeta,
-        ),
-      );
-    }
     return context;
   }
 
@@ -403,14 +743,6 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}id'],
-      )!,
-      origin: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}origin'],
-      )!,
-      status: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}status'],
       )!,
       title: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -428,17 +760,13 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         DriftSqlType.string,
         data['${effectivePrefix}memo'],
       ),
-      parentTaskId: attachedDatabase.typeMapping.read(
+      folderId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}parent_task_id'],
+        data['${effectivePrefix}folder_id'],
       ),
-      createdAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}created_at'],
-      )!,
-      updatedAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}updated_at'],
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
       )!,
       completedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
@@ -448,34 +776,14 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}deleted_at'],
       ),
-      sortOrder: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}sort_order'],
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
       )!,
-      ecampusSourceKey: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}ecampus_source_key'],
-      ),
-      ecampusSourceTitle: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}ecampus_source_title'],
-      ),
-      ecampusSourceDueDate: attachedDatabase.typeMapping.read(
+      updatedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
-        data['${effectivePrefix}ecampus_source_due_date'],
-      ),
-      ecampusSourceCourse: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}ecampus_source_course'],
-      ),
-      ecampusSourceType: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}ecampus_source_type'],
-      ),
-      ecampusLastSyncedAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}ecampus_last_synced_at'],
-      ),
+        data['${effectivePrefix}updated_at'],
+      )!,
     );
   }
 
@@ -487,51 +795,33 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
 
 class Task extends DataClass implements Insertable<Task> {
   final String id;
-  final String origin;
-  final String status;
   final String title;
   final DateTime? dueDate;
   final String? priority;
   final String? memo;
-  final String? parentTaskId;
-  final DateTime createdAt;
-  final DateTime updatedAt;
+  final String? folderId;
+  final int sortOrder;
   final DateTime? completedAt;
   final DateTime? deletedAt;
-  final int sortOrder;
-  final String? ecampusSourceKey;
-  final String? ecampusSourceTitle;
-  final DateTime? ecampusSourceDueDate;
-  final String? ecampusSourceCourse;
-  final String? ecampusSourceType;
-  final DateTime? ecampusLastSyncedAt;
+  final DateTime createdAt;
+  final DateTime updatedAt;
   const Task({
     required this.id,
-    required this.origin,
-    required this.status,
     required this.title,
     this.dueDate,
     this.priority,
     this.memo,
-    this.parentTaskId,
-    required this.createdAt,
-    required this.updatedAt,
+    this.folderId,
+    required this.sortOrder,
     this.completedAt,
     this.deletedAt,
-    required this.sortOrder,
-    this.ecampusSourceKey,
-    this.ecampusSourceTitle,
-    this.ecampusSourceDueDate,
-    this.ecampusSourceCourse,
-    this.ecampusSourceType,
-    this.ecampusLastSyncedAt,
+    required this.createdAt,
+    required this.updatedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
-    map['origin'] = Variable<String>(origin);
-    map['status'] = Variable<String>(status);
     map['title'] = Variable<String>(title);
     if (!nullToAbsent || dueDate != null) {
       map['due_date'] = Variable<DateTime>(dueDate);
@@ -542,44 +832,24 @@ class Task extends DataClass implements Insertable<Task> {
     if (!nullToAbsent || memo != null) {
       map['memo'] = Variable<String>(memo);
     }
-    if (!nullToAbsent || parentTaskId != null) {
-      map['parent_task_id'] = Variable<String>(parentTaskId);
+    if (!nullToAbsent || folderId != null) {
+      map['folder_id'] = Variable<String>(folderId);
     }
-    map['created_at'] = Variable<DateTime>(createdAt);
-    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['sort_order'] = Variable<int>(sortOrder);
     if (!nullToAbsent || completedAt != null) {
       map['completed_at'] = Variable<DateTime>(completedAt);
     }
     if (!nullToAbsent || deletedAt != null) {
       map['deleted_at'] = Variable<DateTime>(deletedAt);
     }
-    map['sort_order'] = Variable<int>(sortOrder);
-    if (!nullToAbsent || ecampusSourceKey != null) {
-      map['ecampus_source_key'] = Variable<String>(ecampusSourceKey);
-    }
-    if (!nullToAbsent || ecampusSourceTitle != null) {
-      map['ecampus_source_title'] = Variable<String>(ecampusSourceTitle);
-    }
-    if (!nullToAbsent || ecampusSourceDueDate != null) {
-      map['ecampus_source_due_date'] = Variable<DateTime>(ecampusSourceDueDate);
-    }
-    if (!nullToAbsent || ecampusSourceCourse != null) {
-      map['ecampus_source_course'] = Variable<String>(ecampusSourceCourse);
-    }
-    if (!nullToAbsent || ecampusSourceType != null) {
-      map['ecampus_source_type'] = Variable<String>(ecampusSourceType);
-    }
-    if (!nullToAbsent || ecampusLastSyncedAt != null) {
-      map['ecampus_last_synced_at'] = Variable<DateTime>(ecampusLastSyncedAt);
-    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
   }
 
   TasksCompanion toCompanion(bool nullToAbsent) {
     return TasksCompanion(
       id: Value(id),
-      origin: Value(origin),
-      status: Value(status),
       title: Value(title),
       dueDate: dueDate == null && nullToAbsent
           ? const Value.absent()
@@ -588,36 +858,18 @@ class Task extends DataClass implements Insertable<Task> {
           ? const Value.absent()
           : Value(priority),
       memo: memo == null && nullToAbsent ? const Value.absent() : Value(memo),
-      parentTaskId: parentTaskId == null && nullToAbsent
+      folderId: folderId == null && nullToAbsent
           ? const Value.absent()
-          : Value(parentTaskId),
-      createdAt: Value(createdAt),
-      updatedAt: Value(updatedAt),
+          : Value(folderId),
+      sortOrder: Value(sortOrder),
       completedAt: completedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(completedAt),
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(deletedAt),
-      sortOrder: Value(sortOrder),
-      ecampusSourceKey: ecampusSourceKey == null && nullToAbsent
-          ? const Value.absent()
-          : Value(ecampusSourceKey),
-      ecampusSourceTitle: ecampusSourceTitle == null && nullToAbsent
-          ? const Value.absent()
-          : Value(ecampusSourceTitle),
-      ecampusSourceDueDate: ecampusSourceDueDate == null && nullToAbsent
-          ? const Value.absent()
-          : Value(ecampusSourceDueDate),
-      ecampusSourceCourse: ecampusSourceCourse == null && nullToAbsent
-          ? const Value.absent()
-          : Value(ecampusSourceCourse),
-      ecampusSourceType: ecampusSourceType == null && nullToAbsent
-          ? const Value.absent()
-          : Value(ecampusSourceType),
-      ecampusLastSyncedAt: ecampusLastSyncedAt == null && nullToAbsent
-          ? const Value.absent()
-          : Value(ecampusLastSyncedAt),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
     );
   }
 
@@ -628,34 +880,16 @@ class Task extends DataClass implements Insertable<Task> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Task(
       id: serializer.fromJson<String>(json['id']),
-      origin: serializer.fromJson<String>(json['origin']),
-      status: serializer.fromJson<String>(json['status']),
       title: serializer.fromJson<String>(json['title']),
       dueDate: serializer.fromJson<DateTime?>(json['dueDate']),
       priority: serializer.fromJson<String?>(json['priority']),
       memo: serializer.fromJson<String?>(json['memo']),
-      parentTaskId: serializer.fromJson<String?>(json['parentTaskId']),
-      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
-      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      folderId: serializer.fromJson<String?>(json['folderId']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
       completedAt: serializer.fromJson<DateTime?>(json['completedAt']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
-      sortOrder: serializer.fromJson<int>(json['sortOrder']),
-      ecampusSourceKey: serializer.fromJson<String?>(json['ecampusSourceKey']),
-      ecampusSourceTitle: serializer.fromJson<String?>(
-        json['ecampusSourceTitle'],
-      ),
-      ecampusSourceDueDate: serializer.fromJson<DateTime?>(
-        json['ecampusSourceDueDate'],
-      ),
-      ecampusSourceCourse: serializer.fromJson<String?>(
-        json['ecampusSourceCourse'],
-      ),
-      ecampusSourceType: serializer.fromJson<String?>(
-        json['ecampusSourceType'],
-      ),
-      ecampusLastSyncedAt: serializer.fromJson<DateTime?>(
-        json['ecampusLastSyncedAt'],
-      ),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
   }
   @override
@@ -663,119 +897,59 @@ class Task extends DataClass implements Insertable<Task> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
-      'origin': serializer.toJson<String>(origin),
-      'status': serializer.toJson<String>(status),
       'title': serializer.toJson<String>(title),
       'dueDate': serializer.toJson<DateTime?>(dueDate),
       'priority': serializer.toJson<String?>(priority),
       'memo': serializer.toJson<String?>(memo),
-      'parentTaskId': serializer.toJson<String?>(parentTaskId),
-      'createdAt': serializer.toJson<DateTime>(createdAt),
-      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'folderId': serializer.toJson<String?>(folderId),
+      'sortOrder': serializer.toJson<int>(sortOrder),
       'completedAt': serializer.toJson<DateTime?>(completedAt),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
-      'sortOrder': serializer.toJson<int>(sortOrder),
-      'ecampusSourceKey': serializer.toJson<String?>(ecampusSourceKey),
-      'ecampusSourceTitle': serializer.toJson<String?>(ecampusSourceTitle),
-      'ecampusSourceDueDate': serializer.toJson<DateTime?>(
-        ecampusSourceDueDate,
-      ),
-      'ecampusSourceCourse': serializer.toJson<String?>(ecampusSourceCourse),
-      'ecampusSourceType': serializer.toJson<String?>(ecampusSourceType),
-      'ecampusLastSyncedAt': serializer.toJson<DateTime?>(ecampusLastSyncedAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
 
   Task copyWith({
     String? id,
-    String? origin,
-    String? status,
     String? title,
     Value<DateTime?> dueDate = const Value.absent(),
     Value<String?> priority = const Value.absent(),
     Value<String?> memo = const Value.absent(),
-    Value<String?> parentTaskId = const Value.absent(),
-    DateTime? createdAt,
-    DateTime? updatedAt,
+    Value<String?> folderId = const Value.absent(),
+    int? sortOrder,
     Value<DateTime?> completedAt = const Value.absent(),
     Value<DateTime?> deletedAt = const Value.absent(),
-    int? sortOrder,
-    Value<String?> ecampusSourceKey = const Value.absent(),
-    Value<String?> ecampusSourceTitle = const Value.absent(),
-    Value<DateTime?> ecampusSourceDueDate = const Value.absent(),
-    Value<String?> ecampusSourceCourse = const Value.absent(),
-    Value<String?> ecampusSourceType = const Value.absent(),
-    Value<DateTime?> ecampusLastSyncedAt = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
   }) => Task(
     id: id ?? this.id,
-    origin: origin ?? this.origin,
-    status: status ?? this.status,
     title: title ?? this.title,
     dueDate: dueDate.present ? dueDate.value : this.dueDate,
     priority: priority.present ? priority.value : this.priority,
     memo: memo.present ? memo.value : this.memo,
-    parentTaskId: parentTaskId.present ? parentTaskId.value : this.parentTaskId,
-    createdAt: createdAt ?? this.createdAt,
-    updatedAt: updatedAt ?? this.updatedAt,
+    folderId: folderId.present ? folderId.value : this.folderId,
+    sortOrder: sortOrder ?? this.sortOrder,
     completedAt: completedAt.present ? completedAt.value : this.completedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
-    sortOrder: sortOrder ?? this.sortOrder,
-    ecampusSourceKey: ecampusSourceKey.present
-        ? ecampusSourceKey.value
-        : this.ecampusSourceKey,
-    ecampusSourceTitle: ecampusSourceTitle.present
-        ? ecampusSourceTitle.value
-        : this.ecampusSourceTitle,
-    ecampusSourceDueDate: ecampusSourceDueDate.present
-        ? ecampusSourceDueDate.value
-        : this.ecampusSourceDueDate,
-    ecampusSourceCourse: ecampusSourceCourse.present
-        ? ecampusSourceCourse.value
-        : this.ecampusSourceCourse,
-    ecampusSourceType: ecampusSourceType.present
-        ? ecampusSourceType.value
-        : this.ecampusSourceType,
-    ecampusLastSyncedAt: ecampusLastSyncedAt.present
-        ? ecampusLastSyncedAt.value
-        : this.ecampusLastSyncedAt,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
   );
   Task copyWithCompanion(TasksCompanion data) {
     return Task(
       id: data.id.present ? data.id.value : this.id,
-      origin: data.origin.present ? data.origin.value : this.origin,
-      status: data.status.present ? data.status.value : this.status,
       title: data.title.present ? data.title.value : this.title,
       dueDate: data.dueDate.present ? data.dueDate.value : this.dueDate,
       priority: data.priority.present ? data.priority.value : this.priority,
       memo: data.memo.present ? data.memo.value : this.memo,
-      parentTaskId: data.parentTaskId.present
-          ? data.parentTaskId.value
-          : this.parentTaskId,
-      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
-      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      folderId: data.folderId.present ? data.folderId.value : this.folderId,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
       completedAt: data.completedAt.present
           ? data.completedAt.value
           : this.completedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
-      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
-      ecampusSourceKey: data.ecampusSourceKey.present
-          ? data.ecampusSourceKey.value
-          : this.ecampusSourceKey,
-      ecampusSourceTitle: data.ecampusSourceTitle.present
-          ? data.ecampusSourceTitle.value
-          : this.ecampusSourceTitle,
-      ecampusSourceDueDate: data.ecampusSourceDueDate.present
-          ? data.ecampusSourceDueDate.value
-          : this.ecampusSourceDueDate,
-      ecampusSourceCourse: data.ecampusSourceCourse.present
-          ? data.ecampusSourceCourse.value
-          : this.ecampusSourceCourse,
-      ecampusSourceType: data.ecampusSourceType.present
-          ? data.ecampusSourceType.value
-          : this.ecampusSourceType,
-      ecampusLastSyncedAt: data.ecampusLastSyncedAt.present
-          ? data.ecampusLastSyncedAt.value
-          : this.ecampusLastSyncedAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
   }
 
@@ -783,24 +957,16 @@ class Task extends DataClass implements Insertable<Task> {
   String toString() {
     return (StringBuffer('Task(')
           ..write('id: $id, ')
-          ..write('origin: $origin, ')
-          ..write('status: $status, ')
           ..write('title: $title, ')
           ..write('dueDate: $dueDate, ')
           ..write('priority: $priority, ')
           ..write('memo: $memo, ')
-          ..write('parentTaskId: $parentTaskId, ')
-          ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt, ')
+          ..write('folderId: $folderId, ')
+          ..write('sortOrder: $sortOrder, ')
           ..write('completedAt: $completedAt, ')
           ..write('deletedAt: $deletedAt, ')
-          ..write('sortOrder: $sortOrder, ')
-          ..write('ecampusSourceKey: $ecampusSourceKey, ')
-          ..write('ecampusSourceTitle: $ecampusSourceTitle, ')
-          ..write('ecampusSourceDueDate: $ecampusSourceDueDate, ')
-          ..write('ecampusSourceCourse: $ecampusSourceCourse, ')
-          ..write('ecampusSourceType: $ecampusSourceType, ')
-          ..write('ecampusLastSyncedAt: $ecampusLastSyncedAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
   }
@@ -808,212 +974,134 @@ class Task extends DataClass implements Insertable<Task> {
   @override
   int get hashCode => Object.hash(
     id,
-    origin,
-    status,
     title,
     dueDate,
     priority,
     memo,
-    parentTaskId,
-    createdAt,
-    updatedAt,
+    folderId,
+    sortOrder,
     completedAt,
     deletedAt,
-    sortOrder,
-    ecampusSourceKey,
-    ecampusSourceTitle,
-    ecampusSourceDueDate,
-    ecampusSourceCourse,
-    ecampusSourceType,
-    ecampusLastSyncedAt,
+    createdAt,
+    updatedAt,
   );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Task &&
           other.id == this.id &&
-          other.origin == this.origin &&
-          other.status == this.status &&
           other.title == this.title &&
           other.dueDate == this.dueDate &&
           other.priority == this.priority &&
           other.memo == this.memo &&
-          other.parentTaskId == this.parentTaskId &&
-          other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt &&
+          other.folderId == this.folderId &&
+          other.sortOrder == this.sortOrder &&
           other.completedAt == this.completedAt &&
           other.deletedAt == this.deletedAt &&
-          other.sortOrder == this.sortOrder &&
-          other.ecampusSourceKey == this.ecampusSourceKey &&
-          other.ecampusSourceTitle == this.ecampusSourceTitle &&
-          other.ecampusSourceDueDate == this.ecampusSourceDueDate &&
-          other.ecampusSourceCourse == this.ecampusSourceCourse &&
-          other.ecampusSourceType == this.ecampusSourceType &&
-          other.ecampusLastSyncedAt == this.ecampusLastSyncedAt);
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
 }
 
 class TasksCompanion extends UpdateCompanion<Task> {
   final Value<String> id;
-  final Value<String> origin;
-  final Value<String> status;
   final Value<String> title;
   final Value<DateTime?> dueDate;
   final Value<String?> priority;
   final Value<String?> memo;
-  final Value<String?> parentTaskId;
-  final Value<DateTime> createdAt;
-  final Value<DateTime> updatedAt;
+  final Value<String?> folderId;
+  final Value<int> sortOrder;
   final Value<DateTime?> completedAt;
   final Value<DateTime?> deletedAt;
-  final Value<int> sortOrder;
-  final Value<String?> ecampusSourceKey;
-  final Value<String?> ecampusSourceTitle;
-  final Value<DateTime?> ecampusSourceDueDate;
-  final Value<String?> ecampusSourceCourse;
-  final Value<String?> ecampusSourceType;
-  final Value<DateTime?> ecampusLastSyncedAt;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
   final Value<int> rowid;
   const TasksCompanion({
     this.id = const Value.absent(),
-    this.origin = const Value.absent(),
-    this.status = const Value.absent(),
     this.title = const Value.absent(),
     this.dueDate = const Value.absent(),
     this.priority = const Value.absent(),
     this.memo = const Value.absent(),
-    this.parentTaskId = const Value.absent(),
-    this.createdAt = const Value.absent(),
-    this.updatedAt = const Value.absent(),
+    this.folderId = const Value.absent(),
+    this.sortOrder = const Value.absent(),
     this.completedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
-    this.sortOrder = const Value.absent(),
-    this.ecampusSourceKey = const Value.absent(),
-    this.ecampusSourceTitle = const Value.absent(),
-    this.ecampusSourceDueDate = const Value.absent(),
-    this.ecampusSourceCourse = const Value.absent(),
-    this.ecampusSourceType = const Value.absent(),
-    this.ecampusLastSyncedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   TasksCompanion.insert({
     required String id,
-    required String origin,
-    required String status,
     required String title,
     this.dueDate = const Value.absent(),
     this.priority = const Value.absent(),
     this.memo = const Value.absent(),
-    this.parentTaskId = const Value.absent(),
-    required DateTime createdAt,
-    required DateTime updatedAt,
+    this.folderId = const Value.absent(),
+    this.sortOrder = const Value.absent(),
     this.completedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
-    this.sortOrder = const Value.absent(),
-    this.ecampusSourceKey = const Value.absent(),
-    this.ecampusSourceTitle = const Value.absent(),
-    this.ecampusSourceDueDate = const Value.absent(),
-    this.ecampusSourceCourse = const Value.absent(),
-    this.ecampusSourceType = const Value.absent(),
-    this.ecampusLastSyncedAt = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
     this.rowid = const Value.absent(),
   }) : id = Value(id),
-       origin = Value(origin),
-       status = Value(status),
        title = Value(title),
        createdAt = Value(createdAt),
        updatedAt = Value(updatedAt);
   static Insertable<Task> custom({
     Expression<String>? id,
-    Expression<String>? origin,
-    Expression<String>? status,
     Expression<String>? title,
     Expression<DateTime>? dueDate,
     Expression<String>? priority,
     Expression<String>? memo,
-    Expression<String>? parentTaskId,
-    Expression<DateTime>? createdAt,
-    Expression<DateTime>? updatedAt,
+    Expression<String>? folderId,
+    Expression<int>? sortOrder,
     Expression<DateTime>? completedAt,
     Expression<DateTime>? deletedAt,
-    Expression<int>? sortOrder,
-    Expression<String>? ecampusSourceKey,
-    Expression<String>? ecampusSourceTitle,
-    Expression<DateTime>? ecampusSourceDueDate,
-    Expression<String>? ecampusSourceCourse,
-    Expression<String>? ecampusSourceType,
-    Expression<DateTime>? ecampusLastSyncedAt,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (origin != null) 'origin': origin,
-      if (status != null) 'status': status,
       if (title != null) 'title': title,
       if (dueDate != null) 'due_date': dueDate,
       if (priority != null) 'priority': priority,
       if (memo != null) 'memo': memo,
-      if (parentTaskId != null) 'parent_task_id': parentTaskId,
-      if (createdAt != null) 'created_at': createdAt,
-      if (updatedAt != null) 'updated_at': updatedAt,
+      if (folderId != null) 'folder_id': folderId,
+      if (sortOrder != null) 'sort_order': sortOrder,
       if (completedAt != null) 'completed_at': completedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
-      if (sortOrder != null) 'sort_order': sortOrder,
-      if (ecampusSourceKey != null) 'ecampus_source_key': ecampusSourceKey,
-      if (ecampusSourceTitle != null)
-        'ecampus_source_title': ecampusSourceTitle,
-      if (ecampusSourceDueDate != null)
-        'ecampus_source_due_date': ecampusSourceDueDate,
-      if (ecampusSourceCourse != null)
-        'ecampus_source_course': ecampusSourceCourse,
-      if (ecampusSourceType != null) 'ecampus_source_type': ecampusSourceType,
-      if (ecampusLastSyncedAt != null)
-        'ecampus_last_synced_at': ecampusLastSyncedAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
 
   TasksCompanion copyWith({
     Value<String>? id,
-    Value<String>? origin,
-    Value<String>? status,
     Value<String>? title,
     Value<DateTime?>? dueDate,
     Value<String?>? priority,
     Value<String?>? memo,
-    Value<String?>? parentTaskId,
-    Value<DateTime>? createdAt,
-    Value<DateTime>? updatedAt,
+    Value<String?>? folderId,
+    Value<int>? sortOrder,
     Value<DateTime?>? completedAt,
     Value<DateTime?>? deletedAt,
-    Value<int>? sortOrder,
-    Value<String?>? ecampusSourceKey,
-    Value<String?>? ecampusSourceTitle,
-    Value<DateTime?>? ecampusSourceDueDate,
-    Value<String?>? ecampusSourceCourse,
-    Value<String?>? ecampusSourceType,
-    Value<DateTime?>? ecampusLastSyncedAt,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
     Value<int>? rowid,
   }) {
     return TasksCompanion(
       id: id ?? this.id,
-      origin: origin ?? this.origin,
-      status: status ?? this.status,
       title: title ?? this.title,
       dueDate: dueDate ?? this.dueDate,
       priority: priority ?? this.priority,
       memo: memo ?? this.memo,
-      parentTaskId: parentTaskId ?? this.parentTaskId,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
+      folderId: folderId ?? this.folderId,
+      sortOrder: sortOrder ?? this.sortOrder,
       completedAt: completedAt ?? this.completedAt,
       deletedAt: deletedAt ?? this.deletedAt,
-      sortOrder: sortOrder ?? this.sortOrder,
-      ecampusSourceKey: ecampusSourceKey ?? this.ecampusSourceKey,
-      ecampusSourceTitle: ecampusSourceTitle ?? this.ecampusSourceTitle,
-      ecampusSourceDueDate: ecampusSourceDueDate ?? this.ecampusSourceDueDate,
-      ecampusSourceCourse: ecampusSourceCourse ?? this.ecampusSourceCourse,
-      ecampusSourceType: ecampusSourceType ?? this.ecampusSourceType,
-      ecampusLastSyncedAt: ecampusLastSyncedAt ?? this.ecampusLastSyncedAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1023,12 +1111,6 @@ class TasksCompanion extends UpdateCompanion<Task> {
     final map = <String, Expression>{};
     if (id.present) {
       map['id'] = Variable<String>(id.value);
-    }
-    if (origin.present) {
-      map['origin'] = Variable<String>(origin.value);
-    }
-    if (status.present) {
-      map['status'] = Variable<String>(status.value);
     }
     if (title.present) {
       map['title'] = Variable<String>(title.value);
@@ -1042,14 +1124,11 @@ class TasksCompanion extends UpdateCompanion<Task> {
     if (memo.present) {
       map['memo'] = Variable<String>(memo.value);
     }
-    if (parentTaskId.present) {
-      map['parent_task_id'] = Variable<String>(parentTaskId.value);
+    if (folderId.present) {
+      map['folder_id'] = Variable<String>(folderId.value);
     }
-    if (createdAt.present) {
-      map['created_at'] = Variable<DateTime>(createdAt.value);
-    }
-    if (updatedAt.present) {
-      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
     }
     if (completedAt.present) {
       map['completed_at'] = Variable<DateTime>(completedAt.value);
@@ -1057,32 +1136,11 @@ class TasksCompanion extends UpdateCompanion<Task> {
     if (deletedAt.present) {
       map['deleted_at'] = Variable<DateTime>(deletedAt.value);
     }
-    if (sortOrder.present) {
-      map['sort_order'] = Variable<int>(sortOrder.value);
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
     }
-    if (ecampusSourceKey.present) {
-      map['ecampus_source_key'] = Variable<String>(ecampusSourceKey.value);
-    }
-    if (ecampusSourceTitle.present) {
-      map['ecampus_source_title'] = Variable<String>(ecampusSourceTitle.value);
-    }
-    if (ecampusSourceDueDate.present) {
-      map['ecampus_source_due_date'] = Variable<DateTime>(
-        ecampusSourceDueDate.value,
-      );
-    }
-    if (ecampusSourceCourse.present) {
-      map['ecampus_source_course'] = Variable<String>(
-        ecampusSourceCourse.value,
-      );
-    }
-    if (ecampusSourceType.present) {
-      map['ecampus_source_type'] = Variable<String>(ecampusSourceType.value);
-    }
-    if (ecampusLastSyncedAt.present) {
-      map['ecampus_last_synced_at'] = Variable<DateTime>(
-        ecampusLastSyncedAt.value,
-      );
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -1094,24 +1152,16 @@ class TasksCompanion extends UpdateCompanion<Task> {
   String toString() {
     return (StringBuffer('TasksCompanion(')
           ..write('id: $id, ')
-          ..write('origin: $origin, ')
-          ..write('status: $status, ')
           ..write('title: $title, ')
           ..write('dueDate: $dueDate, ')
           ..write('priority: $priority, ')
           ..write('memo: $memo, ')
-          ..write('parentTaskId: $parentTaskId, ')
-          ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt, ')
+          ..write('folderId: $folderId, ')
+          ..write('sortOrder: $sortOrder, ')
           ..write('completedAt: $completedAt, ')
           ..write('deletedAt: $deletedAt, ')
-          ..write('sortOrder: $sortOrder, ')
-          ..write('ecampusSourceKey: $ecampusSourceKey, ')
-          ..write('ecampusSourceTitle: $ecampusSourceTitle, ')
-          ..write('ecampusSourceDueDate: $ecampusSourceDueDate, ')
-          ..write('ecampusSourceCourse: $ecampusSourceCourse, ')
-          ..write('ecampusSourceType: $ecampusSourceType, ')
-          ..write('ecampusLastSyncedAt: $ecampusLastSyncedAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1153,17 +1203,39 @@ class $SubTasksTable extends SubTasks with TableInfo<$SubTasksTable, SubTask> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _isDoneMeta = const VerificationMeta('isDone');
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
   @override
-  late final GeneratedColumn<bool> isDone = GeneratedColumn<bool>(
-    'is_done',
+  late final GeneratedColumn<int> position = GeneratedColumn<int>(
+    'position',
     aliasedName,
     false,
-    type: DriftSqlType.bool,
-    requiredDuringInsert: true,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("is_done" IN (0, 1))',
-    ),
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _completedAtMeta = const VerificationMeta(
+    'completedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> completedAt = GeneratedColumn<DateTime>(
+    'completed_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
@@ -1192,7 +1264,9 @@ class $SubTasksTable extends SubTasks with TableInfo<$SubTasksTable, SubTask> {
     id,
     taskId,
     title,
-    isDone,
+    position,
+    completedAt,
+    deletedAt,
     createdAt,
     updatedAt,
   ];
@@ -1229,13 +1303,26 @@ class $SubTasksTable extends SubTasks with TableInfo<$SubTasksTable, SubTask> {
     } else if (isInserting) {
       context.missing(_titleMeta);
     }
-    if (data.containsKey('is_done')) {
+    if (data.containsKey('position')) {
       context.handle(
-        _isDoneMeta,
-        isDone.isAcceptableOrUnknown(data['is_done']!, _isDoneMeta),
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
       );
-    } else if (isInserting) {
-      context.missing(_isDoneMeta);
+    }
+    if (data.containsKey('completed_at')) {
+      context.handle(
+        _completedAtMeta,
+        completedAt.isAcceptableOrUnknown(
+          data['completed_at']!,
+          _completedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
     }
     if (data.containsKey('created_at')) {
       context.handle(
@@ -1274,10 +1361,18 @@ class $SubTasksTable extends SubTasks with TableInfo<$SubTasksTable, SubTask> {
         DriftSqlType.string,
         data['${effectivePrefix}title'],
       )!,
-      isDone: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}is_done'],
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position'],
       )!,
+      completedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}completed_at'],
+      ),
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -1299,14 +1394,18 @@ class SubTask extends DataClass implements Insertable<SubTask> {
   final String id;
   final String taskId;
   final String title;
-  final bool isDone;
+  final int position;
+  final DateTime? completedAt;
+  final DateTime? deletedAt;
   final DateTime createdAt;
   final DateTime updatedAt;
   const SubTask({
     required this.id,
     required this.taskId,
     required this.title,
-    required this.isDone,
+    required this.position,
+    this.completedAt,
+    this.deletedAt,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -1316,7 +1415,13 @@ class SubTask extends DataClass implements Insertable<SubTask> {
     map['id'] = Variable<String>(id);
     map['task_id'] = Variable<String>(taskId);
     map['title'] = Variable<String>(title);
-    map['is_done'] = Variable<bool>(isDone);
+    map['position'] = Variable<int>(position);
+    if (!nullToAbsent || completedAt != null) {
+      map['completed_at'] = Variable<DateTime>(completedAt);
+    }
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -1327,7 +1432,13 @@ class SubTask extends DataClass implements Insertable<SubTask> {
       id: Value(id),
       taskId: Value(taskId),
       title: Value(title),
-      isDone: Value(isDone),
+      position: Value(position),
+      completedAt: completedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(completedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -1342,7 +1453,9 @@ class SubTask extends DataClass implements Insertable<SubTask> {
       id: serializer.fromJson<String>(json['id']),
       taskId: serializer.fromJson<String>(json['taskId']),
       title: serializer.fromJson<String>(json['title']),
-      isDone: serializer.fromJson<bool>(json['isDone']),
+      position: serializer.fromJson<int>(json['position']),
+      completedAt: serializer.fromJson<DateTime?>(json['completedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -1354,7 +1467,9 @@ class SubTask extends DataClass implements Insertable<SubTask> {
       'id': serializer.toJson<String>(id),
       'taskId': serializer.toJson<String>(taskId),
       'title': serializer.toJson<String>(title),
-      'isDone': serializer.toJson<bool>(isDone),
+      'position': serializer.toJson<int>(position),
+      'completedAt': serializer.toJson<DateTime?>(completedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -1364,14 +1479,18 @@ class SubTask extends DataClass implements Insertable<SubTask> {
     String? id,
     String? taskId,
     String? title,
-    bool? isDone,
+    int? position,
+    Value<DateTime?> completedAt = const Value.absent(),
+    Value<DateTime?> deletedAt = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => SubTask(
     id: id ?? this.id,
     taskId: taskId ?? this.taskId,
     title: title ?? this.title,
-    isDone: isDone ?? this.isDone,
+    position: position ?? this.position,
+    completedAt: completedAt.present ? completedAt.value : this.completedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -1380,7 +1499,11 @@ class SubTask extends DataClass implements Insertable<SubTask> {
       id: data.id.present ? data.id.value : this.id,
       taskId: data.taskId.present ? data.taskId.value : this.taskId,
       title: data.title.present ? data.title.value : this.title,
-      isDone: data.isDone.present ? data.isDone.value : this.isDone,
+      position: data.position.present ? data.position.value : this.position,
+      completedAt: data.completedAt.present
+          ? data.completedAt.value
+          : this.completedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1392,7 +1515,9 @@ class SubTask extends DataClass implements Insertable<SubTask> {
           ..write('id: $id, ')
           ..write('taskId: $taskId, ')
           ..write('title: $title, ')
-          ..write('isDone: $isDone, ')
+          ..write('position: $position, ')
+          ..write('completedAt: $completedAt, ')
+          ..write('deletedAt: $deletedAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1400,8 +1525,16 @@ class SubTask extends DataClass implements Insertable<SubTask> {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, taskId, title, isDone, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+    id,
+    taskId,
+    title,
+    position,
+    completedAt,
+    deletedAt,
+    createdAt,
+    updatedAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1409,7 +1542,9 @@ class SubTask extends DataClass implements Insertable<SubTask> {
           other.id == this.id &&
           other.taskId == this.taskId &&
           other.title == this.title &&
-          other.isDone == this.isDone &&
+          other.position == this.position &&
+          other.completedAt == this.completedAt &&
+          other.deletedAt == this.deletedAt &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -1418,7 +1553,9 @@ class SubTasksCompanion extends UpdateCompanion<SubTask> {
   final Value<String> id;
   final Value<String> taskId;
   final Value<String> title;
-  final Value<bool> isDone;
+  final Value<int> position;
+  final Value<DateTime?> completedAt;
+  final Value<DateTime?> deletedAt;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -1426,7 +1563,9 @@ class SubTasksCompanion extends UpdateCompanion<SubTask> {
     this.id = const Value.absent(),
     this.taskId = const Value.absent(),
     this.title = const Value.absent(),
-    this.isDone = const Value.absent(),
+    this.position = const Value.absent(),
+    this.completedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1435,21 +1574,24 @@ class SubTasksCompanion extends UpdateCompanion<SubTask> {
     required String id,
     required String taskId,
     required String title,
-    required bool isDone,
+    this.position = const Value.absent(),
+    this.completedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        taskId = Value(taskId),
        title = Value(title),
-       isDone = Value(isDone),
        createdAt = Value(createdAt),
        updatedAt = Value(updatedAt);
   static Insertable<SubTask> custom({
     Expression<String>? id,
     Expression<String>? taskId,
     Expression<String>? title,
-    Expression<bool>? isDone,
+    Expression<int>? position,
+    Expression<DateTime>? completedAt,
+    Expression<DateTime>? deletedAt,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -1458,7 +1600,9 @@ class SubTasksCompanion extends UpdateCompanion<SubTask> {
       if (id != null) 'id': id,
       if (taskId != null) 'task_id': taskId,
       if (title != null) 'title': title,
-      if (isDone != null) 'is_done': isDone,
+      if (position != null) 'position': position,
+      if (completedAt != null) 'completed_at': completedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -1469,7 +1613,9 @@ class SubTasksCompanion extends UpdateCompanion<SubTask> {
     Value<String>? id,
     Value<String>? taskId,
     Value<String>? title,
-    Value<bool>? isDone,
+    Value<int>? position,
+    Value<DateTime?>? completedAt,
+    Value<DateTime?>? deletedAt,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -1478,7 +1624,9 @@ class SubTasksCompanion extends UpdateCompanion<SubTask> {
       id: id ?? this.id,
       taskId: taskId ?? this.taskId,
       title: title ?? this.title,
-      isDone: isDone ?? this.isDone,
+      position: position ?? this.position,
+      completedAt: completedAt ?? this.completedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -1497,8 +1645,14 @@ class SubTasksCompanion extends UpdateCompanion<SubTask> {
     if (title.present) {
       map['title'] = Variable<String>(title.value);
     }
-    if (isDone.present) {
-      map['is_done'] = Variable<bool>(isDone.value);
+    if (position.present) {
+      map['position'] = Variable<int>(position.value);
+    }
+    if (completedAt.present) {
+      map['completed_at'] = Variable<DateTime>(completedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -1518,7 +1672,9 @@ class SubTasksCompanion extends UpdateCompanion<SubTask> {
           ..write('id: $id, ')
           ..write('taskId: $taskId, ')
           ..write('title: $title, ')
-          ..write('isDone: $isDone, ')
+          ..write('position: $position, ')
+          ..write('completedAt: $completedAt, ')
+          ..write('deletedAt: $deletedAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -1559,6 +1715,29 @@ class $TagsTable extends Tags with TableInfo<$TagsTable, Tag> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1582,7 +1761,15 @@ class $TagsTable extends Tags with TableInfo<$TagsTable, Tag> {
     requiredDuringInsert: true,
   );
   @override
-  List<GeneratedColumn> get $columns => [id, name, color, createdAt, updatedAt];
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    color,
+    sortOrder,
+    deletedAt,
+    createdAt,
+    updatedAt,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1615,6 +1802,18 @@ class $TagsTable extends Tags with TableInfo<$TagsTable, Tag> {
       );
     } else if (isInserting) {
       context.missing(_colorMeta);
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
     }
     if (data.containsKey('created_at')) {
       context.handle(
@@ -1653,6 +1852,14 @@ class $TagsTable extends Tags with TableInfo<$TagsTable, Tag> {
         DriftSqlType.string,
         data['${effectivePrefix}color'],
       )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -1674,12 +1881,16 @@ class Tag extends DataClass implements Insertable<Tag> {
   final String id;
   final String name;
   final String color;
+  final int sortOrder;
+  final DateTime? deletedAt;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Tag({
     required this.id,
     required this.name,
     required this.color,
+    required this.sortOrder,
+    this.deletedAt,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -1689,6 +1900,10 @@ class Tag extends DataClass implements Insertable<Tag> {
     map['id'] = Variable<String>(id);
     map['name'] = Variable<String>(name);
     map['color'] = Variable<String>(color);
+    map['sort_order'] = Variable<int>(sortOrder);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -1699,6 +1914,10 @@ class Tag extends DataClass implements Insertable<Tag> {
       id: Value(id),
       name: Value(name),
       color: Value(color),
+      sortOrder: Value(sortOrder),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -1713,6 +1932,8 @@ class Tag extends DataClass implements Insertable<Tag> {
       id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       color: serializer.fromJson<String>(json['color']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -1724,6 +1945,8 @@ class Tag extends DataClass implements Insertable<Tag> {
       'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String>(name),
       'color': serializer.toJson<String>(color),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -1733,12 +1956,16 @@ class Tag extends DataClass implements Insertable<Tag> {
     String? id,
     String? name,
     String? color,
+    int? sortOrder,
+    Value<DateTime?> deletedAt = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Tag(
     id: id ?? this.id,
     name: name ?? this.name,
     color: color ?? this.color,
+    sortOrder: sortOrder ?? this.sortOrder,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -1747,6 +1974,8 @@ class Tag extends DataClass implements Insertable<Tag> {
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
       color: data.color.present ? data.color.value : this.color,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1758,6 +1987,8 @@ class Tag extends DataClass implements Insertable<Tag> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('color: $color, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('deletedAt: $deletedAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1765,7 +1996,8 @@ class Tag extends DataClass implements Insertable<Tag> {
   }
 
   @override
-  int get hashCode => Object.hash(id, name, color, createdAt, updatedAt);
+  int get hashCode =>
+      Object.hash(id, name, color, sortOrder, deletedAt, createdAt, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1773,6 +2005,8 @@ class Tag extends DataClass implements Insertable<Tag> {
           other.id == this.id &&
           other.name == this.name &&
           other.color == this.color &&
+          other.sortOrder == this.sortOrder &&
+          other.deletedAt == this.deletedAt &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -1781,6 +2015,8 @@ class TagsCompanion extends UpdateCompanion<Tag> {
   final Value<String> id;
   final Value<String> name;
   final Value<String> color;
+  final Value<int> sortOrder;
+  final Value<DateTime?> deletedAt;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -1788,6 +2024,8 @@ class TagsCompanion extends UpdateCompanion<Tag> {
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.color = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.deletedAt = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1796,6 +2034,8 @@ class TagsCompanion extends UpdateCompanion<Tag> {
     required String id,
     required String name,
     required String color,
+    this.sortOrder = const Value.absent(),
+    this.deletedAt = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
@@ -1808,6 +2048,8 @@ class TagsCompanion extends UpdateCompanion<Tag> {
     Expression<String>? id,
     Expression<String>? name,
     Expression<String>? color,
+    Expression<int>? sortOrder,
+    Expression<DateTime>? deletedAt,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -1816,6 +2058,8 @@ class TagsCompanion extends UpdateCompanion<Tag> {
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (color != null) 'color': color,
+      if (sortOrder != null) 'sort_order': sortOrder,
+      if (deletedAt != null) 'deleted_at': deletedAt,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -1826,6 +2070,8 @@ class TagsCompanion extends UpdateCompanion<Tag> {
     Value<String>? id,
     Value<String>? name,
     Value<String>? color,
+    Value<int>? sortOrder,
+    Value<DateTime?>? deletedAt,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -1834,6 +2080,8 @@ class TagsCompanion extends UpdateCompanion<Tag> {
       id: id ?? this.id,
       name: name ?? this.name,
       color: color ?? this.color,
+      sortOrder: sortOrder ?? this.sortOrder,
+      deletedAt: deletedAt ?? this.deletedAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -1851,6 +2099,12 @@ class TagsCompanion extends UpdateCompanion<Tag> {
     }
     if (color.present) {
       map['color'] = Variable<String>(color.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -1870,520 +2124,8 @@ class TagsCompanion extends UpdateCompanion<Tag> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('color: $color, ')
-          ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt, ')
-          ..write('rowid: $rowid')
-          ..write(')'))
-        .toString();
-  }
-}
-
-class $FoldersTable extends Folders with TableInfo<$FoldersTable, Folder> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $FoldersTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
-  @override
-  late final GeneratedColumn<String> id = GeneratedColumn<String>(
-    'id',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _nameMeta = const VerificationMeta('name');
-  @override
-  late final GeneratedColumn<String> name = GeneratedColumn<String>(
-    'name',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _colorMeta = const VerificationMeta('color');
-  @override
-  late final GeneratedColumn<String> color = GeneratedColumn<String>(
-    'color',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _iconMeta = const VerificationMeta('icon');
-  @override
-  late final GeneratedColumn<String> icon = GeneratedColumn<String>(
-    'icon',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _parentFolderIdMeta = const VerificationMeta(
-    'parentFolderId',
-  );
-  @override
-  late final GeneratedColumn<String> parentFolderId = GeneratedColumn<String>(
-    'parent_folder_id',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES folders (id)',
-    ),
-  );
-  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
-    'sortOrder',
-  );
-  @override
-  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
-    'sort_order',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultValue: const Constant(0),
-  );
-  static const VerificationMeta _createdAtMeta = const VerificationMeta(
-    'createdAt',
-  );
-  @override
-  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
-    'created_at',
-    aliasedName,
-    false,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
-    'updatedAt',
-  );
-  @override
-  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
-    'updated_at',
-    aliasedName,
-    false,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: true,
-  );
-  @override
-  List<GeneratedColumn> get $columns => [
-    id,
-    name,
-    color,
-    icon,
-    parentFolderId,
-    sortOrder,
-    createdAt,
-    updatedAt,
-  ];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'folders';
-  @override
-  VerificationContext validateIntegrity(
-    Insertable<Folder> instance, {
-    bool isInserting = false,
-  }) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    } else if (isInserting) {
-      context.missing(_idMeta);
-    }
-    if (data.containsKey('name')) {
-      context.handle(
-        _nameMeta,
-        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_nameMeta);
-    }
-    if (data.containsKey('color')) {
-      context.handle(
-        _colorMeta,
-        color.isAcceptableOrUnknown(data['color']!, _colorMeta),
-      );
-    }
-    if (data.containsKey('icon')) {
-      context.handle(
-        _iconMeta,
-        icon.isAcceptableOrUnknown(data['icon']!, _iconMeta),
-      );
-    }
-    if (data.containsKey('parent_folder_id')) {
-      context.handle(
-        _parentFolderIdMeta,
-        parentFolderId.isAcceptableOrUnknown(
-          data['parent_folder_id']!,
-          _parentFolderIdMeta,
-        ),
-      );
-    }
-    if (data.containsKey('sort_order')) {
-      context.handle(
-        _sortOrderMeta,
-        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
-      );
-    }
-    if (data.containsKey('created_at')) {
-      context.handle(
-        _createdAtMeta,
-        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_createdAtMeta);
-    }
-    if (data.containsKey('updated_at')) {
-      context.handle(
-        _updatedAtMeta,
-        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_updatedAtMeta);
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {id};
-  @override
-  Folder map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return Folder(
-      id: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}id'],
-      )!,
-      name: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}name'],
-      )!,
-      color: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}color'],
-      ),
-      icon: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}icon'],
-      ),
-      parentFolderId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}parent_folder_id'],
-      ),
-      sortOrder: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}sort_order'],
-      )!,
-      createdAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}created_at'],
-      )!,
-      updatedAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}updated_at'],
-      )!,
-    );
-  }
-
-  @override
-  $FoldersTable createAlias(String alias) {
-    return $FoldersTable(attachedDatabase, alias);
-  }
-}
-
-class Folder extends DataClass implements Insertable<Folder> {
-  final String id;
-  final String name;
-  final String? color;
-  final String? icon;
-  final String? parentFolderId;
-  final int sortOrder;
-  final DateTime createdAt;
-  final DateTime updatedAt;
-  const Folder({
-    required this.id,
-    required this.name,
-    this.color,
-    this.icon,
-    this.parentFolderId,
-    required this.sortOrder,
-    required this.createdAt,
-    required this.updatedAt,
-  });
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['id'] = Variable<String>(id);
-    map['name'] = Variable<String>(name);
-    if (!nullToAbsent || color != null) {
-      map['color'] = Variable<String>(color);
-    }
-    if (!nullToAbsent || icon != null) {
-      map['icon'] = Variable<String>(icon);
-    }
-    if (!nullToAbsent || parentFolderId != null) {
-      map['parent_folder_id'] = Variable<String>(parentFolderId);
-    }
-    map['sort_order'] = Variable<int>(sortOrder);
-    map['created_at'] = Variable<DateTime>(createdAt);
-    map['updated_at'] = Variable<DateTime>(updatedAt);
-    return map;
-  }
-
-  FoldersCompanion toCompanion(bool nullToAbsent) {
-    return FoldersCompanion(
-      id: Value(id),
-      name: Value(name),
-      color: color == null && nullToAbsent
-          ? const Value.absent()
-          : Value(color),
-      icon: icon == null && nullToAbsent ? const Value.absent() : Value(icon),
-      parentFolderId: parentFolderId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(parentFolderId),
-      sortOrder: Value(sortOrder),
-      createdAt: Value(createdAt),
-      updatedAt: Value(updatedAt),
-    );
-  }
-
-  factory Folder.fromJson(
-    Map<String, dynamic> json, {
-    ValueSerializer? serializer,
-  }) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return Folder(
-      id: serializer.fromJson<String>(json['id']),
-      name: serializer.fromJson<String>(json['name']),
-      color: serializer.fromJson<String?>(json['color']),
-      icon: serializer.fromJson<String?>(json['icon']),
-      parentFolderId: serializer.fromJson<String?>(json['parentFolderId']),
-      sortOrder: serializer.fromJson<int>(json['sortOrder']),
-      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
-      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'id': serializer.toJson<String>(id),
-      'name': serializer.toJson<String>(name),
-      'color': serializer.toJson<String?>(color),
-      'icon': serializer.toJson<String?>(icon),
-      'parentFolderId': serializer.toJson<String?>(parentFolderId),
-      'sortOrder': serializer.toJson<int>(sortOrder),
-      'createdAt': serializer.toJson<DateTime>(createdAt),
-      'updatedAt': serializer.toJson<DateTime>(updatedAt),
-    };
-  }
-
-  Folder copyWith({
-    String? id,
-    String? name,
-    Value<String?> color = const Value.absent(),
-    Value<String?> icon = const Value.absent(),
-    Value<String?> parentFolderId = const Value.absent(),
-    int? sortOrder,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-  }) => Folder(
-    id: id ?? this.id,
-    name: name ?? this.name,
-    color: color.present ? color.value : this.color,
-    icon: icon.present ? icon.value : this.icon,
-    parentFolderId: parentFolderId.present
-        ? parentFolderId.value
-        : this.parentFolderId,
-    sortOrder: sortOrder ?? this.sortOrder,
-    createdAt: createdAt ?? this.createdAt,
-    updatedAt: updatedAt ?? this.updatedAt,
-  );
-  Folder copyWithCompanion(FoldersCompanion data) {
-    return Folder(
-      id: data.id.present ? data.id.value : this.id,
-      name: data.name.present ? data.name.value : this.name,
-      color: data.color.present ? data.color.value : this.color,
-      icon: data.icon.present ? data.icon.value : this.icon,
-      parentFolderId: data.parentFolderId.present
-          ? data.parentFolderId.value
-          : this.parentFolderId,
-      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
-      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
-      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
-    );
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('Folder(')
-          ..write('id: $id, ')
-          ..write('name: $name, ')
-          ..write('color: $color, ')
-          ..write('icon: $icon, ')
-          ..write('parentFolderId: $parentFolderId, ')
           ..write('sortOrder: $sortOrder, ')
-          ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
-          ..write(')'))
-        .toString();
-  }
-
-  @override
-  int get hashCode => Object.hash(
-    id,
-    name,
-    color,
-    icon,
-    parentFolderId,
-    sortOrder,
-    createdAt,
-    updatedAt,
-  );
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is Folder &&
-          other.id == this.id &&
-          other.name == this.name &&
-          other.color == this.color &&
-          other.icon == this.icon &&
-          other.parentFolderId == this.parentFolderId &&
-          other.sortOrder == this.sortOrder &&
-          other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
-}
-
-class FoldersCompanion extends UpdateCompanion<Folder> {
-  final Value<String> id;
-  final Value<String> name;
-  final Value<String?> color;
-  final Value<String?> icon;
-  final Value<String?> parentFolderId;
-  final Value<int> sortOrder;
-  final Value<DateTime> createdAt;
-  final Value<DateTime> updatedAt;
-  final Value<int> rowid;
-  const FoldersCompanion({
-    this.id = const Value.absent(),
-    this.name = const Value.absent(),
-    this.color = const Value.absent(),
-    this.icon = const Value.absent(),
-    this.parentFolderId = const Value.absent(),
-    this.sortOrder = const Value.absent(),
-    this.createdAt = const Value.absent(),
-    this.updatedAt = const Value.absent(),
-    this.rowid = const Value.absent(),
-  });
-  FoldersCompanion.insert({
-    required String id,
-    required String name,
-    this.color = const Value.absent(),
-    this.icon = const Value.absent(),
-    this.parentFolderId = const Value.absent(),
-    this.sortOrder = const Value.absent(),
-    required DateTime createdAt,
-    required DateTime updatedAt,
-    this.rowid = const Value.absent(),
-  }) : id = Value(id),
-       name = Value(name),
-       createdAt = Value(createdAt),
-       updatedAt = Value(updatedAt);
-  static Insertable<Folder> custom({
-    Expression<String>? id,
-    Expression<String>? name,
-    Expression<String>? color,
-    Expression<String>? icon,
-    Expression<String>? parentFolderId,
-    Expression<int>? sortOrder,
-    Expression<DateTime>? createdAt,
-    Expression<DateTime>? updatedAt,
-    Expression<int>? rowid,
-  }) {
-    return RawValuesInsertable({
-      if (id != null) 'id': id,
-      if (name != null) 'name': name,
-      if (color != null) 'color': color,
-      if (icon != null) 'icon': icon,
-      if (parentFolderId != null) 'parent_folder_id': parentFolderId,
-      if (sortOrder != null) 'sort_order': sortOrder,
-      if (createdAt != null) 'created_at': createdAt,
-      if (updatedAt != null) 'updated_at': updatedAt,
-      if (rowid != null) 'rowid': rowid,
-    });
-  }
-
-  FoldersCompanion copyWith({
-    Value<String>? id,
-    Value<String>? name,
-    Value<String?>? color,
-    Value<String?>? icon,
-    Value<String?>? parentFolderId,
-    Value<int>? sortOrder,
-    Value<DateTime>? createdAt,
-    Value<DateTime>? updatedAt,
-    Value<int>? rowid,
-  }) {
-    return FoldersCompanion(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      color: color ?? this.color,
-      icon: icon ?? this.icon,
-      parentFolderId: parentFolderId ?? this.parentFolderId,
-      sortOrder: sortOrder ?? this.sortOrder,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-      rowid: rowid ?? this.rowid,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (id.present) {
-      map['id'] = Variable<String>(id.value);
-    }
-    if (name.present) {
-      map['name'] = Variable<String>(name.value);
-    }
-    if (color.present) {
-      map['color'] = Variable<String>(color.value);
-    }
-    if (icon.present) {
-      map['icon'] = Variable<String>(icon.value);
-    }
-    if (parentFolderId.present) {
-      map['parent_folder_id'] = Variable<String>(parentFolderId.value);
-    }
-    if (sortOrder.present) {
-      map['sort_order'] = Variable<int>(sortOrder.value);
-    }
-    if (createdAt.present) {
-      map['created_at'] = Variable<DateTime>(createdAt.value);
-    }
-    if (updatedAt.present) {
-      map['updated_at'] = Variable<DateTime>(updatedAt.value);
-    }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('FoldersCompanion(')
-          ..write('id: $id, ')
-          ..write('name: $name, ')
-          ..write('color: $color, ')
-          ..write('icon: $icon, ')
-          ..write('parentFolderId: $parentFolderId, ')
-          ..write('sortOrder: $sortOrder, ')
+          ..write('deletedAt: $deletedAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -2421,8 +2163,30 @@ class $TaskTagsTable extends TaskTags with TableInfo<$TaskTagsTable, TaskTag> {
       'REFERENCES tags (id)',
     ),
   );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
   @override
-  List<GeneratedColumn> get $columns => [taskId, tagId];
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [taskId, tagId, updatedAt, deletedAt];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -2451,6 +2215,20 @@ class $TaskTagsTable extends TaskTags with TableInfo<$TaskTagsTable, TaskTag> {
     } else if (isInserting) {
       context.missing(_tagIdMeta);
     }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
     return context;
   }
 
@@ -2468,6 +2246,14 @@ class $TaskTagsTable extends TaskTags with TableInfo<$TaskTagsTable, TaskTag> {
         DriftSqlType.string,
         data['${effectivePrefix}tag_id'],
       )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
     );
   }
 
@@ -2480,17 +2266,35 @@ class $TaskTagsTable extends TaskTags with TableInfo<$TaskTagsTable, TaskTag> {
 class TaskTag extends DataClass implements Insertable<TaskTag> {
   final String taskId;
   final String tagId;
-  const TaskTag({required this.taskId, required this.tagId});
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  const TaskTag({
+    required this.taskId,
+    required this.tagId,
+    required this.updatedAt,
+    this.deletedAt,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['task_id'] = Variable<String>(taskId);
     map['tag_id'] = Variable<String>(tagId);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
     return map;
   }
 
   TaskTagsCompanion toCompanion(bool nullToAbsent) {
-    return TaskTagsCompanion(taskId: Value(taskId), tagId: Value(tagId));
+    return TaskTagsCompanion(
+      taskId: Value(taskId),
+      tagId: Value(tagId),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+    );
   }
 
   factory TaskTag.fromJson(
@@ -2501,6 +2305,8 @@ class TaskTag extends DataClass implements Insertable<TaskTag> {
     return TaskTag(
       taskId: serializer.fromJson<String>(json['taskId']),
       tagId: serializer.fromJson<String>(json['tagId']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
     );
   }
   @override
@@ -2509,15 +2315,28 @@ class TaskTag extends DataClass implements Insertable<TaskTag> {
     return <String, dynamic>{
       'taskId': serializer.toJson<String>(taskId),
       'tagId': serializer.toJson<String>(tagId),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
     };
   }
 
-  TaskTag copyWith({String? taskId, String? tagId}) =>
-      TaskTag(taskId: taskId ?? this.taskId, tagId: tagId ?? this.tagId);
+  TaskTag copyWith({
+    String? taskId,
+    String? tagId,
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+  }) => TaskTag(
+    taskId: taskId ?? this.taskId,
+    tagId: tagId ?? this.tagId,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+  );
   TaskTag copyWithCompanion(TaskTagsCompanion data) {
     return TaskTag(
       taskId: data.taskId.present ? data.taskId.value : this.taskId,
       tagId: data.tagId.present ? data.tagId.value : this.tagId,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
     );
   }
 
@@ -2525,44 +2344,59 @@ class TaskTag extends DataClass implements Insertable<TaskTag> {
   String toString() {
     return (StringBuffer('TaskTag(')
           ..write('taskId: $taskId, ')
-          ..write('tagId: $tagId')
+          ..write('tagId: $tagId, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(taskId, tagId);
+  int get hashCode => Object.hash(taskId, tagId, updatedAt, deletedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is TaskTag &&
           other.taskId == this.taskId &&
-          other.tagId == this.tagId);
+          other.tagId == this.tagId &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt);
 }
 
 class TaskTagsCompanion extends UpdateCompanion<TaskTag> {
   final Value<String> taskId;
   final Value<String> tagId;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
   final Value<int> rowid;
   const TaskTagsCompanion({
     this.taskId = const Value.absent(),
     this.tagId = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   TaskTagsCompanion.insert({
     required String taskId,
     required String tagId,
+    required DateTime updatedAt,
+    this.deletedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : taskId = Value(taskId),
-       tagId = Value(tagId);
+       tagId = Value(tagId),
+       updatedAt = Value(updatedAt);
   static Insertable<TaskTag> custom({
     Expression<String>? taskId,
     Expression<String>? tagId,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (taskId != null) 'task_id': taskId,
       if (tagId != null) 'tag_id': tagId,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2570,11 +2404,15 @@ class TaskTagsCompanion extends UpdateCompanion<TaskTag> {
   TaskTagsCompanion copyWith({
     Value<String>? taskId,
     Value<String>? tagId,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
     Value<int>? rowid,
   }) {
     return TaskTagsCompanion(
       taskId: taskId ?? this.taskId,
       tagId: tagId ?? this.tagId,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2588,6 +2426,12 @@ class TaskTagsCompanion extends UpdateCompanion<TaskTag> {
     if (tagId.present) {
       map['tag_id'] = Variable<String>(tagId.value);
     }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2599,203 +2443,410 @@ class TaskTagsCompanion extends UpdateCompanion<TaskTag> {
     return (StringBuffer('TaskTagsCompanion(')
           ..write('taskId: $taskId, ')
           ..write('tagId: $tagId, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
 }
 
-class $TaskFoldersTable extends TaskFolders
-    with TableInfo<$TaskFoldersTable, TaskFolder> {
+class $EcampusCoursesTable extends EcampusCourses
+    with TableInfo<$EcampusCoursesTable, EcampusCourse> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
-  $TaskFoldersTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _taskIdMeta = const VerificationMeta('taskId');
+  $EcampusCoursesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
-  late final GeneratedColumn<String> taskId = GeneratedColumn<String>(
-    'task_id',
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
     aliasedName,
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES tasks (id)',
-    ),
   );
-  static const VerificationMeta _folderIdMeta = const VerificationMeta(
-    'folderId',
+  static const VerificationMeta _sourceScopeIdMeta = const VerificationMeta(
+    'sourceScopeId',
   );
   @override
-  late final GeneratedColumn<String> folderId = GeneratedColumn<String>(
-    'folder_id',
+  late final GeneratedColumn<String> sourceScopeId = GeneratedColumn<String>(
+    'source_scope_id',
     aliasedName,
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES folders (id)',
-    ),
+  );
+  static const VerificationMeta _externalCourseKeyMeta = const VerificationMeta(
+    'externalCourseKey',
   );
   @override
-  List<GeneratedColumn> get $columns => [taskId, folderId];
+  late final GeneratedColumn<String> externalCourseKey =
+      GeneratedColumn<String>(
+        'external_course_key',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _tagIdMeta = const VerificationMeta('tagId');
+  @override
+  late final GeneratedColumn<String> tagId = GeneratedColumn<String>(
+    'tag_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES tags (id)',
+    ),
+  );
+  static const VerificationMeta _lastObservedAtMeta = const VerificationMeta(
+    'lastObservedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastObservedAt =
+      GeneratedColumn<DateTime>(
+        'last_observed_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: true,
+      );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    sourceScopeId,
+    externalCourseKey,
+    name,
+    tagId,
+    lastObservedAt,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
-  static const String $name = 'task_folders';
+  static const String $name = 'ecampus_courses';
   @override
   VerificationContext validateIntegrity(
-    Insertable<TaskFolder> instance, {
+    Insertable<EcampusCourse> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
-    if (data.containsKey('task_id')) {
-      context.handle(
-        _taskIdMeta,
-        taskId.isAcceptableOrUnknown(data['task_id']!, _taskIdMeta),
-      );
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     } else if (isInserting) {
-      context.missing(_taskIdMeta);
+      context.missing(_idMeta);
     }
-    if (data.containsKey('folder_id')) {
+    if (data.containsKey('source_scope_id')) {
       context.handle(
-        _folderIdMeta,
-        folderId.isAcceptableOrUnknown(data['folder_id']!, _folderIdMeta),
+        _sourceScopeIdMeta,
+        sourceScopeId.isAcceptableOrUnknown(
+          data['source_scope_id']!,
+          _sourceScopeIdMeta,
+        ),
       );
     } else if (isInserting) {
-      context.missing(_folderIdMeta);
+      context.missing(_sourceScopeIdMeta);
+    }
+    if (data.containsKey('external_course_key')) {
+      context.handle(
+        _externalCourseKeyMeta,
+        externalCourseKey.isAcceptableOrUnknown(
+          data['external_course_key']!,
+          _externalCourseKeyMeta,
+        ),
+      );
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('tag_id')) {
+      context.handle(
+        _tagIdMeta,
+        tagId.isAcceptableOrUnknown(data['tag_id']!, _tagIdMeta),
+      );
+    }
+    if (data.containsKey('last_observed_at')) {
+      context.handle(
+        _lastObservedAtMeta,
+        lastObservedAt.isAcceptableOrUnknown(
+          data['last_observed_at']!,
+          _lastObservedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_lastObservedAtMeta);
     }
     return context;
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {taskId, folderId};
+  Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  TaskFolder map(Map<String, dynamic> data, {String? tablePrefix}) {
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {sourceScopeId, externalCourseKey},
+  ];
+  @override
+  EcampusCourse map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return TaskFolder(
-      taskId: attachedDatabase.typeMapping.read(
+    return EcampusCourse(
+      id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}task_id'],
+        data['${effectivePrefix}id'],
       )!,
-      folderId: attachedDatabase.typeMapping.read(
+      sourceScopeId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}folder_id'],
+        data['${effectivePrefix}source_scope_id'],
+      )!,
+      externalCourseKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}external_course_key'],
+      ),
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      tagId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tag_id'],
+      ),
+      lastObservedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_observed_at'],
       )!,
     );
   }
 
   @override
-  $TaskFoldersTable createAlias(String alias) {
-    return $TaskFoldersTable(attachedDatabase, alias);
+  $EcampusCoursesTable createAlias(String alias) {
+    return $EcampusCoursesTable(attachedDatabase, alias);
   }
 }
 
-class TaskFolder extends DataClass implements Insertable<TaskFolder> {
-  final String taskId;
-  final String folderId;
-  const TaskFolder({required this.taskId, required this.folderId});
+class EcampusCourse extends DataClass implements Insertable<EcampusCourse> {
+  final String id;
+  final String sourceScopeId;
+  final String? externalCourseKey;
+  final String name;
+  final String? tagId;
+  final DateTime lastObservedAt;
+  const EcampusCourse({
+    required this.id,
+    required this.sourceScopeId,
+    this.externalCourseKey,
+    required this.name,
+    this.tagId,
+    required this.lastObservedAt,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['task_id'] = Variable<String>(taskId);
-    map['folder_id'] = Variable<String>(folderId);
+    map['id'] = Variable<String>(id);
+    map['source_scope_id'] = Variable<String>(sourceScopeId);
+    if (!nullToAbsent || externalCourseKey != null) {
+      map['external_course_key'] = Variable<String>(externalCourseKey);
+    }
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || tagId != null) {
+      map['tag_id'] = Variable<String>(tagId);
+    }
+    map['last_observed_at'] = Variable<DateTime>(lastObservedAt);
     return map;
   }
 
-  TaskFoldersCompanion toCompanion(bool nullToAbsent) {
-    return TaskFoldersCompanion(
-      taskId: Value(taskId),
-      folderId: Value(folderId),
+  EcampusCoursesCompanion toCompanion(bool nullToAbsent) {
+    return EcampusCoursesCompanion(
+      id: Value(id),
+      sourceScopeId: Value(sourceScopeId),
+      externalCourseKey: externalCourseKey == null && nullToAbsent
+          ? const Value.absent()
+          : Value(externalCourseKey),
+      name: Value(name),
+      tagId: tagId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tagId),
+      lastObservedAt: Value(lastObservedAt),
     );
   }
 
-  factory TaskFolder.fromJson(
+  factory EcampusCourse.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return TaskFolder(
-      taskId: serializer.fromJson<String>(json['taskId']),
-      folderId: serializer.fromJson<String>(json['folderId']),
+    return EcampusCourse(
+      id: serializer.fromJson<String>(json['id']),
+      sourceScopeId: serializer.fromJson<String>(json['sourceScopeId']),
+      externalCourseKey: serializer.fromJson<String?>(
+        json['externalCourseKey'],
+      ),
+      name: serializer.fromJson<String>(json['name']),
+      tagId: serializer.fromJson<String?>(json['tagId']),
+      lastObservedAt: serializer.fromJson<DateTime>(json['lastObservedAt']),
     );
   }
   @override
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'taskId': serializer.toJson<String>(taskId),
-      'folderId': serializer.toJson<String>(folderId),
+      'id': serializer.toJson<String>(id),
+      'sourceScopeId': serializer.toJson<String>(sourceScopeId),
+      'externalCourseKey': serializer.toJson<String?>(externalCourseKey),
+      'name': serializer.toJson<String>(name),
+      'tagId': serializer.toJson<String?>(tagId),
+      'lastObservedAt': serializer.toJson<DateTime>(lastObservedAt),
     };
   }
 
-  TaskFolder copyWith({String? taskId, String? folderId}) => TaskFolder(
-    taskId: taskId ?? this.taskId,
-    folderId: folderId ?? this.folderId,
+  EcampusCourse copyWith({
+    String? id,
+    String? sourceScopeId,
+    Value<String?> externalCourseKey = const Value.absent(),
+    String? name,
+    Value<String?> tagId = const Value.absent(),
+    DateTime? lastObservedAt,
+  }) => EcampusCourse(
+    id: id ?? this.id,
+    sourceScopeId: sourceScopeId ?? this.sourceScopeId,
+    externalCourseKey: externalCourseKey.present
+        ? externalCourseKey.value
+        : this.externalCourseKey,
+    name: name ?? this.name,
+    tagId: tagId.present ? tagId.value : this.tagId,
+    lastObservedAt: lastObservedAt ?? this.lastObservedAt,
   );
-  TaskFolder copyWithCompanion(TaskFoldersCompanion data) {
-    return TaskFolder(
-      taskId: data.taskId.present ? data.taskId.value : this.taskId,
-      folderId: data.folderId.present ? data.folderId.value : this.folderId,
+  EcampusCourse copyWithCompanion(EcampusCoursesCompanion data) {
+    return EcampusCourse(
+      id: data.id.present ? data.id.value : this.id,
+      sourceScopeId: data.sourceScopeId.present
+          ? data.sourceScopeId.value
+          : this.sourceScopeId,
+      externalCourseKey: data.externalCourseKey.present
+          ? data.externalCourseKey.value
+          : this.externalCourseKey,
+      name: data.name.present ? data.name.value : this.name,
+      tagId: data.tagId.present ? data.tagId.value : this.tagId,
+      lastObservedAt: data.lastObservedAt.present
+          ? data.lastObservedAt.value
+          : this.lastObservedAt,
     );
   }
 
   @override
   String toString() {
-    return (StringBuffer('TaskFolder(')
-          ..write('taskId: $taskId, ')
-          ..write('folderId: $folderId')
+    return (StringBuffer('EcampusCourse(')
+          ..write('id: $id, ')
+          ..write('sourceScopeId: $sourceScopeId, ')
+          ..write('externalCourseKey: $externalCourseKey, ')
+          ..write('name: $name, ')
+          ..write('tagId: $tagId, ')
+          ..write('lastObservedAt: $lastObservedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(taskId, folderId);
+  int get hashCode => Object.hash(
+    id,
+    sourceScopeId,
+    externalCourseKey,
+    name,
+    tagId,
+    lastObservedAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is TaskFolder &&
-          other.taskId == this.taskId &&
-          other.folderId == this.folderId);
+      (other is EcampusCourse &&
+          other.id == this.id &&
+          other.sourceScopeId == this.sourceScopeId &&
+          other.externalCourseKey == this.externalCourseKey &&
+          other.name == this.name &&
+          other.tagId == this.tagId &&
+          other.lastObservedAt == this.lastObservedAt);
 }
 
-class TaskFoldersCompanion extends UpdateCompanion<TaskFolder> {
-  final Value<String> taskId;
-  final Value<String> folderId;
+class EcampusCoursesCompanion extends UpdateCompanion<EcampusCourse> {
+  final Value<String> id;
+  final Value<String> sourceScopeId;
+  final Value<String?> externalCourseKey;
+  final Value<String> name;
+  final Value<String?> tagId;
+  final Value<DateTime> lastObservedAt;
   final Value<int> rowid;
-  const TaskFoldersCompanion({
-    this.taskId = const Value.absent(),
-    this.folderId = const Value.absent(),
+  const EcampusCoursesCompanion({
+    this.id = const Value.absent(),
+    this.sourceScopeId = const Value.absent(),
+    this.externalCourseKey = const Value.absent(),
+    this.name = const Value.absent(),
+    this.tagId = const Value.absent(),
+    this.lastObservedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
-  TaskFoldersCompanion.insert({
-    required String taskId,
-    required String folderId,
+  EcampusCoursesCompanion.insert({
+    required String id,
+    required String sourceScopeId,
+    this.externalCourseKey = const Value.absent(),
+    required String name,
+    this.tagId = const Value.absent(),
+    required DateTime lastObservedAt,
     this.rowid = const Value.absent(),
-  }) : taskId = Value(taskId),
-       folderId = Value(folderId);
-  static Insertable<TaskFolder> custom({
-    Expression<String>? taskId,
-    Expression<String>? folderId,
+  }) : id = Value(id),
+       sourceScopeId = Value(sourceScopeId),
+       name = Value(name),
+       lastObservedAt = Value(lastObservedAt);
+  static Insertable<EcampusCourse> custom({
+    Expression<String>? id,
+    Expression<String>? sourceScopeId,
+    Expression<String>? externalCourseKey,
+    Expression<String>? name,
+    Expression<String>? tagId,
+    Expression<DateTime>? lastObservedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
-      if (taskId != null) 'task_id': taskId,
-      if (folderId != null) 'folder_id': folderId,
+      if (id != null) 'id': id,
+      if (sourceScopeId != null) 'source_scope_id': sourceScopeId,
+      if (externalCourseKey != null) 'external_course_key': externalCourseKey,
+      if (name != null) 'name': name,
+      if (tagId != null) 'tag_id': tagId,
+      if (lastObservedAt != null) 'last_observed_at': lastObservedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
 
-  TaskFoldersCompanion copyWith({
-    Value<String>? taskId,
-    Value<String>? folderId,
+  EcampusCoursesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? sourceScopeId,
+    Value<String?>? externalCourseKey,
+    Value<String>? name,
+    Value<String?>? tagId,
+    Value<DateTime>? lastObservedAt,
     Value<int>? rowid,
   }) {
-    return TaskFoldersCompanion(
-      taskId: taskId ?? this.taskId,
-      folderId: folderId ?? this.folderId,
+    return EcampusCoursesCompanion(
+      id: id ?? this.id,
+      sourceScopeId: sourceScopeId ?? this.sourceScopeId,
+      externalCourseKey: externalCourseKey ?? this.externalCourseKey,
+      name: name ?? this.name,
+      tagId: tagId ?? this.tagId,
+      lastObservedAt: lastObservedAt ?? this.lastObservedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2803,11 +2854,23 @@ class TaskFoldersCompanion extends UpdateCompanion<TaskFolder> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    if (taskId.present) {
-      map['task_id'] = Variable<String>(taskId.value);
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
     }
-    if (folderId.present) {
-      map['folder_id'] = Variable<String>(folderId.value);
+    if (sourceScopeId.present) {
+      map['source_scope_id'] = Variable<String>(sourceScopeId.value);
+    }
+    if (externalCourseKey.present) {
+      map['external_course_key'] = Variable<String>(externalCourseKey.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (tagId.present) {
+      map['tag_id'] = Variable<String>(tagId.value);
+    }
+    if (lastObservedAt.present) {
+      map['last_observed_at'] = Variable<DateTime>(lastObservedAt.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -2817,21 +2880,25 @@ class TaskFoldersCompanion extends UpdateCompanion<TaskFolder> {
 
   @override
   String toString() {
-    return (StringBuffer('TaskFoldersCompanion(')
-          ..write('taskId: $taskId, ')
-          ..write('folderId: $folderId, ')
+    return (StringBuffer('EcampusCoursesCompanion(')
+          ..write('id: $id, ')
+          ..write('sourceScopeId: $sourceScopeId, ')
+          ..write('externalCourseKey: $externalCourseKey, ')
+          ..write('name: $name, ')
+          ..write('tagId: $tagId, ')
+          ..write('lastObservedAt: $lastObservedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
 }
 
-class $NotificationSettingsTable extends NotificationSettings
-    with TableInfo<$NotificationSettingsTable, NotificationSetting> {
+class $EcampusItemsTable extends EcampusItems
+    with TableInfo<$EcampusItemsTable, EcampusItem> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
-  $NotificationSettingsTable(this.attachedDatabase, [this._alias]);
+  $EcampusItemsTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
@@ -2840,6 +2907,1346 @@ class $NotificationSettingsTable extends NotificationSettings
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceScopeIdMeta = const VerificationMeta(
+    'sourceScopeId',
+  );
+  @override
+  late final GeneratedColumn<String> sourceScopeId = GeneratedColumn<String>(
+    'source_scope_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _courseIdMeta = const VerificationMeta(
+    'courseId',
+  );
+  @override
+  late final GeneratedColumn<String> courseId = GeneratedColumn<String>(
+    'course_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES ecampus_courses (id)',
+    ),
+  );
+  static const VerificationMeta _externalKeyMeta = const VerificationMeta(
+    'externalKey',
+  );
+  @override
+  late final GeneratedColumn<String> externalKey = GeneratedColumn<String>(
+    'external_key',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sourceTitleMeta = const VerificationMeta(
+    'sourceTitle',
+  );
+  @override
+  late final GeneratedColumn<String> sourceTitle = GeneratedColumn<String>(
+    'source_title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceCourseMeta = const VerificationMeta(
+    'sourceCourse',
+  );
+  @override
+  late final GeneratedColumn<String> sourceCourse = GeneratedColumn<String>(
+    'source_course',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sourceTypeMeta = const VerificationMeta(
+    'sourceType',
+  );
+  @override
+  late final GeneratedColumn<String> sourceType = GeneratedColumn<String>(
+    'source_type',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sourceStartAtMeta = const VerificationMeta(
+    'sourceStartAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> sourceStartAt =
+      GeneratedColumn<DateTime>(
+        'source_start_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _sourceEndAtMeta = const VerificationMeta(
+    'sourceEndAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> sourceEndAt = GeneratedColumn<DateTime>(
+    'source_end_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _taskIdMeta = const VerificationMeta('taskId');
+  @override
+  late final GeneratedColumn<String> taskId = GeneratedColumn<String>(
+    'task_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'UNIQUE REFERENCES tasks (id)',
+    ),
+  );
+  static const VerificationMeta _importStateMeta = const VerificationMeta(
+    'importState',
+  );
+  @override
+  late final GeneratedColumn<String> importState = GeneratedColumn<String>(
+    'import_state',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _firstObservedAtMeta = const VerificationMeta(
+    'firstObservedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> firstObservedAt =
+      GeneratedColumn<DateTime>(
+        'first_observed_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _lastObservedAtMeta = const VerificationMeta(
+    'lastObservedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastObservedAt =
+      GeneratedColumn<DateTime>(
+        'last_observed_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: true,
+      );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    sourceScopeId,
+    courseId,
+    externalKey,
+    sourceTitle,
+    sourceCourse,
+    sourceType,
+    sourceStartAt,
+    sourceEndAt,
+    taskId,
+    importState,
+    firstObservedAt,
+    lastObservedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'ecampus_items';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<EcampusItem> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('source_scope_id')) {
+      context.handle(
+        _sourceScopeIdMeta,
+        sourceScopeId.isAcceptableOrUnknown(
+          data['source_scope_id']!,
+          _sourceScopeIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceScopeIdMeta);
+    }
+    if (data.containsKey('course_id')) {
+      context.handle(
+        _courseIdMeta,
+        courseId.isAcceptableOrUnknown(data['course_id']!, _courseIdMeta),
+      );
+    }
+    if (data.containsKey('external_key')) {
+      context.handle(
+        _externalKeyMeta,
+        externalKey.isAcceptableOrUnknown(
+          data['external_key']!,
+          _externalKeyMeta,
+        ),
+      );
+    }
+    if (data.containsKey('source_title')) {
+      context.handle(
+        _sourceTitleMeta,
+        sourceTitle.isAcceptableOrUnknown(
+          data['source_title']!,
+          _sourceTitleMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceTitleMeta);
+    }
+    if (data.containsKey('source_course')) {
+      context.handle(
+        _sourceCourseMeta,
+        sourceCourse.isAcceptableOrUnknown(
+          data['source_course']!,
+          _sourceCourseMeta,
+        ),
+      );
+    }
+    if (data.containsKey('source_type')) {
+      context.handle(
+        _sourceTypeMeta,
+        sourceType.isAcceptableOrUnknown(data['source_type']!, _sourceTypeMeta),
+      );
+    }
+    if (data.containsKey('source_start_at')) {
+      context.handle(
+        _sourceStartAtMeta,
+        sourceStartAt.isAcceptableOrUnknown(
+          data['source_start_at']!,
+          _sourceStartAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('source_end_at')) {
+      context.handle(
+        _sourceEndAtMeta,
+        sourceEndAt.isAcceptableOrUnknown(
+          data['source_end_at']!,
+          _sourceEndAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('task_id')) {
+      context.handle(
+        _taskIdMeta,
+        taskId.isAcceptableOrUnknown(data['task_id']!, _taskIdMeta),
+      );
+    }
+    if (data.containsKey('import_state')) {
+      context.handle(
+        _importStateMeta,
+        importState.isAcceptableOrUnknown(
+          data['import_state']!,
+          _importStateMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_importStateMeta);
+    }
+    if (data.containsKey('first_observed_at')) {
+      context.handle(
+        _firstObservedAtMeta,
+        firstObservedAt.isAcceptableOrUnknown(
+          data['first_observed_at']!,
+          _firstObservedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_firstObservedAtMeta);
+    }
+    if (data.containsKey('last_observed_at')) {
+      context.handle(
+        _lastObservedAtMeta,
+        lastObservedAt.isAcceptableOrUnknown(
+          data['last_observed_at']!,
+          _lastObservedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_lastObservedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {sourceScopeId, externalKey},
+  ];
+  @override
+  EcampusItem map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return EcampusItem(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      sourceScopeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_scope_id'],
+      )!,
+      courseId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}course_id'],
+      ),
+      externalKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}external_key'],
+      ),
+      sourceTitle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_title'],
+      )!,
+      sourceCourse: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_course'],
+      ),
+      sourceType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_type'],
+      ),
+      sourceStartAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}source_start_at'],
+      ),
+      sourceEndAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}source_end_at'],
+      ),
+      taskId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}task_id'],
+      ),
+      importState: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}import_state'],
+      )!,
+      firstObservedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}first_observed_at'],
+      )!,
+      lastObservedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_observed_at'],
+      )!,
+    );
+  }
+
+  @override
+  $EcampusItemsTable createAlias(String alias) {
+    return $EcampusItemsTable(attachedDatabase, alias);
+  }
+}
+
+class EcampusItem extends DataClass implements Insertable<EcampusItem> {
+  final String id;
+  final String sourceScopeId;
+  final String? courseId;
+  final String? externalKey;
+  final String sourceTitle;
+  final String? sourceCourse;
+  final String? sourceType;
+  final DateTime? sourceStartAt;
+  final DateTime? sourceEndAt;
+  final String? taskId;
+  final String importState;
+  final DateTime firstObservedAt;
+  final DateTime lastObservedAt;
+  const EcampusItem({
+    required this.id,
+    required this.sourceScopeId,
+    this.courseId,
+    this.externalKey,
+    required this.sourceTitle,
+    this.sourceCourse,
+    this.sourceType,
+    this.sourceStartAt,
+    this.sourceEndAt,
+    this.taskId,
+    required this.importState,
+    required this.firstObservedAt,
+    required this.lastObservedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['source_scope_id'] = Variable<String>(sourceScopeId);
+    if (!nullToAbsent || courseId != null) {
+      map['course_id'] = Variable<String>(courseId);
+    }
+    if (!nullToAbsent || externalKey != null) {
+      map['external_key'] = Variable<String>(externalKey);
+    }
+    map['source_title'] = Variable<String>(sourceTitle);
+    if (!nullToAbsent || sourceCourse != null) {
+      map['source_course'] = Variable<String>(sourceCourse);
+    }
+    if (!nullToAbsent || sourceType != null) {
+      map['source_type'] = Variable<String>(sourceType);
+    }
+    if (!nullToAbsent || sourceStartAt != null) {
+      map['source_start_at'] = Variable<DateTime>(sourceStartAt);
+    }
+    if (!nullToAbsent || sourceEndAt != null) {
+      map['source_end_at'] = Variable<DateTime>(sourceEndAt);
+    }
+    if (!nullToAbsent || taskId != null) {
+      map['task_id'] = Variable<String>(taskId);
+    }
+    map['import_state'] = Variable<String>(importState);
+    map['first_observed_at'] = Variable<DateTime>(firstObservedAt);
+    map['last_observed_at'] = Variable<DateTime>(lastObservedAt);
+    return map;
+  }
+
+  EcampusItemsCompanion toCompanion(bool nullToAbsent) {
+    return EcampusItemsCompanion(
+      id: Value(id),
+      sourceScopeId: Value(sourceScopeId),
+      courseId: courseId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(courseId),
+      externalKey: externalKey == null && nullToAbsent
+          ? const Value.absent()
+          : Value(externalKey),
+      sourceTitle: Value(sourceTitle),
+      sourceCourse: sourceCourse == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceCourse),
+      sourceType: sourceType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceType),
+      sourceStartAt: sourceStartAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceStartAt),
+      sourceEndAt: sourceEndAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceEndAt),
+      taskId: taskId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(taskId),
+      importState: Value(importState),
+      firstObservedAt: Value(firstObservedAt),
+      lastObservedAt: Value(lastObservedAt),
+    );
+  }
+
+  factory EcampusItem.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return EcampusItem(
+      id: serializer.fromJson<String>(json['id']),
+      sourceScopeId: serializer.fromJson<String>(json['sourceScopeId']),
+      courseId: serializer.fromJson<String?>(json['courseId']),
+      externalKey: serializer.fromJson<String?>(json['externalKey']),
+      sourceTitle: serializer.fromJson<String>(json['sourceTitle']),
+      sourceCourse: serializer.fromJson<String?>(json['sourceCourse']),
+      sourceType: serializer.fromJson<String?>(json['sourceType']),
+      sourceStartAt: serializer.fromJson<DateTime?>(json['sourceStartAt']),
+      sourceEndAt: serializer.fromJson<DateTime?>(json['sourceEndAt']),
+      taskId: serializer.fromJson<String?>(json['taskId']),
+      importState: serializer.fromJson<String>(json['importState']),
+      firstObservedAt: serializer.fromJson<DateTime>(json['firstObservedAt']),
+      lastObservedAt: serializer.fromJson<DateTime>(json['lastObservedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'sourceScopeId': serializer.toJson<String>(sourceScopeId),
+      'courseId': serializer.toJson<String?>(courseId),
+      'externalKey': serializer.toJson<String?>(externalKey),
+      'sourceTitle': serializer.toJson<String>(sourceTitle),
+      'sourceCourse': serializer.toJson<String?>(sourceCourse),
+      'sourceType': serializer.toJson<String?>(sourceType),
+      'sourceStartAt': serializer.toJson<DateTime?>(sourceStartAt),
+      'sourceEndAt': serializer.toJson<DateTime?>(sourceEndAt),
+      'taskId': serializer.toJson<String?>(taskId),
+      'importState': serializer.toJson<String>(importState),
+      'firstObservedAt': serializer.toJson<DateTime>(firstObservedAt),
+      'lastObservedAt': serializer.toJson<DateTime>(lastObservedAt),
+    };
+  }
+
+  EcampusItem copyWith({
+    String? id,
+    String? sourceScopeId,
+    Value<String?> courseId = const Value.absent(),
+    Value<String?> externalKey = const Value.absent(),
+    String? sourceTitle,
+    Value<String?> sourceCourse = const Value.absent(),
+    Value<String?> sourceType = const Value.absent(),
+    Value<DateTime?> sourceStartAt = const Value.absent(),
+    Value<DateTime?> sourceEndAt = const Value.absent(),
+    Value<String?> taskId = const Value.absent(),
+    String? importState,
+    DateTime? firstObservedAt,
+    DateTime? lastObservedAt,
+  }) => EcampusItem(
+    id: id ?? this.id,
+    sourceScopeId: sourceScopeId ?? this.sourceScopeId,
+    courseId: courseId.present ? courseId.value : this.courseId,
+    externalKey: externalKey.present ? externalKey.value : this.externalKey,
+    sourceTitle: sourceTitle ?? this.sourceTitle,
+    sourceCourse: sourceCourse.present ? sourceCourse.value : this.sourceCourse,
+    sourceType: sourceType.present ? sourceType.value : this.sourceType,
+    sourceStartAt: sourceStartAt.present
+        ? sourceStartAt.value
+        : this.sourceStartAt,
+    sourceEndAt: sourceEndAt.present ? sourceEndAt.value : this.sourceEndAt,
+    taskId: taskId.present ? taskId.value : this.taskId,
+    importState: importState ?? this.importState,
+    firstObservedAt: firstObservedAt ?? this.firstObservedAt,
+    lastObservedAt: lastObservedAt ?? this.lastObservedAt,
+  );
+  EcampusItem copyWithCompanion(EcampusItemsCompanion data) {
+    return EcampusItem(
+      id: data.id.present ? data.id.value : this.id,
+      sourceScopeId: data.sourceScopeId.present
+          ? data.sourceScopeId.value
+          : this.sourceScopeId,
+      courseId: data.courseId.present ? data.courseId.value : this.courseId,
+      externalKey: data.externalKey.present
+          ? data.externalKey.value
+          : this.externalKey,
+      sourceTitle: data.sourceTitle.present
+          ? data.sourceTitle.value
+          : this.sourceTitle,
+      sourceCourse: data.sourceCourse.present
+          ? data.sourceCourse.value
+          : this.sourceCourse,
+      sourceType: data.sourceType.present
+          ? data.sourceType.value
+          : this.sourceType,
+      sourceStartAt: data.sourceStartAt.present
+          ? data.sourceStartAt.value
+          : this.sourceStartAt,
+      sourceEndAt: data.sourceEndAt.present
+          ? data.sourceEndAt.value
+          : this.sourceEndAt,
+      taskId: data.taskId.present ? data.taskId.value : this.taskId,
+      importState: data.importState.present
+          ? data.importState.value
+          : this.importState,
+      firstObservedAt: data.firstObservedAt.present
+          ? data.firstObservedAt.value
+          : this.firstObservedAt,
+      lastObservedAt: data.lastObservedAt.present
+          ? data.lastObservedAt.value
+          : this.lastObservedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('EcampusItem(')
+          ..write('id: $id, ')
+          ..write('sourceScopeId: $sourceScopeId, ')
+          ..write('courseId: $courseId, ')
+          ..write('externalKey: $externalKey, ')
+          ..write('sourceTitle: $sourceTitle, ')
+          ..write('sourceCourse: $sourceCourse, ')
+          ..write('sourceType: $sourceType, ')
+          ..write('sourceStartAt: $sourceStartAt, ')
+          ..write('sourceEndAt: $sourceEndAt, ')
+          ..write('taskId: $taskId, ')
+          ..write('importState: $importState, ')
+          ..write('firstObservedAt: $firstObservedAt, ')
+          ..write('lastObservedAt: $lastObservedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    sourceScopeId,
+    courseId,
+    externalKey,
+    sourceTitle,
+    sourceCourse,
+    sourceType,
+    sourceStartAt,
+    sourceEndAt,
+    taskId,
+    importState,
+    firstObservedAt,
+    lastObservedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is EcampusItem &&
+          other.id == this.id &&
+          other.sourceScopeId == this.sourceScopeId &&
+          other.courseId == this.courseId &&
+          other.externalKey == this.externalKey &&
+          other.sourceTitle == this.sourceTitle &&
+          other.sourceCourse == this.sourceCourse &&
+          other.sourceType == this.sourceType &&
+          other.sourceStartAt == this.sourceStartAt &&
+          other.sourceEndAt == this.sourceEndAt &&
+          other.taskId == this.taskId &&
+          other.importState == this.importState &&
+          other.firstObservedAt == this.firstObservedAt &&
+          other.lastObservedAt == this.lastObservedAt);
+}
+
+class EcampusItemsCompanion extends UpdateCompanion<EcampusItem> {
+  final Value<String> id;
+  final Value<String> sourceScopeId;
+  final Value<String?> courseId;
+  final Value<String?> externalKey;
+  final Value<String> sourceTitle;
+  final Value<String?> sourceCourse;
+  final Value<String?> sourceType;
+  final Value<DateTime?> sourceStartAt;
+  final Value<DateTime?> sourceEndAt;
+  final Value<String?> taskId;
+  final Value<String> importState;
+  final Value<DateTime> firstObservedAt;
+  final Value<DateTime> lastObservedAt;
+  final Value<int> rowid;
+  const EcampusItemsCompanion({
+    this.id = const Value.absent(),
+    this.sourceScopeId = const Value.absent(),
+    this.courseId = const Value.absent(),
+    this.externalKey = const Value.absent(),
+    this.sourceTitle = const Value.absent(),
+    this.sourceCourse = const Value.absent(),
+    this.sourceType = const Value.absent(),
+    this.sourceStartAt = const Value.absent(),
+    this.sourceEndAt = const Value.absent(),
+    this.taskId = const Value.absent(),
+    this.importState = const Value.absent(),
+    this.firstObservedAt = const Value.absent(),
+    this.lastObservedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  EcampusItemsCompanion.insert({
+    required String id,
+    required String sourceScopeId,
+    this.courseId = const Value.absent(),
+    this.externalKey = const Value.absent(),
+    required String sourceTitle,
+    this.sourceCourse = const Value.absent(),
+    this.sourceType = const Value.absent(),
+    this.sourceStartAt = const Value.absent(),
+    this.sourceEndAt = const Value.absent(),
+    this.taskId = const Value.absent(),
+    required String importState,
+    required DateTime firstObservedAt,
+    required DateTime lastObservedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       sourceScopeId = Value(sourceScopeId),
+       sourceTitle = Value(sourceTitle),
+       importState = Value(importState),
+       firstObservedAt = Value(firstObservedAt),
+       lastObservedAt = Value(lastObservedAt);
+  static Insertable<EcampusItem> custom({
+    Expression<String>? id,
+    Expression<String>? sourceScopeId,
+    Expression<String>? courseId,
+    Expression<String>? externalKey,
+    Expression<String>? sourceTitle,
+    Expression<String>? sourceCourse,
+    Expression<String>? sourceType,
+    Expression<DateTime>? sourceStartAt,
+    Expression<DateTime>? sourceEndAt,
+    Expression<String>? taskId,
+    Expression<String>? importState,
+    Expression<DateTime>? firstObservedAt,
+    Expression<DateTime>? lastObservedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (sourceScopeId != null) 'source_scope_id': sourceScopeId,
+      if (courseId != null) 'course_id': courseId,
+      if (externalKey != null) 'external_key': externalKey,
+      if (sourceTitle != null) 'source_title': sourceTitle,
+      if (sourceCourse != null) 'source_course': sourceCourse,
+      if (sourceType != null) 'source_type': sourceType,
+      if (sourceStartAt != null) 'source_start_at': sourceStartAt,
+      if (sourceEndAt != null) 'source_end_at': sourceEndAt,
+      if (taskId != null) 'task_id': taskId,
+      if (importState != null) 'import_state': importState,
+      if (firstObservedAt != null) 'first_observed_at': firstObservedAt,
+      if (lastObservedAt != null) 'last_observed_at': lastObservedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  EcampusItemsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? sourceScopeId,
+    Value<String?>? courseId,
+    Value<String?>? externalKey,
+    Value<String>? sourceTitle,
+    Value<String?>? sourceCourse,
+    Value<String?>? sourceType,
+    Value<DateTime?>? sourceStartAt,
+    Value<DateTime?>? sourceEndAt,
+    Value<String?>? taskId,
+    Value<String>? importState,
+    Value<DateTime>? firstObservedAt,
+    Value<DateTime>? lastObservedAt,
+    Value<int>? rowid,
+  }) {
+    return EcampusItemsCompanion(
+      id: id ?? this.id,
+      sourceScopeId: sourceScopeId ?? this.sourceScopeId,
+      courseId: courseId ?? this.courseId,
+      externalKey: externalKey ?? this.externalKey,
+      sourceTitle: sourceTitle ?? this.sourceTitle,
+      sourceCourse: sourceCourse ?? this.sourceCourse,
+      sourceType: sourceType ?? this.sourceType,
+      sourceStartAt: sourceStartAt ?? this.sourceStartAt,
+      sourceEndAt: sourceEndAt ?? this.sourceEndAt,
+      taskId: taskId ?? this.taskId,
+      importState: importState ?? this.importState,
+      firstObservedAt: firstObservedAt ?? this.firstObservedAt,
+      lastObservedAt: lastObservedAt ?? this.lastObservedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (sourceScopeId.present) {
+      map['source_scope_id'] = Variable<String>(sourceScopeId.value);
+    }
+    if (courseId.present) {
+      map['course_id'] = Variable<String>(courseId.value);
+    }
+    if (externalKey.present) {
+      map['external_key'] = Variable<String>(externalKey.value);
+    }
+    if (sourceTitle.present) {
+      map['source_title'] = Variable<String>(sourceTitle.value);
+    }
+    if (sourceCourse.present) {
+      map['source_course'] = Variable<String>(sourceCourse.value);
+    }
+    if (sourceType.present) {
+      map['source_type'] = Variable<String>(sourceType.value);
+    }
+    if (sourceStartAt.present) {
+      map['source_start_at'] = Variable<DateTime>(sourceStartAt.value);
+    }
+    if (sourceEndAt.present) {
+      map['source_end_at'] = Variable<DateTime>(sourceEndAt.value);
+    }
+    if (taskId.present) {
+      map['task_id'] = Variable<String>(taskId.value);
+    }
+    if (importState.present) {
+      map['import_state'] = Variable<String>(importState.value);
+    }
+    if (firstObservedAt.present) {
+      map['first_observed_at'] = Variable<DateTime>(firstObservedAt.value);
+    }
+    if (lastObservedAt.present) {
+      map['last_observed_at'] = Variable<DateTime>(lastObservedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('EcampusItemsCompanion(')
+          ..write('id: $id, ')
+          ..write('sourceScopeId: $sourceScopeId, ')
+          ..write('courseId: $courseId, ')
+          ..write('externalKey: $externalKey, ')
+          ..write('sourceTitle: $sourceTitle, ')
+          ..write('sourceCourse: $sourceCourse, ')
+          ..write('sourceType: $sourceType, ')
+          ..write('sourceStartAt: $sourceStartAt, ')
+          ..write('sourceEndAt: $sourceEndAt, ')
+          ..write('taskId: $taskId, ')
+          ..write('importState: $importState, ')
+          ..write('firstObservedAt: $firstObservedAt, ')
+          ..write('lastObservedAt: $lastObservedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ImportSessionsTable extends ImportSessions
+    with TableInfo<$ImportSessionsTable, ImportSession> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ImportSessionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _providerMeta = const VerificationMeta(
+    'provider',
+  );
+  @override
+  late final GeneratedColumn<String> provider = GeneratedColumn<String>(
+    'provider',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('ecampus'),
+  );
+  static const VerificationMeta _inputMethodMeta = const VerificationMeta(
+    'inputMethod',
+  );
+  @override
+  late final GeneratedColumn<String> inputMethod = GeneratedColumn<String>(
+    'input_method',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('webview_html'),
+  );
+  static const VerificationMeta _sourceScopeIdMeta = const VerificationMeta(
+    'sourceScopeId',
+  );
+  @override
+  late final GeneratedColumn<String> sourceScopeId = GeneratedColumn<String>(
+    'source_scope_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _startedAtMeta = const VerificationMeta(
+    'startedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startedAt = GeneratedColumn<DateTime>(
+    'started_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _endedAtMeta = const VerificationMeta(
+    'endedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> endedAt = GeneratedColumn<DateTime>(
+    'ended_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _stateMeta = const VerificationMeta('state');
+  @override
+  late final GeneratedColumn<String> state = GeneratedColumn<String>(
+    'state',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _appliedCountMeta = const VerificationMeta(
+    'appliedCount',
+  );
+  @override
+  late final GeneratedColumn<int> appliedCount = GeneratedColumn<int>(
+    'applied_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    provider,
+    inputMethod,
+    sourceScopeId,
+    startedAt,
+    endedAt,
+    state,
+    appliedCount,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'import_sessions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ImportSession> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('provider')) {
+      context.handle(
+        _providerMeta,
+        provider.isAcceptableOrUnknown(data['provider']!, _providerMeta),
+      );
+    }
+    if (data.containsKey('input_method')) {
+      context.handle(
+        _inputMethodMeta,
+        inputMethod.isAcceptableOrUnknown(
+          data['input_method']!,
+          _inputMethodMeta,
+        ),
+      );
+    }
+    if (data.containsKey('source_scope_id')) {
+      context.handle(
+        _sourceScopeIdMeta,
+        sourceScopeId.isAcceptableOrUnknown(
+          data['source_scope_id']!,
+          _sourceScopeIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceScopeIdMeta);
+    }
+    if (data.containsKey('started_at')) {
+      context.handle(
+        _startedAtMeta,
+        startedAt.isAcceptableOrUnknown(data['started_at']!, _startedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_startedAtMeta);
+    }
+    if (data.containsKey('ended_at')) {
+      context.handle(
+        _endedAtMeta,
+        endedAt.isAcceptableOrUnknown(data['ended_at']!, _endedAtMeta),
+      );
+    }
+    if (data.containsKey('state')) {
+      context.handle(
+        _stateMeta,
+        state.isAcceptableOrUnknown(data['state']!, _stateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_stateMeta);
+    }
+    if (data.containsKey('applied_count')) {
+      context.handle(
+        _appliedCountMeta,
+        appliedCount.isAcceptableOrUnknown(
+          data['applied_count']!,
+          _appliedCountMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ImportSession map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ImportSession(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      provider: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}provider'],
+      )!,
+      inputMethod: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}input_method'],
+      )!,
+      sourceScopeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_scope_id'],
+      )!,
+      startedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}started_at'],
+      )!,
+      endedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}ended_at'],
+      ),
+      state: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}state'],
+      )!,
+      appliedCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}applied_count'],
+      )!,
+    );
+  }
+
+  @override
+  $ImportSessionsTable createAlias(String alias) {
+    return $ImportSessionsTable(attachedDatabase, alias);
+  }
+}
+
+class ImportSession extends DataClass implements Insertable<ImportSession> {
+  final String id;
+  final String provider;
+  final String inputMethod;
+  final String sourceScopeId;
+  final DateTime startedAt;
+  final DateTime? endedAt;
+  final String state;
+  final int appliedCount;
+  const ImportSession({
+    required this.id,
+    required this.provider,
+    required this.inputMethod,
+    required this.sourceScopeId,
+    required this.startedAt,
+    this.endedAt,
+    required this.state,
+    required this.appliedCount,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['provider'] = Variable<String>(provider);
+    map['input_method'] = Variable<String>(inputMethod);
+    map['source_scope_id'] = Variable<String>(sourceScopeId);
+    map['started_at'] = Variable<DateTime>(startedAt);
+    if (!nullToAbsent || endedAt != null) {
+      map['ended_at'] = Variable<DateTime>(endedAt);
+    }
+    map['state'] = Variable<String>(state);
+    map['applied_count'] = Variable<int>(appliedCount);
+    return map;
+  }
+
+  ImportSessionsCompanion toCompanion(bool nullToAbsent) {
+    return ImportSessionsCompanion(
+      id: Value(id),
+      provider: Value(provider),
+      inputMethod: Value(inputMethod),
+      sourceScopeId: Value(sourceScopeId),
+      startedAt: Value(startedAt),
+      endedAt: endedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(endedAt),
+      state: Value(state),
+      appliedCount: Value(appliedCount),
+    );
+  }
+
+  factory ImportSession.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ImportSession(
+      id: serializer.fromJson<String>(json['id']),
+      provider: serializer.fromJson<String>(json['provider']),
+      inputMethod: serializer.fromJson<String>(json['inputMethod']),
+      sourceScopeId: serializer.fromJson<String>(json['sourceScopeId']),
+      startedAt: serializer.fromJson<DateTime>(json['startedAt']),
+      endedAt: serializer.fromJson<DateTime?>(json['endedAt']),
+      state: serializer.fromJson<String>(json['state']),
+      appliedCount: serializer.fromJson<int>(json['appliedCount']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'provider': serializer.toJson<String>(provider),
+      'inputMethod': serializer.toJson<String>(inputMethod),
+      'sourceScopeId': serializer.toJson<String>(sourceScopeId),
+      'startedAt': serializer.toJson<DateTime>(startedAt),
+      'endedAt': serializer.toJson<DateTime?>(endedAt),
+      'state': serializer.toJson<String>(state),
+      'appliedCount': serializer.toJson<int>(appliedCount),
+    };
+  }
+
+  ImportSession copyWith({
+    String? id,
+    String? provider,
+    String? inputMethod,
+    String? sourceScopeId,
+    DateTime? startedAt,
+    Value<DateTime?> endedAt = const Value.absent(),
+    String? state,
+    int? appliedCount,
+  }) => ImportSession(
+    id: id ?? this.id,
+    provider: provider ?? this.provider,
+    inputMethod: inputMethod ?? this.inputMethod,
+    sourceScopeId: sourceScopeId ?? this.sourceScopeId,
+    startedAt: startedAt ?? this.startedAt,
+    endedAt: endedAt.present ? endedAt.value : this.endedAt,
+    state: state ?? this.state,
+    appliedCount: appliedCount ?? this.appliedCount,
+  );
+  ImportSession copyWithCompanion(ImportSessionsCompanion data) {
+    return ImportSession(
+      id: data.id.present ? data.id.value : this.id,
+      provider: data.provider.present ? data.provider.value : this.provider,
+      inputMethod: data.inputMethod.present
+          ? data.inputMethod.value
+          : this.inputMethod,
+      sourceScopeId: data.sourceScopeId.present
+          ? data.sourceScopeId.value
+          : this.sourceScopeId,
+      startedAt: data.startedAt.present ? data.startedAt.value : this.startedAt,
+      endedAt: data.endedAt.present ? data.endedAt.value : this.endedAt,
+      state: data.state.present ? data.state.value : this.state,
+      appliedCount: data.appliedCount.present
+          ? data.appliedCount.value
+          : this.appliedCount,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ImportSession(')
+          ..write('id: $id, ')
+          ..write('provider: $provider, ')
+          ..write('inputMethod: $inputMethod, ')
+          ..write('sourceScopeId: $sourceScopeId, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('endedAt: $endedAt, ')
+          ..write('state: $state, ')
+          ..write('appliedCount: $appliedCount')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    provider,
+    inputMethod,
+    sourceScopeId,
+    startedAt,
+    endedAt,
+    state,
+    appliedCount,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ImportSession &&
+          other.id == this.id &&
+          other.provider == this.provider &&
+          other.inputMethod == this.inputMethod &&
+          other.sourceScopeId == this.sourceScopeId &&
+          other.startedAt == this.startedAt &&
+          other.endedAt == this.endedAt &&
+          other.state == this.state &&
+          other.appliedCount == this.appliedCount);
+}
+
+class ImportSessionsCompanion extends UpdateCompanion<ImportSession> {
+  final Value<String> id;
+  final Value<String> provider;
+  final Value<String> inputMethod;
+  final Value<String> sourceScopeId;
+  final Value<DateTime> startedAt;
+  final Value<DateTime?> endedAt;
+  final Value<String> state;
+  final Value<int> appliedCount;
+  final Value<int> rowid;
+  const ImportSessionsCompanion({
+    this.id = const Value.absent(),
+    this.provider = const Value.absent(),
+    this.inputMethod = const Value.absent(),
+    this.sourceScopeId = const Value.absent(),
+    this.startedAt = const Value.absent(),
+    this.endedAt = const Value.absent(),
+    this.state = const Value.absent(),
+    this.appliedCount = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ImportSessionsCompanion.insert({
+    required String id,
+    this.provider = const Value.absent(),
+    this.inputMethod = const Value.absent(),
+    required String sourceScopeId,
+    required DateTime startedAt,
+    this.endedAt = const Value.absent(),
+    required String state,
+    this.appliedCount = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       sourceScopeId = Value(sourceScopeId),
+       startedAt = Value(startedAt),
+       state = Value(state);
+  static Insertable<ImportSession> custom({
+    Expression<String>? id,
+    Expression<String>? provider,
+    Expression<String>? inputMethod,
+    Expression<String>? sourceScopeId,
+    Expression<DateTime>? startedAt,
+    Expression<DateTime>? endedAt,
+    Expression<String>? state,
+    Expression<int>? appliedCount,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (provider != null) 'provider': provider,
+      if (inputMethod != null) 'input_method': inputMethod,
+      if (sourceScopeId != null) 'source_scope_id': sourceScopeId,
+      if (startedAt != null) 'started_at': startedAt,
+      if (endedAt != null) 'ended_at': endedAt,
+      if (state != null) 'state': state,
+      if (appliedCount != null) 'applied_count': appliedCount,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ImportSessionsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? provider,
+    Value<String>? inputMethod,
+    Value<String>? sourceScopeId,
+    Value<DateTime>? startedAt,
+    Value<DateTime?>? endedAt,
+    Value<String>? state,
+    Value<int>? appliedCount,
+    Value<int>? rowid,
+  }) {
+    return ImportSessionsCompanion(
+      id: id ?? this.id,
+      provider: provider ?? this.provider,
+      inputMethod: inputMethod ?? this.inputMethod,
+      sourceScopeId: sourceScopeId ?? this.sourceScopeId,
+      startedAt: startedAt ?? this.startedAt,
+      endedAt: endedAt ?? this.endedAt,
+      state: state ?? this.state,
+      appliedCount: appliedCount ?? this.appliedCount,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (provider.present) {
+      map['provider'] = Variable<String>(provider.value);
+    }
+    if (inputMethod.present) {
+      map['input_method'] = Variable<String>(inputMethod.value);
+    }
+    if (sourceScopeId.present) {
+      map['source_scope_id'] = Variable<String>(sourceScopeId.value);
+    }
+    if (startedAt.present) {
+      map['started_at'] = Variable<DateTime>(startedAt.value);
+    }
+    if (endedAt.present) {
+      map['ended_at'] = Variable<DateTime>(endedAt.value);
+    }
+    if (state.present) {
+      map['state'] = Variable<String>(state.value);
+    }
+    if (appliedCount.present) {
+      map['applied_count'] = Variable<int>(appliedCount.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ImportSessionsCompanion(')
+          ..write('id: $id, ')
+          ..write('provider: $provider, ')
+          ..write('inputMethod: $inputMethod, ')
+          ..write('sourceScopeId: $sourceScopeId, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('endedAt: $endedAt, ')
+          ..write('state: $state, ')
+          ..write('appliedCount: $appliedCount, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $TaskRemindersTable extends TaskReminders
+    with TableInfo<$TaskRemindersTable, TaskReminder> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TaskRemindersTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
   );
   static const VerificationMeta _taskIdMeta = const VerificationMeta('taskId');
   @override
@@ -2867,56 +4274,44 @@ class $NotificationSettingsTable extends NotificationSettings
       'CHECK ("enabled" IN (0, 1))',
     ),
   );
-  static const VerificationMeta _daysBeforeDueMeta = const VerificationMeta(
-    'daysBeforeDue',
+  static const VerificationMeta _offsetMinutesMeta = const VerificationMeta(
+    'offsetMinutes',
   );
   @override
-  late final GeneratedColumn<int> daysBeforeDue = GeneratedColumn<int>(
-    'days_before_due',
+  late final GeneratedColumn<int> offsetMinutes = GeneratedColumn<int>(
+    'offset_minutes',
     aliasedName,
     false,
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _notifyTimeMeta = const VerificationMeta(
-    'notifyTime',
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
   );
   @override
-  late final GeneratedColumn<String> notifyTime = GeneratedColumn<String>(
-    'notify_time',
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
     aliasedName,
     false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _scheduledAtMeta = const VerificationMeta(
-    'scheduledAt',
-  );
-  @override
-  late final GeneratedColumn<DateTime> scheduledAt = GeneratedColumn<DateTime>(
-    'scheduled_at',
-    aliasedName,
-    true,
     type: DriftSqlType.dateTime,
-    requiredDuringInsert: false,
+    requiredDuringInsert: true,
   );
   @override
   List<GeneratedColumn> get $columns => [
     id,
     taskId,
     enabled,
-    daysBeforeDue,
-    notifyTime,
-    scheduledAt,
+    offsetMinutes,
+    updatedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
-  static const String $name = 'notification_settings';
+  static const String $name = 'task_reminders';
   @override
   VerificationContext validateIntegrity(
-    Insertable<NotificationSetting> instance, {
+    Insertable<TaskReminder> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
@@ -2942,43 +4337,34 @@ class $NotificationSettingsTable extends NotificationSettings
     } else if (isInserting) {
       context.missing(_enabledMeta);
     }
-    if (data.containsKey('days_before_due')) {
+    if (data.containsKey('offset_minutes')) {
       context.handle(
-        _daysBeforeDueMeta,
-        daysBeforeDue.isAcceptableOrUnknown(
-          data['days_before_due']!,
-          _daysBeforeDueMeta,
+        _offsetMinutesMeta,
+        offsetMinutes.isAcceptableOrUnknown(
+          data['offset_minutes']!,
+          _offsetMinutesMeta,
         ),
       );
     } else if (isInserting) {
-      context.missing(_daysBeforeDueMeta);
+      context.missing(_offsetMinutesMeta);
     }
-    if (data.containsKey('notify_time')) {
+    if (data.containsKey('updated_at')) {
       context.handle(
-        _notifyTimeMeta,
-        notifyTime.isAcceptableOrUnknown(data['notify_time']!, _notifyTimeMeta),
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
       );
     } else if (isInserting) {
-      context.missing(_notifyTimeMeta);
-    }
-    if (data.containsKey('scheduled_at')) {
-      context.handle(
-        _scheduledAtMeta,
-        scheduledAt.isAcceptableOrUnknown(
-          data['scheduled_at']!,
-          _scheduledAtMeta,
-        ),
-      );
+      context.missing(_updatedAtMeta);
     }
     return context;
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {id};
+  Set<GeneratedColumn> get $primaryKey => {taskId};
   @override
-  NotificationSetting map(Map<String, dynamic> data, {String? tablePrefix}) {
+  TaskReminder map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return NotificationSetting(
+    return TaskReminder(
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}id'],
@@ -2991,42 +4377,35 @@ class $NotificationSettingsTable extends NotificationSettings
         DriftSqlType.bool,
         data['${effectivePrefix}enabled'],
       )!,
-      daysBeforeDue: attachedDatabase.typeMapping.read(
+      offsetMinutes: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
-        data['${effectivePrefix}days_before_due'],
+        data['${effectivePrefix}offset_minutes'],
       )!,
-      notifyTime: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}notify_time'],
-      )!,
-      scheduledAt: attachedDatabase.typeMapping.read(
+      updatedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
-        data['${effectivePrefix}scheduled_at'],
-      ),
+        data['${effectivePrefix}updated_at'],
+      )!,
     );
   }
 
   @override
-  $NotificationSettingsTable createAlias(String alias) {
-    return $NotificationSettingsTable(attachedDatabase, alias);
+  $TaskRemindersTable createAlias(String alias) {
+    return $TaskRemindersTable(attachedDatabase, alias);
   }
 }
 
-class NotificationSetting extends DataClass
-    implements Insertable<NotificationSetting> {
+class TaskReminder extends DataClass implements Insertable<TaskReminder> {
   final String id;
   final String taskId;
   final bool enabled;
-  final int daysBeforeDue;
-  final String notifyTime;
-  final DateTime? scheduledAt;
-  const NotificationSetting({
+  final int offsetMinutes;
+  final DateTime updatedAt;
+  const TaskReminder({
     required this.id,
     required this.taskId,
     required this.enabled,
-    required this.daysBeforeDue,
-    required this.notifyTime,
-    this.scheduledAt,
+    required this.offsetMinutes,
+    required this.updatedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3034,39 +4413,32 @@ class NotificationSetting extends DataClass
     map['id'] = Variable<String>(id);
     map['task_id'] = Variable<String>(taskId);
     map['enabled'] = Variable<bool>(enabled);
-    map['days_before_due'] = Variable<int>(daysBeforeDue);
-    map['notify_time'] = Variable<String>(notifyTime);
-    if (!nullToAbsent || scheduledAt != null) {
-      map['scheduled_at'] = Variable<DateTime>(scheduledAt);
-    }
+    map['offset_minutes'] = Variable<int>(offsetMinutes);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
   }
 
-  NotificationSettingsCompanion toCompanion(bool nullToAbsent) {
-    return NotificationSettingsCompanion(
+  TaskRemindersCompanion toCompanion(bool nullToAbsent) {
+    return TaskRemindersCompanion(
       id: Value(id),
       taskId: Value(taskId),
       enabled: Value(enabled),
-      daysBeforeDue: Value(daysBeforeDue),
-      notifyTime: Value(notifyTime),
-      scheduledAt: scheduledAt == null && nullToAbsent
-          ? const Value.absent()
-          : Value(scheduledAt),
+      offsetMinutes: Value(offsetMinutes),
+      updatedAt: Value(updatedAt),
     );
   }
 
-  factory NotificationSetting.fromJson(
+  factory TaskReminder.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return NotificationSetting(
+    return TaskReminder(
       id: serializer.fromJson<String>(json['id']),
       taskId: serializer.fromJson<String>(json['taskId']),
       enabled: serializer.fromJson<bool>(json['enabled']),
-      daysBeforeDue: serializer.fromJson<int>(json['daysBeforeDue']),
-      notifyTime: serializer.fromJson<String>(json['notifyTime']),
-      scheduledAt: serializer.fromJson<DateTime?>(json['scheduledAt']),
+      offsetMinutes: serializer.fromJson<int>(json['offsetMinutes']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
   }
   @override
@@ -3076,139 +4448,121 @@ class NotificationSetting extends DataClass
       'id': serializer.toJson<String>(id),
       'taskId': serializer.toJson<String>(taskId),
       'enabled': serializer.toJson<bool>(enabled),
-      'daysBeforeDue': serializer.toJson<int>(daysBeforeDue),
-      'notifyTime': serializer.toJson<String>(notifyTime),
-      'scheduledAt': serializer.toJson<DateTime?>(scheduledAt),
+      'offsetMinutes': serializer.toJson<int>(offsetMinutes),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
 
-  NotificationSetting copyWith({
+  TaskReminder copyWith({
     String? id,
     String? taskId,
     bool? enabled,
-    int? daysBeforeDue,
-    String? notifyTime,
-    Value<DateTime?> scheduledAt = const Value.absent(),
-  }) => NotificationSetting(
+    int? offsetMinutes,
+    DateTime? updatedAt,
+  }) => TaskReminder(
     id: id ?? this.id,
     taskId: taskId ?? this.taskId,
     enabled: enabled ?? this.enabled,
-    daysBeforeDue: daysBeforeDue ?? this.daysBeforeDue,
-    notifyTime: notifyTime ?? this.notifyTime,
-    scheduledAt: scheduledAt.present ? scheduledAt.value : this.scheduledAt,
+    offsetMinutes: offsetMinutes ?? this.offsetMinutes,
+    updatedAt: updatedAt ?? this.updatedAt,
   );
-  NotificationSetting copyWithCompanion(NotificationSettingsCompanion data) {
-    return NotificationSetting(
+  TaskReminder copyWithCompanion(TaskRemindersCompanion data) {
+    return TaskReminder(
       id: data.id.present ? data.id.value : this.id,
       taskId: data.taskId.present ? data.taskId.value : this.taskId,
       enabled: data.enabled.present ? data.enabled.value : this.enabled,
-      daysBeforeDue: data.daysBeforeDue.present
-          ? data.daysBeforeDue.value
-          : this.daysBeforeDue,
-      notifyTime: data.notifyTime.present
-          ? data.notifyTime.value
-          : this.notifyTime,
-      scheduledAt: data.scheduledAt.present
-          ? data.scheduledAt.value
-          : this.scheduledAt,
+      offsetMinutes: data.offsetMinutes.present
+          ? data.offsetMinutes.value
+          : this.offsetMinutes,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
   }
 
   @override
   String toString() {
-    return (StringBuffer('NotificationSetting(')
+    return (StringBuffer('TaskReminder(')
           ..write('id: $id, ')
           ..write('taskId: $taskId, ')
           ..write('enabled: $enabled, ')
-          ..write('daysBeforeDue: $daysBeforeDue, ')
-          ..write('notifyTime: $notifyTime, ')
-          ..write('scheduledAt: $scheduledAt')
+          ..write('offsetMinutes: $offsetMinutes, ')
+          ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode =>
-      Object.hash(id, taskId, enabled, daysBeforeDue, notifyTime, scheduledAt);
+      Object.hash(id, taskId, enabled, offsetMinutes, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is NotificationSetting &&
+      (other is TaskReminder &&
           other.id == this.id &&
           other.taskId == this.taskId &&
           other.enabled == this.enabled &&
-          other.daysBeforeDue == this.daysBeforeDue &&
-          other.notifyTime == this.notifyTime &&
-          other.scheduledAt == this.scheduledAt);
+          other.offsetMinutes == this.offsetMinutes &&
+          other.updatedAt == this.updatedAt);
 }
 
-class NotificationSettingsCompanion
-    extends UpdateCompanion<NotificationSetting> {
+class TaskRemindersCompanion extends UpdateCompanion<TaskReminder> {
   final Value<String> id;
   final Value<String> taskId;
   final Value<bool> enabled;
-  final Value<int> daysBeforeDue;
-  final Value<String> notifyTime;
-  final Value<DateTime?> scheduledAt;
+  final Value<int> offsetMinutes;
+  final Value<DateTime> updatedAt;
   final Value<int> rowid;
-  const NotificationSettingsCompanion({
+  const TaskRemindersCompanion({
     this.id = const Value.absent(),
     this.taskId = const Value.absent(),
     this.enabled = const Value.absent(),
-    this.daysBeforeDue = const Value.absent(),
-    this.notifyTime = const Value.absent(),
-    this.scheduledAt = const Value.absent(),
+    this.offsetMinutes = const Value.absent(),
+    this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
-  NotificationSettingsCompanion.insert({
+  TaskRemindersCompanion.insert({
     required String id,
     required String taskId,
     required bool enabled,
-    required int daysBeforeDue,
-    required String notifyTime,
-    this.scheduledAt = const Value.absent(),
+    required int offsetMinutes,
+    required DateTime updatedAt,
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        taskId = Value(taskId),
        enabled = Value(enabled),
-       daysBeforeDue = Value(daysBeforeDue),
-       notifyTime = Value(notifyTime);
-  static Insertable<NotificationSetting> custom({
+       offsetMinutes = Value(offsetMinutes),
+       updatedAt = Value(updatedAt);
+  static Insertable<TaskReminder> custom({
     Expression<String>? id,
     Expression<String>? taskId,
     Expression<bool>? enabled,
-    Expression<int>? daysBeforeDue,
-    Expression<String>? notifyTime,
-    Expression<DateTime>? scheduledAt,
+    Expression<int>? offsetMinutes,
+    Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (taskId != null) 'task_id': taskId,
       if (enabled != null) 'enabled': enabled,
-      if (daysBeforeDue != null) 'days_before_due': daysBeforeDue,
-      if (notifyTime != null) 'notify_time': notifyTime,
-      if (scheduledAt != null) 'scheduled_at': scheduledAt,
+      if (offsetMinutes != null) 'offset_minutes': offsetMinutes,
+      if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
 
-  NotificationSettingsCompanion copyWith({
+  TaskRemindersCompanion copyWith({
     Value<String>? id,
     Value<String>? taskId,
     Value<bool>? enabled,
-    Value<int>? daysBeforeDue,
-    Value<String>? notifyTime,
-    Value<DateTime?>? scheduledAt,
+    Value<int>? offsetMinutes,
+    Value<DateTime>? updatedAt,
     Value<int>? rowid,
   }) {
-    return NotificationSettingsCompanion(
+    return TaskRemindersCompanion(
       id: id ?? this.id,
       taskId: taskId ?? this.taskId,
       enabled: enabled ?? this.enabled,
-      daysBeforeDue: daysBeforeDue ?? this.daysBeforeDue,
-      notifyTime: notifyTime ?? this.notifyTime,
-      scheduledAt: scheduledAt ?? this.scheduledAt,
+      offsetMinutes: offsetMinutes ?? this.offsetMinutes,
+      updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -3225,14 +4579,11 @@ class NotificationSettingsCompanion
     if (enabled.present) {
       map['enabled'] = Variable<bool>(enabled.value);
     }
-    if (daysBeforeDue.present) {
-      map['days_before_due'] = Variable<int>(daysBeforeDue.value);
+    if (offsetMinutes.present) {
+      map['offset_minutes'] = Variable<int>(offsetMinutes.value);
     }
-    if (notifyTime.present) {
-      map['notify_time'] = Variable<String>(notifyTime.value);
-    }
-    if (scheduledAt.present) {
-      map['scheduled_at'] = Variable<DateTime>(scheduledAt.value);
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -3242,13 +4593,363 @@ class NotificationSettingsCompanion
 
   @override
   String toString() {
-    return (StringBuffer('NotificationSettingsCompanion(')
+    return (StringBuffer('TaskRemindersCompanion(')
           ..write('id: $id, ')
           ..write('taskId: $taskId, ')
           ..write('enabled: $enabled, ')
-          ..write('daysBeforeDue: $daysBeforeDue, ')
-          ..write('notifyTime: $notifyTime, ')
+          ..write('offsetMinutes: $offsetMinutes, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $LocalNotificationSchedulesTable extends LocalNotificationSchedules
+    with
+        TableInfo<$LocalNotificationSchedulesTable, LocalNotificationSchedule> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalNotificationSchedulesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _taskIdMeta = const VerificationMeta('taskId');
+  @override
+  late final GeneratedColumn<String> taskId = GeneratedColumn<String>(
+    'task_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES tasks (id)',
+    ),
+  );
+  static const VerificationMeta _platformNotificationIdMeta =
+      const VerificationMeta('platformNotificationId');
+  @override
+  late final GeneratedColumn<int> platformNotificationId = GeneratedColumn<int>(
+    'platform_notification_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _scheduledAtMeta = const VerificationMeta(
+    'scheduledAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> scheduledAt = GeneratedColumn<DateTime>(
+    'scheduled_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lastErrorMeta = const VerificationMeta(
+    'lastError',
+  );
+  @override
+  late final GeneratedColumn<String> lastError = GeneratedColumn<String>(
+    'last_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    taskId,
+    platformNotificationId,
+    scheduledAt,
+    lastError,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_notification_schedules';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LocalNotificationSchedule> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('task_id')) {
+      context.handle(
+        _taskIdMeta,
+        taskId.isAcceptableOrUnknown(data['task_id']!, _taskIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_taskIdMeta);
+    }
+    if (data.containsKey('platform_notification_id')) {
+      context.handle(
+        _platformNotificationIdMeta,
+        platformNotificationId.isAcceptableOrUnknown(
+          data['platform_notification_id']!,
+          _platformNotificationIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('scheduled_at')) {
+      context.handle(
+        _scheduledAtMeta,
+        scheduledAt.isAcceptableOrUnknown(
+          data['scheduled_at']!,
+          _scheduledAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_error')) {
+      context.handle(
+        _lastErrorMeta,
+        lastError.isAcceptableOrUnknown(data['last_error']!, _lastErrorMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {taskId};
+  @override
+  LocalNotificationSchedule map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalNotificationSchedule(
+      taskId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}task_id'],
+      )!,
+      platformNotificationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}platform_notification_id'],
+      ),
+      scheduledAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}scheduled_at'],
+      ),
+      lastError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_error'],
+      ),
+    );
+  }
+
+  @override
+  $LocalNotificationSchedulesTable createAlias(String alias) {
+    return $LocalNotificationSchedulesTable(attachedDatabase, alias);
+  }
+}
+
+class LocalNotificationSchedule extends DataClass
+    implements Insertable<LocalNotificationSchedule> {
+  final String taskId;
+  final int? platformNotificationId;
+  final DateTime? scheduledAt;
+  final String? lastError;
+  const LocalNotificationSchedule({
+    required this.taskId,
+    this.platformNotificationId,
+    this.scheduledAt,
+    this.lastError,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['task_id'] = Variable<String>(taskId);
+    if (!nullToAbsent || platformNotificationId != null) {
+      map['platform_notification_id'] = Variable<int>(platformNotificationId);
+    }
+    if (!nullToAbsent || scheduledAt != null) {
+      map['scheduled_at'] = Variable<DateTime>(scheduledAt);
+    }
+    if (!nullToAbsent || lastError != null) {
+      map['last_error'] = Variable<String>(lastError);
+    }
+    return map;
+  }
+
+  LocalNotificationSchedulesCompanion toCompanion(bool nullToAbsent) {
+    return LocalNotificationSchedulesCompanion(
+      taskId: Value(taskId),
+      platformNotificationId: platformNotificationId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(platformNotificationId),
+      scheduledAt: scheduledAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(scheduledAt),
+      lastError: lastError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastError),
+    );
+  }
+
+  factory LocalNotificationSchedule.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalNotificationSchedule(
+      taskId: serializer.fromJson<String>(json['taskId']),
+      platformNotificationId: serializer.fromJson<int?>(
+        json['platformNotificationId'],
+      ),
+      scheduledAt: serializer.fromJson<DateTime?>(json['scheduledAt']),
+      lastError: serializer.fromJson<String?>(json['lastError']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'taskId': serializer.toJson<String>(taskId),
+      'platformNotificationId': serializer.toJson<int?>(platformNotificationId),
+      'scheduledAt': serializer.toJson<DateTime?>(scheduledAt),
+      'lastError': serializer.toJson<String?>(lastError),
+    };
+  }
+
+  LocalNotificationSchedule copyWith({
+    String? taskId,
+    Value<int?> platformNotificationId = const Value.absent(),
+    Value<DateTime?> scheduledAt = const Value.absent(),
+    Value<String?> lastError = const Value.absent(),
+  }) => LocalNotificationSchedule(
+    taskId: taskId ?? this.taskId,
+    platformNotificationId: platformNotificationId.present
+        ? platformNotificationId.value
+        : this.platformNotificationId,
+    scheduledAt: scheduledAt.present ? scheduledAt.value : this.scheduledAt,
+    lastError: lastError.present ? lastError.value : this.lastError,
+  );
+  LocalNotificationSchedule copyWithCompanion(
+    LocalNotificationSchedulesCompanion data,
+  ) {
+    return LocalNotificationSchedule(
+      taskId: data.taskId.present ? data.taskId.value : this.taskId,
+      platformNotificationId: data.platformNotificationId.present
+          ? data.platformNotificationId.value
+          : this.platformNotificationId,
+      scheduledAt: data.scheduledAt.present
+          ? data.scheduledAt.value
+          : this.scheduledAt,
+      lastError: data.lastError.present ? data.lastError.value : this.lastError,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalNotificationSchedule(')
+          ..write('taskId: $taskId, ')
+          ..write('platformNotificationId: $platformNotificationId, ')
           ..write('scheduledAt: $scheduledAt, ')
+          ..write('lastError: $lastError')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(taskId, platformNotificationId, scheduledAt, lastError);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalNotificationSchedule &&
+          other.taskId == this.taskId &&
+          other.platformNotificationId == this.platformNotificationId &&
+          other.scheduledAt == this.scheduledAt &&
+          other.lastError == this.lastError);
+}
+
+class LocalNotificationSchedulesCompanion
+    extends UpdateCompanion<LocalNotificationSchedule> {
+  final Value<String> taskId;
+  final Value<int?> platformNotificationId;
+  final Value<DateTime?> scheduledAt;
+  final Value<String?> lastError;
+  final Value<int> rowid;
+  const LocalNotificationSchedulesCompanion({
+    this.taskId = const Value.absent(),
+    this.platformNotificationId = const Value.absent(),
+    this.scheduledAt = const Value.absent(),
+    this.lastError = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalNotificationSchedulesCompanion.insert({
+    required String taskId,
+    this.platformNotificationId = const Value.absent(),
+    this.scheduledAt = const Value.absent(),
+    this.lastError = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : taskId = Value(taskId);
+  static Insertable<LocalNotificationSchedule> custom({
+    Expression<String>? taskId,
+    Expression<int>? platformNotificationId,
+    Expression<DateTime>? scheduledAt,
+    Expression<String>? lastError,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (taskId != null) 'task_id': taskId,
+      if (platformNotificationId != null)
+        'platform_notification_id': platformNotificationId,
+      if (scheduledAt != null) 'scheduled_at': scheduledAt,
+      if (lastError != null) 'last_error': lastError,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalNotificationSchedulesCompanion copyWith({
+    Value<String>? taskId,
+    Value<int?>? platformNotificationId,
+    Value<DateTime?>? scheduledAt,
+    Value<String?>? lastError,
+    Value<int>? rowid,
+  }) {
+    return LocalNotificationSchedulesCompanion(
+      taskId: taskId ?? this.taskId,
+      platformNotificationId:
+          platformNotificationId ?? this.platformNotificationId,
+      scheduledAt: scheduledAt ?? this.scheduledAt,
+      lastError: lastError ?? this.lastError,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (taskId.present) {
+      map['task_id'] = Variable<String>(taskId.value);
+    }
+    if (platformNotificationId.present) {
+      map['platform_notification_id'] = Variable<int>(
+        platformNotificationId.value,
+      );
+    }
+    if (scheduledAt.present) {
+      map['scheduled_at'] = Variable<DateTime>(scheduledAt.value);
+    }
+    if (lastError.present) {
+      map['last_error'] = Variable<String>(lastError.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalNotificationSchedulesCompanion(')
+          ..write('taskId: $taskId, ')
+          ..write('platformNotificationId: $platformNotificationId, ')
+          ..write('scheduledAt: $scheduledAt, ')
+          ..write('lastError: $lastError, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3517,84 +5218,1022 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   }
 }
 
+class $MigrationIssuesTable extends MigrationIssues
+    with TableInfo<$MigrationIssuesTable, MigrationIssue> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $MigrationIssuesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _entityIdMeta = const VerificationMeta(
+    'entityId',
+  );
+  @override
+  late final GeneratedColumn<String> entityId = GeneratedColumn<String>(
+    'entity_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _reasonMeta = const VerificationMeta('reason');
+  @override
+  late final GeneratedColumn<String> reason = GeneratedColumn<String>(
+    'reason',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _legacyDataMeta = const VerificationMeta(
+    'legacyData',
+  );
+  @override
+  late final GeneratedColumn<String> legacyData = GeneratedColumn<String>(
+    'legacy_data',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, entityId, reason, legacyData];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'migration_issues';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<MigrationIssue> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('entity_id')) {
+      context.handle(
+        _entityIdMeta,
+        entityId.isAcceptableOrUnknown(data['entity_id']!, _entityIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_entityIdMeta);
+    }
+    if (data.containsKey('reason')) {
+      context.handle(
+        _reasonMeta,
+        reason.isAcceptableOrUnknown(data['reason']!, _reasonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_reasonMeta);
+    }
+    if (data.containsKey('legacy_data')) {
+      context.handle(
+        _legacyDataMeta,
+        legacyData.isAcceptableOrUnknown(data['legacy_data']!, _legacyDataMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_legacyDataMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  MigrationIssue map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return MigrationIssue(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      entityId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity_id'],
+      )!,
+      reason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reason'],
+      )!,
+      legacyData: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}legacy_data'],
+      )!,
+    );
+  }
+
+  @override
+  $MigrationIssuesTable createAlias(String alias) {
+    return $MigrationIssuesTable(attachedDatabase, alias);
+  }
+}
+
+class MigrationIssue extends DataClass implements Insertable<MigrationIssue> {
+  final int id;
+  final String entityId;
+  final String reason;
+  final String legacyData;
+  const MigrationIssue({
+    required this.id,
+    required this.entityId,
+    required this.reason,
+    required this.legacyData,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['entity_id'] = Variable<String>(entityId);
+    map['reason'] = Variable<String>(reason);
+    map['legacy_data'] = Variable<String>(legacyData);
+    return map;
+  }
+
+  MigrationIssuesCompanion toCompanion(bool nullToAbsent) {
+    return MigrationIssuesCompanion(
+      id: Value(id),
+      entityId: Value(entityId),
+      reason: Value(reason),
+      legacyData: Value(legacyData),
+    );
+  }
+
+  factory MigrationIssue.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return MigrationIssue(
+      id: serializer.fromJson<int>(json['id']),
+      entityId: serializer.fromJson<String>(json['entityId']),
+      reason: serializer.fromJson<String>(json['reason']),
+      legacyData: serializer.fromJson<String>(json['legacyData']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'entityId': serializer.toJson<String>(entityId),
+      'reason': serializer.toJson<String>(reason),
+      'legacyData': serializer.toJson<String>(legacyData),
+    };
+  }
+
+  MigrationIssue copyWith({
+    int? id,
+    String? entityId,
+    String? reason,
+    String? legacyData,
+  }) => MigrationIssue(
+    id: id ?? this.id,
+    entityId: entityId ?? this.entityId,
+    reason: reason ?? this.reason,
+    legacyData: legacyData ?? this.legacyData,
+  );
+  MigrationIssue copyWithCompanion(MigrationIssuesCompanion data) {
+    return MigrationIssue(
+      id: data.id.present ? data.id.value : this.id,
+      entityId: data.entityId.present ? data.entityId.value : this.entityId,
+      reason: data.reason.present ? data.reason.value : this.reason,
+      legacyData: data.legacyData.present
+          ? data.legacyData.value
+          : this.legacyData,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MigrationIssue(')
+          ..write('id: $id, ')
+          ..write('entityId: $entityId, ')
+          ..write('reason: $reason, ')
+          ..write('legacyData: $legacyData')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, entityId, reason, legacyData);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is MigrationIssue &&
+          other.id == this.id &&
+          other.entityId == this.entityId &&
+          other.reason == this.reason &&
+          other.legacyData == this.legacyData);
+}
+
+class MigrationIssuesCompanion extends UpdateCompanion<MigrationIssue> {
+  final Value<int> id;
+  final Value<String> entityId;
+  final Value<String> reason;
+  final Value<String> legacyData;
+  const MigrationIssuesCompanion({
+    this.id = const Value.absent(),
+    this.entityId = const Value.absent(),
+    this.reason = const Value.absent(),
+    this.legacyData = const Value.absent(),
+  });
+  MigrationIssuesCompanion.insert({
+    this.id = const Value.absent(),
+    required String entityId,
+    required String reason,
+    required String legacyData,
+  }) : entityId = Value(entityId),
+       reason = Value(reason),
+       legacyData = Value(legacyData);
+  static Insertable<MigrationIssue> custom({
+    Expression<int>? id,
+    Expression<String>? entityId,
+    Expression<String>? reason,
+    Expression<String>? legacyData,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (entityId != null) 'entity_id': entityId,
+      if (reason != null) 'reason': reason,
+      if (legacyData != null) 'legacy_data': legacyData,
+    });
+  }
+
+  MigrationIssuesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? entityId,
+    Value<String>? reason,
+    Value<String>? legacyData,
+  }) {
+    return MigrationIssuesCompanion(
+      id: id ?? this.id,
+      entityId: entityId ?? this.entityId,
+      reason: reason ?? this.reason,
+      legacyData: legacyData ?? this.legacyData,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (entityId.present) {
+      map['entity_id'] = Variable<String>(entityId.value);
+    }
+    if (reason.present) {
+      map['reason'] = Variable<String>(reason.value);
+    }
+    if (legacyData.present) {
+      map['legacy_data'] = Variable<String>(legacyData.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MigrationIssuesCompanion(')
+          ..write('id: $id, ')
+          ..write('entityId: $entityId, ')
+          ..write('reason: $reason, ')
+          ..write('legacyData: $legacyData')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $DeletedEntitiesTable extends DeletedEntities
+    with TableInfo<$DeletedEntitiesTable, DeletedEntity> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DeletedEntitiesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _entityTypeMeta = const VerificationMeta(
+    'entityType',
+  );
+  @override
+  late final GeneratedColumn<String> entityType = GeneratedColumn<String>(
+    'entity_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _entityIdMeta = const VerificationMeta(
+    'entityId',
+  );
+  @override
+  late final GeneratedColumn<String> entityId = GeneratedColumn<String>(
+    'entity_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [entityType, entityId, deletedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'deleted_entities';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DeletedEntity> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('entity_type')) {
+      context.handle(
+        _entityTypeMeta,
+        entityType.isAcceptableOrUnknown(data['entity_type']!, _entityTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_entityTypeMeta);
+    }
+    if (data.containsKey('entity_id')) {
+      context.handle(
+        _entityIdMeta,
+        entityId.isAcceptableOrUnknown(data['entity_id']!, _entityIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_entityIdMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_deletedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {entityType, entityId};
+  @override
+  DeletedEntity map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DeletedEntity(
+      entityType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity_type'],
+      )!,
+      entityId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity_id'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DeletedEntitiesTable createAlias(String alias) {
+    return $DeletedEntitiesTable(attachedDatabase, alias);
+  }
+}
+
+class DeletedEntity extends DataClass implements Insertable<DeletedEntity> {
+  final String entityType;
+  final String entityId;
+  final DateTime deletedAt;
+  const DeletedEntity({
+    required this.entityType,
+    required this.entityId,
+    required this.deletedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['entity_type'] = Variable<String>(entityType);
+    map['entity_id'] = Variable<String>(entityId);
+    map['deleted_at'] = Variable<DateTime>(deletedAt);
+    return map;
+  }
+
+  DeletedEntitiesCompanion toCompanion(bool nullToAbsent) {
+    return DeletedEntitiesCompanion(
+      entityType: Value(entityType),
+      entityId: Value(entityId),
+      deletedAt: Value(deletedAt),
+    );
+  }
+
+  factory DeletedEntity.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DeletedEntity(
+      entityType: serializer.fromJson<String>(json['entityType']),
+      entityId: serializer.fromJson<String>(json['entityId']),
+      deletedAt: serializer.fromJson<DateTime>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'entityType': serializer.toJson<String>(entityType),
+      'entityId': serializer.toJson<String>(entityId),
+      'deletedAt': serializer.toJson<DateTime>(deletedAt),
+    };
+  }
+
+  DeletedEntity copyWith({
+    String? entityType,
+    String? entityId,
+    DateTime? deletedAt,
+  }) => DeletedEntity(
+    entityType: entityType ?? this.entityType,
+    entityId: entityId ?? this.entityId,
+    deletedAt: deletedAt ?? this.deletedAt,
+  );
+  DeletedEntity copyWithCompanion(DeletedEntitiesCompanion data) {
+    return DeletedEntity(
+      entityType: data.entityType.present
+          ? data.entityType.value
+          : this.entityType,
+      entityId: data.entityId.present ? data.entityId.value : this.entityId,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DeletedEntity(')
+          ..write('entityType: $entityType, ')
+          ..write('entityId: $entityId, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(entityType, entityId, deletedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DeletedEntity &&
+          other.entityType == this.entityType &&
+          other.entityId == this.entityId &&
+          other.deletedAt == this.deletedAt);
+}
+
+class DeletedEntitiesCompanion extends UpdateCompanion<DeletedEntity> {
+  final Value<String> entityType;
+  final Value<String> entityId;
+  final Value<DateTime> deletedAt;
+  final Value<int> rowid;
+  const DeletedEntitiesCompanion({
+    this.entityType = const Value.absent(),
+    this.entityId = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DeletedEntitiesCompanion.insert({
+    required String entityType,
+    required String entityId,
+    required DateTime deletedAt,
+    this.rowid = const Value.absent(),
+  }) : entityType = Value(entityType),
+       entityId = Value(entityId),
+       deletedAt = Value(deletedAt);
+  static Insertable<DeletedEntity> custom({
+    Expression<String>? entityType,
+    Expression<String>? entityId,
+    Expression<DateTime>? deletedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (entityType != null) 'entity_type': entityType,
+      if (entityId != null) 'entity_id': entityId,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DeletedEntitiesCompanion copyWith({
+    Value<String>? entityType,
+    Value<String>? entityId,
+    Value<DateTime>? deletedAt,
+    Value<int>? rowid,
+  }) {
+    return DeletedEntitiesCompanion(
+      entityType: entityType ?? this.entityType,
+      entityId: entityId ?? this.entityId,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (entityType.present) {
+      map['entity_type'] = Variable<String>(entityType.value);
+    }
+    if (entityId.present) {
+      map['entity_id'] = Variable<String>(entityId.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DeletedEntitiesCompanion(')
+          ..write('entityType: $entityType, ')
+          ..write('entityId: $entityId, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
+  late final $FoldersTable folders = $FoldersTable(this);
   late final $TasksTable tasks = $TasksTable(this);
   late final $SubTasksTable subTasks = $SubTasksTable(this);
   late final $TagsTable tags = $TagsTable(this);
-  late final $FoldersTable folders = $FoldersTable(this);
   late final $TaskTagsTable taskTags = $TaskTagsTable(this);
-  late final $TaskFoldersTable taskFolders = $TaskFoldersTable(this);
-  late final $NotificationSettingsTable notificationSettings =
-      $NotificationSettingsTable(this);
+  late final $EcampusCoursesTable ecampusCourses = $EcampusCoursesTable(this);
+  late final $EcampusItemsTable ecampusItems = $EcampusItemsTable(this);
+  late final $ImportSessionsTable importSessions = $ImportSessionsTable(this);
+  late final $TaskRemindersTable taskReminders = $TaskRemindersTable(this);
+  late final $LocalNotificationSchedulesTable localNotificationSchedules =
+      $LocalNotificationSchedulesTable(this);
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
+  late final $MigrationIssuesTable migrationIssues = $MigrationIssuesTable(
+    this,
+  );
+  late final $DeletedEntitiesTable deletedEntities = $DeletedEntitiesTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
+    folders,
     tasks,
     subTasks,
     tags,
-    folders,
     taskTags,
-    taskFolders,
-    notificationSettings,
+    ecampusCourses,
+    ecampusItems,
+    importSessions,
+    taskReminders,
+    localNotificationSchedules,
     appSettings,
+    migrationIssues,
+    deletedEntities,
   ];
 }
 
+typedef $$FoldersTableCreateCompanionBuilder =
+    FoldersCompanion Function({
+      required String id,
+      required String name,
+      Value<String?> color,
+      Value<String?> icon,
+      Value<int> sortOrder,
+      Value<DateTime?> deletedAt,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$FoldersTableUpdateCompanionBuilder =
+    FoldersCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<String?> color,
+      Value<String?> icon,
+      Value<int> sortOrder,
+      Value<DateTime?> deletedAt,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+final class $$FoldersTableReferences
+    extends BaseReferences<_$AppDatabase, $FoldersTable, Folder> {
+  $$FoldersTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$TasksTable, List<Task>> _tasksRefsTable(
+    _$AppDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.tasks,
+    aliasName: $_aliasNameGenerator(db.folders.id, db.tasks.folderId),
+  );
+
+  $$TasksTableProcessedTableManager get tasksRefs {
+    final manager = $$TasksTableTableManager(
+      $_db,
+      $_db.tasks,
+    ).filter((f) => f.folderId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_tasksRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$FoldersTableFilterComposer
+    extends Composer<_$AppDatabase, $FoldersTable> {
+  $$FoldersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get color => $composableBuilder(
+    column: $table.color,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get icon => $composableBuilder(
+    column: $table.icon,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> tasksRefs(
+    Expression<bool> Function($$TasksTableFilterComposer f) f,
+  ) {
+    final $$TasksTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.tasks,
+      getReferencedColumn: (t) => t.folderId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TasksTableFilterComposer(
+            $db: $db,
+            $table: $db.tasks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$FoldersTableOrderingComposer
+    extends Composer<_$AppDatabase, $FoldersTable> {
+  $$FoldersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get color => $composableBuilder(
+    column: $table.color,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get icon => $composableBuilder(
+    column: $table.icon,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$FoldersTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FoldersTable> {
+  $$FoldersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get color =>
+      $composableBuilder(column: $table.color, builder: (column) => column);
+
+  GeneratedColumn<String> get icon =>
+      $composableBuilder(column: $table.icon, builder: (column) => column);
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  Expression<T> tasksRefs<T extends Object>(
+    Expression<T> Function($$TasksTableAnnotationComposer a) f,
+  ) {
+    final $$TasksTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.tasks,
+      getReferencedColumn: (t) => t.folderId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TasksTableAnnotationComposer(
+            $db: $db,
+            $table: $db.tasks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$FoldersTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FoldersTable,
+          Folder,
+          $$FoldersTableFilterComposer,
+          $$FoldersTableOrderingComposer,
+          $$FoldersTableAnnotationComposer,
+          $$FoldersTableCreateCompanionBuilder,
+          $$FoldersTableUpdateCompanionBuilder,
+          (Folder, $$FoldersTableReferences),
+          Folder,
+          PrefetchHooks Function({bool tasksRefs})
+        > {
+  $$FoldersTableTableManager(_$AppDatabase db, $FoldersTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FoldersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FoldersTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$FoldersTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String?> color = const Value.absent(),
+                Value<String?> icon = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FoldersCompanion(
+                id: id,
+                name: name,
+                color: color,
+                icon: icon,
+                sortOrder: sortOrder,
+                deletedAt: deletedAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                Value<String?> color = const Value.absent(),
+                Value<String?> icon = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => FoldersCompanion.insert(
+                id: id,
+                name: name,
+                color: color,
+                icon: icon,
+                sortOrder: sortOrder,
+                deletedAt: deletedAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$FoldersTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({tasksRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (tasksRefs) db.tasks],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (tasksRefs)
+                    await $_getPrefetchedData<Folder, $FoldersTable, Task>(
+                      currentTable: table,
+                      referencedTable: $$FoldersTableReferences._tasksRefsTable(
+                        db,
+                      ),
+                      managerFromTypedResult: (p0) =>
+                          $$FoldersTableReferences(db, table, p0).tasksRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.folderId == item.id),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$FoldersTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FoldersTable,
+      Folder,
+      $$FoldersTableFilterComposer,
+      $$FoldersTableOrderingComposer,
+      $$FoldersTableAnnotationComposer,
+      $$FoldersTableCreateCompanionBuilder,
+      $$FoldersTableUpdateCompanionBuilder,
+      (Folder, $$FoldersTableReferences),
+      Folder,
+      PrefetchHooks Function({bool tasksRefs})
+    >;
 typedef $$TasksTableCreateCompanionBuilder =
     TasksCompanion Function({
       required String id,
-      required String origin,
-      required String status,
       required String title,
       Value<DateTime?> dueDate,
       Value<String?> priority,
       Value<String?> memo,
-      Value<String?> parentTaskId,
-      required DateTime createdAt,
-      required DateTime updatedAt,
+      Value<String?> folderId,
+      Value<int> sortOrder,
       Value<DateTime?> completedAt,
       Value<DateTime?> deletedAt,
-      Value<int> sortOrder,
-      Value<String?> ecampusSourceKey,
-      Value<String?> ecampusSourceTitle,
-      Value<DateTime?> ecampusSourceDueDate,
-      Value<String?> ecampusSourceCourse,
-      Value<String?> ecampusSourceType,
-      Value<DateTime?> ecampusLastSyncedAt,
+      required DateTime createdAt,
+      required DateTime updatedAt,
       Value<int> rowid,
     });
 typedef $$TasksTableUpdateCompanionBuilder =
     TasksCompanion Function({
       Value<String> id,
-      Value<String> origin,
-      Value<String> status,
       Value<String> title,
       Value<DateTime?> dueDate,
       Value<String?> priority,
       Value<String?> memo,
-      Value<String?> parentTaskId,
-      Value<DateTime> createdAt,
-      Value<DateTime> updatedAt,
+      Value<String?> folderId,
+      Value<int> sortOrder,
       Value<DateTime?> completedAt,
       Value<DateTime?> deletedAt,
-      Value<int> sortOrder,
-      Value<String?> ecampusSourceKey,
-      Value<String?> ecampusSourceTitle,
-      Value<DateTime?> ecampusSourceDueDate,
-      Value<String?> ecampusSourceCourse,
-      Value<String?> ecampusSourceType,
-      Value<DateTime?> ecampusLastSyncedAt,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
       Value<int> rowid,
     });
 
 final class $$TasksTableReferences
     extends BaseReferences<_$AppDatabase, $TasksTable, Task> {
   $$TasksTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $FoldersTable _folderIdTable(_$AppDatabase db) => db.folders
+      .createAlias($_aliasNameGenerator(db.tasks.folderId, db.folders.id));
+
+  $$FoldersTableProcessedTableManager? get folderId {
+    final $_column = $_itemColumn<String>('folder_id');
+    if ($_column == null) return null;
+    final manager = $$FoldersTableTableManager(
+      $_db,
+      $_db.folders,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_folderIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
 
   static MultiTypedResultKey<$SubTasksTable, List<SubTask>> _subTasksRefsTable(
     _$AppDatabase db,
@@ -3634,46 +6273,64 @@ final class $$TasksTableReferences
     );
   }
 
-  static MultiTypedResultKey<$TaskFoldersTable, List<TaskFolder>>
-  _taskFoldersRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
-    db.taskFolders,
-    aliasName: $_aliasNameGenerator(db.tasks.id, db.taskFolders.taskId),
+  static MultiTypedResultKey<$EcampusItemsTable, List<EcampusItem>>
+  _ecampusItemsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.ecampusItems,
+    aliasName: $_aliasNameGenerator(db.tasks.id, db.ecampusItems.taskId),
   );
 
-  $$TaskFoldersTableProcessedTableManager get taskFoldersRefs {
-    final manager = $$TaskFoldersTableTableManager(
+  $$EcampusItemsTableProcessedTableManager get ecampusItemsRefs {
+    final manager = $$EcampusItemsTableTableManager(
       $_db,
-      $_db.taskFolders,
+      $_db.ecampusItems,
     ).filter((f) => f.taskId.id.sqlEquals($_itemColumn<String>('id')!));
 
-    final cache = $_typedResult.readTableOrNull(_taskFoldersRefsTable($_db));
+    final cache = $_typedResult.readTableOrNull(_ecampusItemsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$TaskRemindersTable, List<TaskReminder>>
+  _taskRemindersRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.taskReminders,
+    aliasName: $_aliasNameGenerator(db.tasks.id, db.taskReminders.taskId),
+  );
+
+  $$TaskRemindersTableProcessedTableManager get taskRemindersRefs {
+    final manager = $$TaskRemindersTableTableManager(
+      $_db,
+      $_db.taskReminders,
+    ).filter((f) => f.taskId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_taskRemindersRefsTable($_db));
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
 
   static MultiTypedResultKey<
-    $NotificationSettingsTable,
-    List<NotificationSetting>
+    $LocalNotificationSchedulesTable,
+    List<LocalNotificationSchedule>
   >
-  _notificationSettingsRefsTable(_$AppDatabase db) =>
+  _localNotificationSchedulesRefsTable(_$AppDatabase db) =>
       MultiTypedResultKey.fromTable(
-        db.notificationSettings,
+        db.localNotificationSchedules,
         aliasName: $_aliasNameGenerator(
           db.tasks.id,
-          db.notificationSettings.taskId,
+          db.localNotificationSchedules.taskId,
         ),
       );
 
-  $$NotificationSettingsTableProcessedTableManager
-  get notificationSettingsRefs {
-    final manager = $$NotificationSettingsTableTableManager(
+  $$LocalNotificationSchedulesTableProcessedTableManager
+  get localNotificationSchedulesRefs {
+    final manager = $$LocalNotificationSchedulesTableTableManager(
       $_db,
-      $_db.notificationSettings,
+      $_db.localNotificationSchedules,
     ).filter((f) => f.taskId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(
-      _notificationSettingsRefsTable($_db),
+      _localNotificationSchedulesRefsTable($_db),
     );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
@@ -3691,16 +6348,6 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
   });
   ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get origin => $composableBuilder(
-    column: $table.origin,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get status => $composableBuilder(
-    column: $table.status,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3724,18 +6371,8 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get parentTaskId => $composableBuilder(
-    column: $table.parentTaskId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get createdAt => $composableBuilder(
-    column: $table.createdAt,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
-    column: $table.updatedAt,
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3749,40 +6386,38 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get sortOrder => $composableBuilder(
-    column: $table.sortOrder,
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get ecampusSourceKey => $composableBuilder(
-    column: $table.ecampusSourceKey,
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get ecampusSourceTitle => $composableBuilder(
-    column: $table.ecampusSourceTitle,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get ecampusSourceDueDate => $composableBuilder(
-    column: $table.ecampusSourceDueDate,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get ecampusSourceCourse => $composableBuilder(
-    column: $table.ecampusSourceCourse,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get ecampusSourceType => $composableBuilder(
-    column: $table.ecampusSourceType,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get ecampusLastSyncedAt => $composableBuilder(
-    column: $table.ecampusLastSyncedAt,
-    builder: (column) => ColumnFilters(column),
-  );
+  $$FoldersTableFilterComposer get folderId {
+    final $$FoldersTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.folderId,
+      referencedTable: $db.folders,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FoldersTableFilterComposer(
+            $db: $db,
+            $table: $db.folders,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 
   Expression<bool> subTasksRefs(
     Expression<bool> Function($$SubTasksTableFilterComposer f) f,
@@ -3834,22 +6469,22 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
     return f(composer);
   }
 
-  Expression<bool> taskFoldersRefs(
-    Expression<bool> Function($$TaskFoldersTableFilterComposer f) f,
+  Expression<bool> ecampusItemsRefs(
+    Expression<bool> Function($$EcampusItemsTableFilterComposer f) f,
   ) {
-    final $$TaskFoldersTableFilterComposer composer = $composerBuilder(
+    final $$EcampusItemsTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
-      referencedTable: $db.taskFolders,
+      referencedTable: $db.ecampusItems,
       getReferencedColumn: (t) => t.taskId,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$TaskFoldersTableFilterComposer(
+          }) => $$EcampusItemsTableFilterComposer(
             $db: $db,
-            $table: $db.taskFolders,
+            $table: $db.ecampusItems,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -3859,28 +6494,55 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
     return f(composer);
   }
 
-  Expression<bool> notificationSettingsRefs(
-    Expression<bool> Function($$NotificationSettingsTableFilterComposer f) f,
+  Expression<bool> taskRemindersRefs(
+    Expression<bool> Function($$TaskRemindersTableFilterComposer f) f,
   ) {
-    final $$NotificationSettingsTableFilterComposer composer = $composerBuilder(
+    final $$TaskRemindersTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
-      referencedTable: $db.notificationSettings,
+      referencedTable: $db.taskReminders,
       getReferencedColumn: (t) => t.taskId,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$NotificationSettingsTableFilterComposer(
+          }) => $$TaskRemindersTableFilterComposer(
             $db: $db,
-            $table: $db.notificationSettings,
+            $table: $db.taskReminders,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
                 $removeJoinBuilderFromRootComposer,
           ),
     );
+    return f(composer);
+  }
+
+  Expression<bool> localNotificationSchedulesRefs(
+    Expression<bool> Function($$LocalNotificationSchedulesTableFilterComposer f)
+    f,
+  ) {
+    final $$LocalNotificationSchedulesTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.localNotificationSchedules,
+          getReferencedColumn: (t) => t.taskId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$LocalNotificationSchedulesTableFilterComposer(
+                $db: $db,
+                $table: $db.localNotificationSchedules,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 }
@@ -3896,16 +6558,6 @@ class $$TasksTableOrderingComposer
   });
   ColumnOrderings<String> get id => $composableBuilder(
     column: $table.id,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get origin => $composableBuilder(
-    column: $table.origin,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get status => $composableBuilder(
-    column: $table.status,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -3929,18 +6581,8 @@ class $$TasksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get parentTaskId => $composableBuilder(
-    column: $table.parentTaskId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
-    column: $table.createdAt,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
-    column: $table.updatedAt,
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -3954,40 +6596,38 @@ class $$TasksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get sortOrder => $composableBuilder(
-    column: $table.sortOrder,
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get ecampusSourceKey => $composableBuilder(
-    column: $table.ecampusSourceKey,
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get ecampusSourceTitle => $composableBuilder(
-    column: $table.ecampusSourceTitle,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get ecampusSourceDueDate => $composableBuilder(
-    column: $table.ecampusSourceDueDate,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get ecampusSourceCourse => $composableBuilder(
-    column: $table.ecampusSourceCourse,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get ecampusSourceType => $composableBuilder(
-    column: $table.ecampusSourceType,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get ecampusLastSyncedAt => $composableBuilder(
-    column: $table.ecampusLastSyncedAt,
-    builder: (column) => ColumnOrderings(column),
-  );
+  $$FoldersTableOrderingComposer get folderId {
+    final $$FoldersTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.folderId,
+      referencedTable: $db.folders,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FoldersTableOrderingComposer(
+            $db: $db,
+            $table: $db.folders,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$TasksTableAnnotationComposer
@@ -4002,12 +6642,6 @@ class $$TasksTableAnnotationComposer
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<String> get origin =>
-      $composableBuilder(column: $table.origin, builder: (column) => column);
-
-  GeneratedColumn<String> get status =>
-      $composableBuilder(column: $table.status, builder: (column) => column);
-
   GeneratedColumn<String> get title =>
       $composableBuilder(column: $table.title, builder: (column) => column);
 
@@ -4020,16 +6654,8 @@ class $$TasksTableAnnotationComposer
   GeneratedColumn<String> get memo =>
       $composableBuilder(column: $table.memo, builder: (column) => column);
 
-  GeneratedColumn<String> get parentTaskId => $composableBuilder(
-    column: $table.parentTaskId,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<DateTime> get createdAt =>
-      $composableBuilder(column: $table.createdAt, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get updatedAt =>
-      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
 
   GeneratedColumn<DateTime> get completedAt => $composableBuilder(
     column: $table.completedAt,
@@ -4039,38 +6665,34 @@ class $$TasksTableAnnotationComposer
   GeneratedColumn<DateTime> get deletedAt =>
       $composableBuilder(column: $table.deletedAt, builder: (column) => column);
 
-  GeneratedColumn<int> get sortOrder =>
-      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
-  GeneratedColumn<String> get ecampusSourceKey => $composableBuilder(
-    column: $table.ecampusSourceKey,
-    builder: (column) => column,
-  );
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 
-  GeneratedColumn<String> get ecampusSourceTitle => $composableBuilder(
-    column: $table.ecampusSourceTitle,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<DateTime> get ecampusSourceDueDate => $composableBuilder(
-    column: $table.ecampusSourceDueDate,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get ecampusSourceCourse => $composableBuilder(
-    column: $table.ecampusSourceCourse,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get ecampusSourceType => $composableBuilder(
-    column: $table.ecampusSourceType,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<DateTime> get ecampusLastSyncedAt => $composableBuilder(
-    column: $table.ecampusLastSyncedAt,
-    builder: (column) => column,
-  );
+  $$FoldersTableAnnotationComposer get folderId {
+    final $$FoldersTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.folderId,
+      referencedTable: $db.folders,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FoldersTableAnnotationComposer(
+            $db: $db,
+            $table: $db.folders,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 
   Expression<T> subTasksRefs<T extends Object>(
     Expression<T> Function($$SubTasksTableAnnotationComposer a) f,
@@ -4122,22 +6744,22 @@ class $$TasksTableAnnotationComposer
     return f(composer);
   }
 
-  Expression<T> taskFoldersRefs<T extends Object>(
-    Expression<T> Function($$TaskFoldersTableAnnotationComposer a) f,
+  Expression<T> ecampusItemsRefs<T extends Object>(
+    Expression<T> Function($$EcampusItemsTableAnnotationComposer a) f,
   ) {
-    final $$TaskFoldersTableAnnotationComposer composer = $composerBuilder(
+    final $$EcampusItemsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
-      referencedTable: $db.taskFolders,
+      referencedTable: $db.ecampusItems,
       getReferencedColumn: (t) => t.taskId,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$TaskFoldersTableAnnotationComposer(
+          }) => $$EcampusItemsTableAnnotationComposer(
             $db: $db,
-            $table: $db.taskFolders,
+            $table: $db.ecampusItems,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -4147,23 +6769,51 @@ class $$TasksTableAnnotationComposer
     return f(composer);
   }
 
-  Expression<T> notificationSettingsRefs<T extends Object>(
-    Expression<T> Function($$NotificationSettingsTableAnnotationComposer a) f,
+  Expression<T> taskRemindersRefs<T extends Object>(
+    Expression<T> Function($$TaskRemindersTableAnnotationComposer a) f,
   ) {
-    final $$NotificationSettingsTableAnnotationComposer composer =
+    final $$TaskRemindersTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.taskReminders,
+      getReferencedColumn: (t) => t.taskId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TaskRemindersTableAnnotationComposer(
+            $db: $db,
+            $table: $db.taskReminders,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> localNotificationSchedulesRefs<T extends Object>(
+    Expression<T> Function(
+      $$LocalNotificationSchedulesTableAnnotationComposer a,
+    )
+    f,
+  ) {
+    final $$LocalNotificationSchedulesTableAnnotationComposer composer =
         $composerBuilder(
           composer: this,
           getCurrentColumn: (t) => t.id,
-          referencedTable: $db.notificationSettings,
+          referencedTable: $db.localNotificationSchedules,
           getReferencedColumn: (t) => t.taskId,
           builder:
               (
                 joinBuilder, {
                 $addJoinBuilderToRootComposer,
                 $removeJoinBuilderFromRootComposer,
-              }) => $$NotificationSettingsTableAnnotationComposer(
+              }) => $$LocalNotificationSchedulesTableAnnotationComposer(
                 $db: $db,
-                $table: $db.notificationSettings,
+                $table: $db.localNotificationSchedules,
                 $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
                 joinBuilder: joinBuilder,
                 $removeJoinBuilderFromRootComposer:
@@ -4188,10 +6838,12 @@ class $$TasksTableTableManager
           (Task, $$TasksTableReferences),
           Task,
           PrefetchHooks Function({
+            bool folderId,
             bool subTasksRefs,
             bool taskTagsRefs,
-            bool taskFoldersRefs,
-            bool notificationSettingsRefs,
+            bool ecampusItemsRefs,
+            bool taskRemindersRefs,
+            bool localNotificationSchedulesRefs,
           })
         > {
   $$TasksTableTableManager(_$AppDatabase db, $TasksTable table)
@@ -4208,89 +6860,57 @@ class $$TasksTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
-                Value<String> origin = const Value.absent(),
-                Value<String> status = const Value.absent(),
                 Value<String> title = const Value.absent(),
                 Value<DateTime?> dueDate = const Value.absent(),
                 Value<String?> priority = const Value.absent(),
                 Value<String?> memo = const Value.absent(),
-                Value<String?> parentTaskId = const Value.absent(),
-                Value<DateTime> createdAt = const Value.absent(),
-                Value<DateTime> updatedAt = const Value.absent(),
+                Value<String?> folderId = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
-                Value<int> sortOrder = const Value.absent(),
-                Value<String?> ecampusSourceKey = const Value.absent(),
-                Value<String?> ecampusSourceTitle = const Value.absent(),
-                Value<DateTime?> ecampusSourceDueDate = const Value.absent(),
-                Value<String?> ecampusSourceCourse = const Value.absent(),
-                Value<String?> ecampusSourceType = const Value.absent(),
-                Value<DateTime?> ecampusLastSyncedAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TasksCompanion(
                 id: id,
-                origin: origin,
-                status: status,
                 title: title,
                 dueDate: dueDate,
                 priority: priority,
                 memo: memo,
-                parentTaskId: parentTaskId,
-                createdAt: createdAt,
-                updatedAt: updatedAt,
+                folderId: folderId,
+                sortOrder: sortOrder,
                 completedAt: completedAt,
                 deletedAt: deletedAt,
-                sortOrder: sortOrder,
-                ecampusSourceKey: ecampusSourceKey,
-                ecampusSourceTitle: ecampusSourceTitle,
-                ecampusSourceDueDate: ecampusSourceDueDate,
-                ecampusSourceCourse: ecampusSourceCourse,
-                ecampusSourceType: ecampusSourceType,
-                ecampusLastSyncedAt: ecampusLastSyncedAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
               ({
                 required String id,
-                required String origin,
-                required String status,
                 required String title,
                 Value<DateTime?> dueDate = const Value.absent(),
                 Value<String?> priority = const Value.absent(),
                 Value<String?> memo = const Value.absent(),
-                Value<String?> parentTaskId = const Value.absent(),
-                required DateTime createdAt,
-                required DateTime updatedAt,
+                Value<String?> folderId = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
-                Value<int> sortOrder = const Value.absent(),
-                Value<String?> ecampusSourceKey = const Value.absent(),
-                Value<String?> ecampusSourceTitle = const Value.absent(),
-                Value<DateTime?> ecampusSourceDueDate = const Value.absent(),
-                Value<String?> ecampusSourceCourse = const Value.absent(),
-                Value<String?> ecampusSourceType = const Value.absent(),
-                Value<DateTime?> ecampusLastSyncedAt = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
                 Value<int> rowid = const Value.absent(),
               }) => TasksCompanion.insert(
                 id: id,
-                origin: origin,
-                status: status,
                 title: title,
                 dueDate: dueDate,
                 priority: priority,
                 memo: memo,
-                parentTaskId: parentTaskId,
-                createdAt: createdAt,
-                updatedAt: updatedAt,
+                folderId: folderId,
+                sortOrder: sortOrder,
                 completedAt: completedAt,
                 deletedAt: deletedAt,
-                sortOrder: sortOrder,
-                ecampusSourceKey: ecampusSourceKey,
-                ecampusSourceTitle: ecampusSourceTitle,
-                ecampusSourceDueDate: ecampusSourceDueDate,
-                ecampusSourceCourse: ecampusSourceCourse,
-                ecampusSourceType: ecampusSourceType,
-                ecampusLastSyncedAt: ecampusLastSyncedAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -4301,20 +6921,55 @@ class $$TasksTableTableManager
               .toList(),
           prefetchHooksCallback:
               ({
+                folderId = false,
                 subTasksRefs = false,
                 taskTagsRefs = false,
-                taskFoldersRefs = false,
-                notificationSettingsRefs = false,
+                ecampusItemsRefs = false,
+                taskRemindersRefs = false,
+                localNotificationSchedulesRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (subTasksRefs) db.subTasks,
                     if (taskTagsRefs) db.taskTags,
-                    if (taskFoldersRefs) db.taskFolders,
-                    if (notificationSettingsRefs) db.notificationSettings,
+                    if (ecampusItemsRefs) db.ecampusItems,
+                    if (taskRemindersRefs) db.taskReminders,
+                    if (localNotificationSchedulesRefs)
+                      db.localNotificationSchedules,
                   ],
-                  addJoins: null,
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (folderId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.folderId,
+                                    referencedTable: $$TasksTableReferences
+                                        ._folderIdTable(db),
+                                    referencedColumn: $$TasksTableReferences
+                                        ._folderIdTable(db)
+                                        .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
                   getPrefetchedDataCallback: (items) async {
                     return [
                       if (subTasksRefs)
@@ -4351,42 +7006,63 @@ class $$TasksTableTableManager
                               ),
                           typedResults: items,
                         ),
-                      if (taskFoldersRefs)
+                      if (ecampusItemsRefs)
                         await $_getPrefetchedData<
                           Task,
                           $TasksTable,
-                          TaskFolder
+                          EcampusItem
                         >(
                           currentTable: table,
                           referencedTable: $$TasksTableReferences
-                              ._taskFoldersRefsTable(db),
+                              ._ecampusItemsRefsTable(db),
                           managerFromTypedResult: (p0) =>
                               $$TasksTableReferences(
                                 db,
                                 table,
                                 p0,
-                              ).taskFoldersRefs,
+                              ).ecampusItemsRefs,
                           referencedItemsForCurrentItem:
                               (item, referencedItems) => referencedItems.where(
                                 (e) => e.taskId == item.id,
                               ),
                           typedResults: items,
                         ),
-                      if (notificationSettingsRefs)
+                      if (taskRemindersRefs)
                         await $_getPrefetchedData<
                           Task,
                           $TasksTable,
-                          NotificationSetting
+                          TaskReminder
                         >(
                           currentTable: table,
                           referencedTable: $$TasksTableReferences
-                              ._notificationSettingsRefsTable(db),
+                              ._taskRemindersRefsTable(db),
                           managerFromTypedResult: (p0) =>
                               $$TasksTableReferences(
                                 db,
                                 table,
                                 p0,
-                              ).notificationSettingsRefs,
+                              ).taskRemindersRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.taskId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (localNotificationSchedulesRefs)
+                        await $_getPrefetchedData<
+                          Task,
+                          $TasksTable,
+                          LocalNotificationSchedule
+                        >(
+                          currentTable: table,
+                          referencedTable: $$TasksTableReferences
+                              ._localNotificationSchedulesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$TasksTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).localNotificationSchedulesRefs,
                           referencedItemsForCurrentItem:
                               (item, referencedItems) => referencedItems.where(
                                 (e) => e.taskId == item.id,
@@ -4414,10 +7090,12 @@ typedef $$TasksTableProcessedTableManager =
       (Task, $$TasksTableReferences),
       Task,
       PrefetchHooks Function({
+        bool folderId,
         bool subTasksRefs,
         bool taskTagsRefs,
-        bool taskFoldersRefs,
-        bool notificationSettingsRefs,
+        bool ecampusItemsRefs,
+        bool taskRemindersRefs,
+        bool localNotificationSchedulesRefs,
       })
     >;
 typedef $$SubTasksTableCreateCompanionBuilder =
@@ -4425,7 +7103,9 @@ typedef $$SubTasksTableCreateCompanionBuilder =
       required String id,
       required String taskId,
       required String title,
-      required bool isDone,
+      Value<int> position,
+      Value<DateTime?> completedAt,
+      Value<DateTime?> deletedAt,
       required DateTime createdAt,
       required DateTime updatedAt,
       Value<int> rowid,
@@ -4435,7 +7115,9 @@ typedef $$SubTasksTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> taskId,
       Value<String> title,
-      Value<bool> isDone,
+      Value<int> position,
+      Value<DateTime?> completedAt,
+      Value<DateTime?> deletedAt,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -4483,8 +7165,18 @@ class $$SubTasksTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<bool> get isDone => $composableBuilder(
-    column: $table.isDone,
+  ColumnFilters<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4541,8 +7233,18 @@ class $$SubTasksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<bool> get isDone => $composableBuilder(
-    column: $table.isDone,
+  ColumnOrderings<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -4595,8 +7297,16 @@ class $$SubTasksTableAnnotationComposer
   GeneratedColumn<String> get title =>
       $composableBuilder(column: $table.title, builder: (column) => column);
 
-  GeneratedColumn<bool> get isDone =>
-      $composableBuilder(column: $table.isDone, builder: (column) => column);
+  GeneratedColumn<int> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -4659,7 +7369,9 @@ class $$SubTasksTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> taskId = const Value.absent(),
                 Value<String> title = const Value.absent(),
-                Value<bool> isDone = const Value.absent(),
+                Value<int> position = const Value.absent(),
+                Value<DateTime?> completedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -4667,7 +7379,9 @@ class $$SubTasksTableTableManager
                 id: id,
                 taskId: taskId,
                 title: title,
-                isDone: isDone,
+                position: position,
+                completedAt: completedAt,
+                deletedAt: deletedAt,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -4677,7 +7391,9 @@ class $$SubTasksTableTableManager
                 required String id,
                 required String taskId,
                 required String title,
-                required bool isDone,
+                Value<int> position = const Value.absent(),
+                Value<DateTime?> completedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<int> rowid = const Value.absent(),
@@ -4685,7 +7401,9 @@ class $$SubTasksTableTableManager
                 id: id,
                 taskId: taskId,
                 title: title,
-                isDone: isDone,
+                position: position,
+                completedAt: completedAt,
+                deletedAt: deletedAt,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -4762,6 +7480,8 @@ typedef $$TagsTableCreateCompanionBuilder =
       required String id,
       required String name,
       required String color,
+      Value<int> sortOrder,
+      Value<DateTime?> deletedAt,
       required DateTime createdAt,
       required DateTime updatedAt,
       Value<int> rowid,
@@ -4771,6 +7491,8 @@ typedef $$TagsTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> name,
       Value<String> color,
+      Value<int> sortOrder,
+      Value<DateTime?> deletedAt,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -4798,6 +7520,24 @@ final class $$TagsTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$EcampusCoursesTable, List<EcampusCourse>>
+  _ecampusCoursesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.ecampusCourses,
+    aliasName: $_aliasNameGenerator(db.tags.id, db.ecampusCourses.tagId),
+  );
+
+  $$EcampusCoursesTableProcessedTableManager get ecampusCoursesRefs {
+    final manager = $$EcampusCoursesTableTableManager(
+      $_db,
+      $_db.ecampusCourses,
+    ).filter((f) => f.tagId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_ecampusCoursesRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$TagsTableFilterComposer extends Composer<_$AppDatabase, $TagsTable> {
@@ -4820,6 +7560,16 @@ class $$TagsTableFilterComposer extends Composer<_$AppDatabase, $TagsTable> {
 
   ColumnFilters<String> get color => $composableBuilder(
     column: $table.color,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4857,6 +7607,31 @@ class $$TagsTableFilterComposer extends Composer<_$AppDatabase, $TagsTable> {
     );
     return f(composer);
   }
+
+  Expression<bool> ecampusCoursesRefs(
+    Expression<bool> Function($$EcampusCoursesTableFilterComposer f) f,
+  ) {
+    final $$EcampusCoursesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.ecampusCourses,
+      getReferencedColumn: (t) => t.tagId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$EcampusCoursesTableFilterComposer(
+            $db: $db,
+            $table: $db.ecampusCourses,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$TagsTableOrderingComposer extends Composer<_$AppDatabase, $TagsTable> {
@@ -4879,6 +7654,16 @@ class $$TagsTableOrderingComposer extends Composer<_$AppDatabase, $TagsTable> {
 
   ColumnOrderings<String> get color => $composableBuilder(
     column: $table.color,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -4911,6 +7696,12 @@ class $$TagsTableAnnotationComposer
   GeneratedColumn<String> get color =>
       $composableBuilder(column: $table.color, builder: (column) => column);
 
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -4941,6 +7732,31 @@ class $$TagsTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> ecampusCoursesRefs<T extends Object>(
+    Expression<T> Function($$EcampusCoursesTableAnnotationComposer a) f,
+  ) {
+    final $$EcampusCoursesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.ecampusCourses,
+      getReferencedColumn: (t) => t.tagId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$EcampusCoursesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.ecampusCourses,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$TagsTableTableManager
@@ -4956,7 +7772,7 @@ class $$TagsTableTableManager
           $$TagsTableUpdateCompanionBuilder,
           (Tag, $$TagsTableReferences),
           Tag,
-          PrefetchHooks Function({bool taskTagsRefs})
+          PrefetchHooks Function({bool taskTagsRefs, bool ecampusCoursesRefs})
         > {
   $$TagsTableTableManager(_$AppDatabase db, $TagsTable table)
     : super(
@@ -4974,6 +7790,8 @@ class $$TagsTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String> color = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -4981,6 +7799,8 @@ class $$TagsTableTableManager
                 id: id,
                 name: name,
                 color: color,
+                sortOrder: sortOrder,
+                deletedAt: deletedAt,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -4990,6 +7810,8 @@ class $$TagsTableTableManager
                 required String id,
                 required String name,
                 required String color,
+                Value<int> sortOrder = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<int> rowid = const Value.absent(),
@@ -4997,6 +7819,8 @@ class $$TagsTableTableManager
                 id: id,
                 name: name,
                 color: color,
+                sortOrder: sortOrder,
+                deletedAt: deletedAt,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -5007,29 +7831,54 @@ class $$TagsTableTableManager
                     (e.readTable(table), $$TagsTableReferences(db, table, e)),
               )
               .toList(),
-          prefetchHooksCallback: ({taskTagsRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [if (taskTagsRefs) db.taskTags],
-              addJoins: null,
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (taskTagsRefs)
-                    await $_getPrefetchedData<Tag, $TagsTable, TaskTag>(
-                      currentTable: table,
-                      referencedTable: $$TagsTableReferences._taskTagsRefsTable(
-                        db,
-                      ),
-                      managerFromTypedResult: (p0) =>
-                          $$TagsTableReferences(db, table, p0).taskTagsRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where((e) => e.tagId == item.id),
-                      typedResults: items,
-                    ),
-                ];
+          prefetchHooksCallback:
+              ({taskTagsRefs = false, ecampusCoursesRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (taskTagsRefs) db.taskTags,
+                    if (ecampusCoursesRefs) db.ecampusCourses,
+                  ],
+                  addJoins: null,
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (taskTagsRefs)
+                        await $_getPrefetchedData<Tag, $TagsTable, TaskTag>(
+                          currentTable: table,
+                          referencedTable: $$TagsTableReferences
+                              ._taskTagsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$TagsTableReferences(db, table, p0).taskTagsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.tagId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (ecampusCoursesRefs)
+                        await $_getPrefetchedData<
+                          Tag,
+                          $TagsTable,
+                          EcampusCourse
+                        >(
+                          currentTable: table,
+                          referencedTable: $$TagsTableReferences
+                              ._ecampusCoursesRefsTable(db),
+                          managerFromTypedResult: (p0) => $$TagsTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).ecampusCoursesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.tagId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -5046,487 +7895,22 @@ typedef $$TagsTableProcessedTableManager =
       $$TagsTableUpdateCompanionBuilder,
       (Tag, $$TagsTableReferences),
       Tag,
-      PrefetchHooks Function({bool taskTagsRefs})
-    >;
-typedef $$FoldersTableCreateCompanionBuilder =
-    FoldersCompanion Function({
-      required String id,
-      required String name,
-      Value<String?> color,
-      Value<String?> icon,
-      Value<String?> parentFolderId,
-      Value<int> sortOrder,
-      required DateTime createdAt,
-      required DateTime updatedAt,
-      Value<int> rowid,
-    });
-typedef $$FoldersTableUpdateCompanionBuilder =
-    FoldersCompanion Function({
-      Value<String> id,
-      Value<String> name,
-      Value<String?> color,
-      Value<String?> icon,
-      Value<String?> parentFolderId,
-      Value<int> sortOrder,
-      Value<DateTime> createdAt,
-      Value<DateTime> updatedAt,
-      Value<int> rowid,
-    });
-
-final class $$FoldersTableReferences
-    extends BaseReferences<_$AppDatabase, $FoldersTable, Folder> {
-  $$FoldersTableReferences(super.$_db, super.$_table, super.$_typedResult);
-
-  static $FoldersTable _parentFolderIdTable(_$AppDatabase db) =>
-      db.folders.createAlias(
-        $_aliasNameGenerator(db.folders.parentFolderId, db.folders.id),
-      );
-
-  $$FoldersTableProcessedTableManager? get parentFolderId {
-    final $_column = $_itemColumn<String>('parent_folder_id');
-    if ($_column == null) return null;
-    final manager = $$FoldersTableTableManager(
-      $_db,
-      $_db.folders,
-    ).filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_parentFolderIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: [item]),
-    );
-  }
-
-  static MultiTypedResultKey<$TaskFoldersTable, List<TaskFolder>>
-  _taskFoldersRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
-    db.taskFolders,
-    aliasName: $_aliasNameGenerator(db.folders.id, db.taskFolders.folderId),
-  );
-
-  $$TaskFoldersTableProcessedTableManager get taskFoldersRefs {
-    final manager = $$TaskFoldersTableTableManager(
-      $_db,
-      $_db.taskFolders,
-    ).filter((f) => f.folderId.id.sqlEquals($_itemColumn<String>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(_taskFoldersRefsTable($_db));
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: cache),
-    );
-  }
-}
-
-class $$FoldersTableFilterComposer
-    extends Composer<_$AppDatabase, $FoldersTable> {
-  $$FoldersTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<String> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get name => $composableBuilder(
-    column: $table.name,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get color => $composableBuilder(
-    column: $table.color,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get icon => $composableBuilder(
-    column: $table.icon,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get sortOrder => $composableBuilder(
-    column: $table.sortOrder,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get createdAt => $composableBuilder(
-    column: $table.createdAt,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
-    column: $table.updatedAt,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  $$FoldersTableFilterComposer get parentFolderId {
-    final $$FoldersTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.parentFolderId,
-      referencedTable: $db.folders,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$FoldersTableFilterComposer(
-            $db: $db,
-            $table: $db.folders,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-
-  Expression<bool> taskFoldersRefs(
-    Expression<bool> Function($$TaskFoldersTableFilterComposer f) f,
-  ) {
-    final $$TaskFoldersTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.taskFolders,
-      getReferencedColumn: (t) => t.folderId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$TaskFoldersTableFilterComposer(
-            $db: $db,
-            $table: $db.taskFolders,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-}
-
-class $$FoldersTableOrderingComposer
-    extends Composer<_$AppDatabase, $FoldersTable> {
-  $$FoldersTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<String> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get name => $composableBuilder(
-    column: $table.name,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get color => $composableBuilder(
-    column: $table.color,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get icon => $composableBuilder(
-    column: $table.icon,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get sortOrder => $composableBuilder(
-    column: $table.sortOrder,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
-    column: $table.createdAt,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
-    column: $table.updatedAt,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  $$FoldersTableOrderingComposer get parentFolderId {
-    final $$FoldersTableOrderingComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.parentFolderId,
-      referencedTable: $db.folders,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$FoldersTableOrderingComposer(
-            $db: $db,
-            $table: $db.folders,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-}
-
-class $$FoldersTableAnnotationComposer
-    extends Composer<_$AppDatabase, $FoldersTable> {
-  $$FoldersTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<String> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get name =>
-      $composableBuilder(column: $table.name, builder: (column) => column);
-
-  GeneratedColumn<String> get color =>
-      $composableBuilder(column: $table.color, builder: (column) => column);
-
-  GeneratedColumn<String> get icon =>
-      $composableBuilder(column: $table.icon, builder: (column) => column);
-
-  GeneratedColumn<int> get sortOrder =>
-      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get createdAt =>
-      $composableBuilder(column: $table.createdAt, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get updatedAt =>
-      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
-
-  $$FoldersTableAnnotationComposer get parentFolderId {
-    final $$FoldersTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.parentFolderId,
-      referencedTable: $db.folders,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$FoldersTableAnnotationComposer(
-            $db: $db,
-            $table: $db.folders,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-
-  Expression<T> taskFoldersRefs<T extends Object>(
-    Expression<T> Function($$TaskFoldersTableAnnotationComposer a) f,
-  ) {
-    final $$TaskFoldersTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.taskFolders,
-      getReferencedColumn: (t) => t.folderId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$TaskFoldersTableAnnotationComposer(
-            $db: $db,
-            $table: $db.taskFolders,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-}
-
-class $$FoldersTableTableManager
-    extends
-        RootTableManager<
-          _$AppDatabase,
-          $FoldersTable,
-          Folder,
-          $$FoldersTableFilterComposer,
-          $$FoldersTableOrderingComposer,
-          $$FoldersTableAnnotationComposer,
-          $$FoldersTableCreateCompanionBuilder,
-          $$FoldersTableUpdateCompanionBuilder,
-          (Folder, $$FoldersTableReferences),
-          Folder,
-          PrefetchHooks Function({bool parentFolderId, bool taskFoldersRefs})
-        > {
-  $$FoldersTableTableManager(_$AppDatabase db, $FoldersTable table)
-    : super(
-        TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$FoldersTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$FoldersTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$FoldersTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback:
-              ({
-                Value<String> id = const Value.absent(),
-                Value<String> name = const Value.absent(),
-                Value<String?> color = const Value.absent(),
-                Value<String?> icon = const Value.absent(),
-                Value<String?> parentFolderId = const Value.absent(),
-                Value<int> sortOrder = const Value.absent(),
-                Value<DateTime> createdAt = const Value.absent(),
-                Value<DateTime> updatedAt = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
-              }) => FoldersCompanion(
-                id: id,
-                name: name,
-                color: color,
-                icon: icon,
-                parentFolderId: parentFolderId,
-                sortOrder: sortOrder,
-                createdAt: createdAt,
-                updatedAt: updatedAt,
-                rowid: rowid,
-              ),
-          createCompanionCallback:
-              ({
-                required String id,
-                required String name,
-                Value<String?> color = const Value.absent(),
-                Value<String?> icon = const Value.absent(),
-                Value<String?> parentFolderId = const Value.absent(),
-                Value<int> sortOrder = const Value.absent(),
-                required DateTime createdAt,
-                required DateTime updatedAt,
-                Value<int> rowid = const Value.absent(),
-              }) => FoldersCompanion.insert(
-                id: id,
-                name: name,
-                color: color,
-                icon: icon,
-                parentFolderId: parentFolderId,
-                sortOrder: sortOrder,
-                createdAt: createdAt,
-                updatedAt: updatedAt,
-                rowid: rowid,
-              ),
-          withReferenceMapper: (p0) => p0
-              .map(
-                (e) => (
-                  e.readTable(table),
-                  $$FoldersTableReferences(db, table, e),
-                ),
-              )
-              .toList(),
-          prefetchHooksCallback:
-              ({parentFolderId = false, taskFoldersRefs = false}) {
-                return PrefetchHooks(
-                  db: db,
-                  explicitlyWatchedTables: [
-                    if (taskFoldersRefs) db.taskFolders,
-                  ],
-                  addJoins:
-                      <
-                        T extends TableManagerState<
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic
-                        >
-                      >(state) {
-                        if (parentFolderId) {
-                          state =
-                              state.withJoin(
-                                    currentTable: table,
-                                    currentColumn: table.parentFolderId,
-                                    referencedTable: $$FoldersTableReferences
-                                        ._parentFolderIdTable(db),
-                                    referencedColumn: $$FoldersTableReferences
-                                        ._parentFolderIdTable(db)
-                                        .id,
-                                  )
-                                  as T;
-                        }
-
-                        return state;
-                      },
-                  getPrefetchedDataCallback: (items) async {
-                    return [
-                      if (taskFoldersRefs)
-                        await $_getPrefetchedData<
-                          Folder,
-                          $FoldersTable,
-                          TaskFolder
-                        >(
-                          currentTable: table,
-                          referencedTable: $$FoldersTableReferences
-                              ._taskFoldersRefsTable(db),
-                          managerFromTypedResult: (p0) =>
-                              $$FoldersTableReferences(
-                                db,
-                                table,
-                                p0,
-                              ).taskFoldersRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.folderId == item.id,
-                              ),
-                          typedResults: items,
-                        ),
-                    ];
-                  },
-                );
-              },
-        ),
-      );
-}
-
-typedef $$FoldersTableProcessedTableManager =
-    ProcessedTableManager<
-      _$AppDatabase,
-      $FoldersTable,
-      Folder,
-      $$FoldersTableFilterComposer,
-      $$FoldersTableOrderingComposer,
-      $$FoldersTableAnnotationComposer,
-      $$FoldersTableCreateCompanionBuilder,
-      $$FoldersTableUpdateCompanionBuilder,
-      (Folder, $$FoldersTableReferences),
-      Folder,
-      PrefetchHooks Function({bool parentFolderId, bool taskFoldersRefs})
+      PrefetchHooks Function({bool taskTagsRefs, bool ecampusCoursesRefs})
     >;
 typedef $$TaskTagsTableCreateCompanionBuilder =
     TaskTagsCompanion Function({
       required String taskId,
       required String tagId,
+      required DateTime updatedAt,
+      Value<DateTime?> deletedAt,
       Value<int> rowid,
     });
 typedef $$TaskTagsTableUpdateCompanionBuilder =
     TaskTagsCompanion Function({
       Value<String> taskId,
       Value<String> tagId,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
       Value<int> rowid,
     });
 
@@ -5579,6 +7963,16 @@ class $$TaskTagsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$TasksTableFilterComposer get taskId {
     final $$TasksTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -5635,6 +8029,16 @@ class $$TaskTagsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$TasksTableOrderingComposer get taskId {
     final $$TasksTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -5691,6 +8095,12 @@ class $$TaskTagsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
   $$TasksTableAnnotationComposer get taskId {
     final $$TasksTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -5768,17 +8178,28 @@ class $$TaskTagsTableTableManager
               ({
                 Value<String> taskId = const Value.absent(),
                 Value<String> tagId = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
-              }) =>
-                  TaskTagsCompanion(taskId: taskId, tagId: tagId, rowid: rowid),
+              }) => TaskTagsCompanion(
+                taskId: taskId,
+                tagId: tagId,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
           createCompanionCallback:
               ({
                 required String taskId,
                 required String tagId,
+                required DateTime updatedAt,
+                Value<DateTime?> deletedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TaskTagsCompanion.insert(
                 taskId: taskId,
                 tagId: tagId,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -5861,30 +8282,512 @@ typedef $$TaskTagsTableProcessedTableManager =
       TaskTag,
       PrefetchHooks Function({bool taskId, bool tagId})
     >;
-typedef $$TaskFoldersTableCreateCompanionBuilder =
-    TaskFoldersCompanion Function({
-      required String taskId,
-      required String folderId,
+typedef $$EcampusCoursesTableCreateCompanionBuilder =
+    EcampusCoursesCompanion Function({
+      required String id,
+      required String sourceScopeId,
+      Value<String?> externalCourseKey,
+      required String name,
+      Value<String?> tagId,
+      required DateTime lastObservedAt,
       Value<int> rowid,
     });
-typedef $$TaskFoldersTableUpdateCompanionBuilder =
-    TaskFoldersCompanion Function({
-      Value<String> taskId,
-      Value<String> folderId,
+typedef $$EcampusCoursesTableUpdateCompanionBuilder =
+    EcampusCoursesCompanion Function({
+      Value<String> id,
+      Value<String> sourceScopeId,
+      Value<String?> externalCourseKey,
+      Value<String> name,
+      Value<String?> tagId,
+      Value<DateTime> lastObservedAt,
       Value<int> rowid,
     });
 
-final class $$TaskFoldersTableReferences
-    extends BaseReferences<_$AppDatabase, $TaskFoldersTable, TaskFolder> {
-  $$TaskFoldersTableReferences(super.$_db, super.$_table, super.$_typedResult);
-
-  static $TasksTable _taskIdTable(_$AppDatabase db) => db.tasks.createAlias(
-    $_aliasNameGenerator(db.taskFolders.taskId, db.tasks.id),
+final class $$EcampusCoursesTableReferences
+    extends BaseReferences<_$AppDatabase, $EcampusCoursesTable, EcampusCourse> {
+  $$EcampusCoursesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
   );
 
-  $$TasksTableProcessedTableManager get taskId {
-    final $_column = $_itemColumn<String>('task_id')!;
+  static $TagsTable _tagIdTable(_$AppDatabase db) => db.tags.createAlias(
+    $_aliasNameGenerator(db.ecampusCourses.tagId, db.tags.id),
+  );
 
+  $$TagsTableProcessedTableManager? get tagId {
+    final $_column = $_itemColumn<String>('tag_id');
+    if ($_column == null) return null;
+    final manager = $$TagsTableTableManager(
+      $_db,
+      $_db.tags,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_tagIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<$EcampusItemsTable, List<EcampusItem>>
+  _ecampusItemsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.ecampusItems,
+    aliasName: $_aliasNameGenerator(
+      db.ecampusCourses.id,
+      db.ecampusItems.courseId,
+    ),
+  );
+
+  $$EcampusItemsTableProcessedTableManager get ecampusItemsRefs {
+    final manager = $$EcampusItemsTableTableManager(
+      $_db,
+      $_db.ecampusItems,
+    ).filter((f) => f.courseId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_ecampusItemsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$EcampusCoursesTableFilterComposer
+    extends Composer<_$AppDatabase, $EcampusCoursesTable> {
+  $$EcampusCoursesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceScopeId => $composableBuilder(
+    column: $table.sourceScopeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get externalCourseKey => $composableBuilder(
+    column: $table.externalCourseKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastObservedAt => $composableBuilder(
+    column: $table.lastObservedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$TagsTableFilterComposer get tagId {
+    final $$TagsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tagId,
+      referencedTable: $db.tags,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagsTableFilterComposer(
+            $db: $db,
+            $table: $db.tags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> ecampusItemsRefs(
+    Expression<bool> Function($$EcampusItemsTableFilterComposer f) f,
+  ) {
+    final $$EcampusItemsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.ecampusItems,
+      getReferencedColumn: (t) => t.courseId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$EcampusItemsTableFilterComposer(
+            $db: $db,
+            $table: $db.ecampusItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$EcampusCoursesTableOrderingComposer
+    extends Composer<_$AppDatabase, $EcampusCoursesTable> {
+  $$EcampusCoursesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceScopeId => $composableBuilder(
+    column: $table.sourceScopeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get externalCourseKey => $composableBuilder(
+    column: $table.externalCourseKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastObservedAt => $composableBuilder(
+    column: $table.lastObservedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$TagsTableOrderingComposer get tagId {
+    final $$TagsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tagId,
+      referencedTable: $db.tags,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagsTableOrderingComposer(
+            $db: $db,
+            $table: $db.tags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$EcampusCoursesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $EcampusCoursesTable> {
+  $$EcampusCoursesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceScopeId => $composableBuilder(
+    column: $table.sourceScopeId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get externalCourseKey => $composableBuilder(
+    column: $table.externalCourseKey,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastObservedAt => $composableBuilder(
+    column: $table.lastObservedAt,
+    builder: (column) => column,
+  );
+
+  $$TagsTableAnnotationComposer get tagId {
+    final $$TagsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tagId,
+      referencedTable: $db.tags,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.tags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> ecampusItemsRefs<T extends Object>(
+    Expression<T> Function($$EcampusItemsTableAnnotationComposer a) f,
+  ) {
+    final $$EcampusItemsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.ecampusItems,
+      getReferencedColumn: (t) => t.courseId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$EcampusItemsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.ecampusItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$EcampusCoursesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $EcampusCoursesTable,
+          EcampusCourse,
+          $$EcampusCoursesTableFilterComposer,
+          $$EcampusCoursesTableOrderingComposer,
+          $$EcampusCoursesTableAnnotationComposer,
+          $$EcampusCoursesTableCreateCompanionBuilder,
+          $$EcampusCoursesTableUpdateCompanionBuilder,
+          (EcampusCourse, $$EcampusCoursesTableReferences),
+          EcampusCourse,
+          PrefetchHooks Function({bool tagId, bool ecampusItemsRefs})
+        > {
+  $$EcampusCoursesTableTableManager(
+    _$AppDatabase db,
+    $EcampusCoursesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$EcampusCoursesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$EcampusCoursesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$EcampusCoursesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> sourceScopeId = const Value.absent(),
+                Value<String?> externalCourseKey = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String?> tagId = const Value.absent(),
+                Value<DateTime> lastObservedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => EcampusCoursesCompanion(
+                id: id,
+                sourceScopeId: sourceScopeId,
+                externalCourseKey: externalCourseKey,
+                name: name,
+                tagId: tagId,
+                lastObservedAt: lastObservedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String sourceScopeId,
+                Value<String?> externalCourseKey = const Value.absent(),
+                required String name,
+                Value<String?> tagId = const Value.absent(),
+                required DateTime lastObservedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => EcampusCoursesCompanion.insert(
+                id: id,
+                sourceScopeId: sourceScopeId,
+                externalCourseKey: externalCourseKey,
+                name: name,
+                tagId: tagId,
+                lastObservedAt: lastObservedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$EcampusCoursesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({tagId = false, ecampusItemsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (ecampusItemsRefs) db.ecampusItems],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (tagId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.tagId,
+                                referencedTable: $$EcampusCoursesTableReferences
+                                    ._tagIdTable(db),
+                                referencedColumn:
+                                    $$EcampusCoursesTableReferences
+                                        ._tagIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (ecampusItemsRefs)
+                    await $_getPrefetchedData<
+                      EcampusCourse,
+                      $EcampusCoursesTable,
+                      EcampusItem
+                    >(
+                      currentTable: table,
+                      referencedTable: $$EcampusCoursesTableReferences
+                          ._ecampusItemsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$EcampusCoursesTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).ecampusItemsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.courseId == item.id),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$EcampusCoursesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $EcampusCoursesTable,
+      EcampusCourse,
+      $$EcampusCoursesTableFilterComposer,
+      $$EcampusCoursesTableOrderingComposer,
+      $$EcampusCoursesTableAnnotationComposer,
+      $$EcampusCoursesTableCreateCompanionBuilder,
+      $$EcampusCoursesTableUpdateCompanionBuilder,
+      (EcampusCourse, $$EcampusCoursesTableReferences),
+      EcampusCourse,
+      PrefetchHooks Function({bool tagId, bool ecampusItemsRefs})
+    >;
+typedef $$EcampusItemsTableCreateCompanionBuilder =
+    EcampusItemsCompanion Function({
+      required String id,
+      required String sourceScopeId,
+      Value<String?> courseId,
+      Value<String?> externalKey,
+      required String sourceTitle,
+      Value<String?> sourceCourse,
+      Value<String?> sourceType,
+      Value<DateTime?> sourceStartAt,
+      Value<DateTime?> sourceEndAt,
+      Value<String?> taskId,
+      required String importState,
+      required DateTime firstObservedAt,
+      required DateTime lastObservedAt,
+      Value<int> rowid,
+    });
+typedef $$EcampusItemsTableUpdateCompanionBuilder =
+    EcampusItemsCompanion Function({
+      Value<String> id,
+      Value<String> sourceScopeId,
+      Value<String?> courseId,
+      Value<String?> externalKey,
+      Value<String> sourceTitle,
+      Value<String?> sourceCourse,
+      Value<String?> sourceType,
+      Value<DateTime?> sourceStartAt,
+      Value<DateTime?> sourceEndAt,
+      Value<String?> taskId,
+      Value<String> importState,
+      Value<DateTime> firstObservedAt,
+      Value<DateTime> lastObservedAt,
+      Value<int> rowid,
+    });
+
+final class $$EcampusItemsTableReferences
+    extends BaseReferences<_$AppDatabase, $EcampusItemsTable, EcampusItem> {
+  $$EcampusItemsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $EcampusCoursesTable _courseIdTable(_$AppDatabase db) =>
+      db.ecampusCourses.createAlias(
+        $_aliasNameGenerator(db.ecampusItems.courseId, db.ecampusCourses.id),
+      );
+
+  $$EcampusCoursesTableProcessedTableManager? get courseId {
+    final $_column = $_itemColumn<String>('course_id');
+    if ($_column == null) return null;
+    final manager = $$EcampusCoursesTableTableManager(
+      $_db,
+      $_db.ecampusCourses,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_courseIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $TasksTable _taskIdTable(_$AppDatabase db) => db.tasks.createAlias(
+    $_aliasNameGenerator(db.ecampusItems.taskId, db.tasks.id),
+  );
+
+  $$TasksTableProcessedTableManager? get taskId {
+    final $_column = $_itemColumn<String>('task_id');
+    if ($_column == null) return null;
     final manager = $$TasksTableTableManager(
       $_db,
       $_db.tasks,
@@ -5895,36 +8798,95 @@ final class $$TaskFoldersTableReferences
       manager.$state.copyWith(prefetchedData: [item]),
     );
   }
-
-  static $FoldersTable _folderIdTable(_$AppDatabase db) =>
-      db.folders.createAlias(
-        $_aliasNameGenerator(db.taskFolders.folderId, db.folders.id),
-      );
-
-  $$FoldersTableProcessedTableManager get folderId {
-    final $_column = $_itemColumn<String>('folder_id')!;
-
-    final manager = $$FoldersTableTableManager(
-      $_db,
-      $_db.folders,
-    ).filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_folderIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: [item]),
-    );
-  }
 }
 
-class $$TaskFoldersTableFilterComposer
-    extends Composer<_$AppDatabase, $TaskFoldersTable> {
-  $$TaskFoldersTableFilterComposer({
+class $$EcampusItemsTableFilterComposer
+    extends Composer<_$AppDatabase, $EcampusItemsTable> {
+  $$EcampusItemsTableFilterComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceScopeId => $composableBuilder(
+    column: $table.sourceScopeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get externalKey => $composableBuilder(
+    column: $table.externalKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceTitle => $composableBuilder(
+    column: $table.sourceTitle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceCourse => $composableBuilder(
+    column: $table.sourceCourse,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceType => $composableBuilder(
+    column: $table.sourceType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get sourceStartAt => $composableBuilder(
+    column: $table.sourceStartAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get sourceEndAt => $composableBuilder(
+    column: $table.sourceEndAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get importState => $composableBuilder(
+    column: $table.importState,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get firstObservedAt => $composableBuilder(
+    column: $table.firstObservedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastObservedAt => $composableBuilder(
+    column: $table.lastObservedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$EcampusCoursesTableFilterComposer get courseId {
+    final $$EcampusCoursesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.courseId,
+      referencedTable: $db.ecampusCourses,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$EcampusCoursesTableFilterComposer(
+            $db: $db,
+            $table: $db.ecampusCourses,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
   $$TasksTableFilterComposer get taskId {
     final $$TasksTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -5947,21 +8909,86 @@ class $$TaskFoldersTableFilterComposer
     );
     return composer;
   }
+}
 
-  $$FoldersTableFilterComposer get folderId {
-    final $$FoldersTableFilterComposer composer = $composerBuilder(
+class $$EcampusItemsTableOrderingComposer
+    extends Composer<_$AppDatabase, $EcampusItemsTable> {
+  $$EcampusItemsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceScopeId => $composableBuilder(
+    column: $table.sourceScopeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get externalKey => $composableBuilder(
+    column: $table.externalKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceTitle => $composableBuilder(
+    column: $table.sourceTitle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceCourse => $composableBuilder(
+    column: $table.sourceCourse,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceType => $composableBuilder(
+    column: $table.sourceType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get sourceStartAt => $composableBuilder(
+    column: $table.sourceStartAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get sourceEndAt => $composableBuilder(
+    column: $table.sourceEndAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get importState => $composableBuilder(
+    column: $table.importState,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get firstObservedAt => $composableBuilder(
+    column: $table.firstObservedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastObservedAt => $composableBuilder(
+    column: $table.lastObservedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$EcampusCoursesTableOrderingComposer get courseId {
+    final $$EcampusCoursesTableOrderingComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.folderId,
-      referencedTable: $db.folders,
+      getCurrentColumn: (t) => t.courseId,
+      referencedTable: $db.ecampusCourses,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$FoldersTableFilterComposer(
+          }) => $$EcampusCoursesTableOrderingComposer(
             $db: $db,
-            $table: $db.folders,
+            $table: $db.ecampusCourses,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -5970,17 +8997,7 @@ class $$TaskFoldersTableFilterComposer
     );
     return composer;
   }
-}
 
-class $$TaskFoldersTableOrderingComposer
-    extends Composer<_$AppDatabase, $TaskFoldersTable> {
-  $$TaskFoldersTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
   $$TasksTableOrderingComposer get taskId {
     final $$TasksTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -6003,21 +9020,84 @@ class $$TaskFoldersTableOrderingComposer
     );
     return composer;
   }
+}
 
-  $$FoldersTableOrderingComposer get folderId {
-    final $$FoldersTableOrderingComposer composer = $composerBuilder(
+class $$EcampusItemsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $EcampusItemsTable> {
+  $$EcampusItemsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceScopeId => $composableBuilder(
+    column: $table.sourceScopeId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get externalKey => $composableBuilder(
+    column: $table.externalKey,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sourceTitle => $composableBuilder(
+    column: $table.sourceTitle,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sourceCourse => $composableBuilder(
+    column: $table.sourceCourse,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sourceType => $composableBuilder(
+    column: $table.sourceType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get sourceStartAt => $composableBuilder(
+    column: $table.sourceStartAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get sourceEndAt => $composableBuilder(
+    column: $table.sourceEndAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get importState => $composableBuilder(
+    column: $table.importState,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get firstObservedAt => $composableBuilder(
+    column: $table.firstObservedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastObservedAt => $composableBuilder(
+    column: $table.lastObservedAt,
+    builder: (column) => column,
+  );
+
+  $$EcampusCoursesTableAnnotationComposer get courseId {
+    final $$EcampusCoursesTableAnnotationComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.folderId,
-      referencedTable: $db.folders,
+      getCurrentColumn: (t) => t.courseId,
+      referencedTable: $db.ecampusCourses,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$FoldersTableOrderingComposer(
+          }) => $$EcampusCoursesTableAnnotationComposer(
             $db: $db,
-            $table: $db.folders,
+            $table: $db.ecampusCourses,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -6026,17 +9106,7 @@ class $$TaskFoldersTableOrderingComposer
     );
     return composer;
   }
-}
 
-class $$TaskFoldersTableAnnotationComposer
-    extends Composer<_$AppDatabase, $TaskFoldersTable> {
-  $$TaskFoldersTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
   $$TasksTableAnnotationComposer get taskId {
     final $$TasksTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -6059,21 +9129,532 @@ class $$TaskFoldersTableAnnotationComposer
     );
     return composer;
   }
+}
 
-  $$FoldersTableAnnotationComposer get folderId {
-    final $$FoldersTableAnnotationComposer composer = $composerBuilder(
+class $$EcampusItemsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $EcampusItemsTable,
+          EcampusItem,
+          $$EcampusItemsTableFilterComposer,
+          $$EcampusItemsTableOrderingComposer,
+          $$EcampusItemsTableAnnotationComposer,
+          $$EcampusItemsTableCreateCompanionBuilder,
+          $$EcampusItemsTableUpdateCompanionBuilder,
+          (EcampusItem, $$EcampusItemsTableReferences),
+          EcampusItem,
+          PrefetchHooks Function({bool courseId, bool taskId})
+        > {
+  $$EcampusItemsTableTableManager(_$AppDatabase db, $EcampusItemsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$EcampusItemsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$EcampusItemsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$EcampusItemsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> sourceScopeId = const Value.absent(),
+                Value<String?> courseId = const Value.absent(),
+                Value<String?> externalKey = const Value.absent(),
+                Value<String> sourceTitle = const Value.absent(),
+                Value<String?> sourceCourse = const Value.absent(),
+                Value<String?> sourceType = const Value.absent(),
+                Value<DateTime?> sourceStartAt = const Value.absent(),
+                Value<DateTime?> sourceEndAt = const Value.absent(),
+                Value<String?> taskId = const Value.absent(),
+                Value<String> importState = const Value.absent(),
+                Value<DateTime> firstObservedAt = const Value.absent(),
+                Value<DateTime> lastObservedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => EcampusItemsCompanion(
+                id: id,
+                sourceScopeId: sourceScopeId,
+                courseId: courseId,
+                externalKey: externalKey,
+                sourceTitle: sourceTitle,
+                sourceCourse: sourceCourse,
+                sourceType: sourceType,
+                sourceStartAt: sourceStartAt,
+                sourceEndAt: sourceEndAt,
+                taskId: taskId,
+                importState: importState,
+                firstObservedAt: firstObservedAt,
+                lastObservedAt: lastObservedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String sourceScopeId,
+                Value<String?> courseId = const Value.absent(),
+                Value<String?> externalKey = const Value.absent(),
+                required String sourceTitle,
+                Value<String?> sourceCourse = const Value.absent(),
+                Value<String?> sourceType = const Value.absent(),
+                Value<DateTime?> sourceStartAt = const Value.absent(),
+                Value<DateTime?> sourceEndAt = const Value.absent(),
+                Value<String?> taskId = const Value.absent(),
+                required String importState,
+                required DateTime firstObservedAt,
+                required DateTime lastObservedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => EcampusItemsCompanion.insert(
+                id: id,
+                sourceScopeId: sourceScopeId,
+                courseId: courseId,
+                externalKey: externalKey,
+                sourceTitle: sourceTitle,
+                sourceCourse: sourceCourse,
+                sourceType: sourceType,
+                sourceStartAt: sourceStartAt,
+                sourceEndAt: sourceEndAt,
+                taskId: taskId,
+                importState: importState,
+                firstObservedAt: firstObservedAt,
+                lastObservedAt: lastObservedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$EcampusItemsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({courseId = false, taskId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (courseId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.courseId,
+                                referencedTable: $$EcampusItemsTableReferences
+                                    ._courseIdTable(db),
+                                referencedColumn: $$EcampusItemsTableReferences
+                                    ._courseIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+                    if (taskId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.taskId,
+                                referencedTable: $$EcampusItemsTableReferences
+                                    ._taskIdTable(db),
+                                referencedColumn: $$EcampusItemsTableReferences
+                                    ._taskIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$EcampusItemsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $EcampusItemsTable,
+      EcampusItem,
+      $$EcampusItemsTableFilterComposer,
+      $$EcampusItemsTableOrderingComposer,
+      $$EcampusItemsTableAnnotationComposer,
+      $$EcampusItemsTableCreateCompanionBuilder,
+      $$EcampusItemsTableUpdateCompanionBuilder,
+      (EcampusItem, $$EcampusItemsTableReferences),
+      EcampusItem,
+      PrefetchHooks Function({bool courseId, bool taskId})
+    >;
+typedef $$ImportSessionsTableCreateCompanionBuilder =
+    ImportSessionsCompanion Function({
+      required String id,
+      Value<String> provider,
+      Value<String> inputMethod,
+      required String sourceScopeId,
+      required DateTime startedAt,
+      Value<DateTime?> endedAt,
+      required String state,
+      Value<int> appliedCount,
+      Value<int> rowid,
+    });
+typedef $$ImportSessionsTableUpdateCompanionBuilder =
+    ImportSessionsCompanion Function({
+      Value<String> id,
+      Value<String> provider,
+      Value<String> inputMethod,
+      Value<String> sourceScopeId,
+      Value<DateTime> startedAt,
+      Value<DateTime?> endedAt,
+      Value<String> state,
+      Value<int> appliedCount,
+      Value<int> rowid,
+    });
+
+class $$ImportSessionsTableFilterComposer
+    extends Composer<_$AppDatabase, $ImportSessionsTable> {
+  $$ImportSessionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get provider => $composableBuilder(
+    column: $table.provider,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get inputMethod => $composableBuilder(
+    column: $table.inputMethod,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceScopeId => $composableBuilder(
+    column: $table.sourceScopeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get endedAt => $composableBuilder(
+    column: $table.endedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get appliedCount => $composableBuilder(
+    column: $table.appliedCount,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ImportSessionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ImportSessionsTable> {
+  $$ImportSessionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get provider => $composableBuilder(
+    column: $table.provider,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get inputMethod => $composableBuilder(
+    column: $table.inputMethod,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceScopeId => $composableBuilder(
+    column: $table.sourceScopeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get endedAt => $composableBuilder(
+    column: $table.endedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get appliedCount => $composableBuilder(
+    column: $table.appliedCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ImportSessionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ImportSessionsTable> {
+  $$ImportSessionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get provider =>
+      $composableBuilder(column: $table.provider, builder: (column) => column);
+
+  GeneratedColumn<String> get inputMethod => $composableBuilder(
+    column: $table.inputMethod,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sourceScopeId => $composableBuilder(
+    column: $table.sourceScopeId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get startedAt =>
+      $composableBuilder(column: $table.startedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get endedAt =>
+      $composableBuilder(column: $table.endedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get state =>
+      $composableBuilder(column: $table.state, builder: (column) => column);
+
+  GeneratedColumn<int> get appliedCount => $composableBuilder(
+    column: $table.appliedCount,
+    builder: (column) => column,
+  );
+}
+
+class $$ImportSessionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ImportSessionsTable,
+          ImportSession,
+          $$ImportSessionsTableFilterComposer,
+          $$ImportSessionsTableOrderingComposer,
+          $$ImportSessionsTableAnnotationComposer,
+          $$ImportSessionsTableCreateCompanionBuilder,
+          $$ImportSessionsTableUpdateCompanionBuilder,
+          (
+            ImportSession,
+            BaseReferences<_$AppDatabase, $ImportSessionsTable, ImportSession>,
+          ),
+          ImportSession,
+          PrefetchHooks Function()
+        > {
+  $$ImportSessionsTableTableManager(
+    _$AppDatabase db,
+    $ImportSessionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ImportSessionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ImportSessionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ImportSessionsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> provider = const Value.absent(),
+                Value<String> inputMethod = const Value.absent(),
+                Value<String> sourceScopeId = const Value.absent(),
+                Value<DateTime> startedAt = const Value.absent(),
+                Value<DateTime?> endedAt = const Value.absent(),
+                Value<String> state = const Value.absent(),
+                Value<int> appliedCount = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ImportSessionsCompanion(
+                id: id,
+                provider: provider,
+                inputMethod: inputMethod,
+                sourceScopeId: sourceScopeId,
+                startedAt: startedAt,
+                endedAt: endedAt,
+                state: state,
+                appliedCount: appliedCount,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                Value<String> provider = const Value.absent(),
+                Value<String> inputMethod = const Value.absent(),
+                required String sourceScopeId,
+                required DateTime startedAt,
+                Value<DateTime?> endedAt = const Value.absent(),
+                required String state,
+                Value<int> appliedCount = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ImportSessionsCompanion.insert(
+                id: id,
+                provider: provider,
+                inputMethod: inputMethod,
+                sourceScopeId: sourceScopeId,
+                startedAt: startedAt,
+                endedAt: endedAt,
+                state: state,
+                appliedCount: appliedCount,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ImportSessionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ImportSessionsTable,
+      ImportSession,
+      $$ImportSessionsTableFilterComposer,
+      $$ImportSessionsTableOrderingComposer,
+      $$ImportSessionsTableAnnotationComposer,
+      $$ImportSessionsTableCreateCompanionBuilder,
+      $$ImportSessionsTableUpdateCompanionBuilder,
+      (
+        ImportSession,
+        BaseReferences<_$AppDatabase, $ImportSessionsTable, ImportSession>,
+      ),
+      ImportSession,
+      PrefetchHooks Function()
+    >;
+typedef $$TaskRemindersTableCreateCompanionBuilder =
+    TaskRemindersCompanion Function({
+      required String id,
+      required String taskId,
+      required bool enabled,
+      required int offsetMinutes,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$TaskRemindersTableUpdateCompanionBuilder =
+    TaskRemindersCompanion Function({
+      Value<String> id,
+      Value<String> taskId,
+      Value<bool> enabled,
+      Value<int> offsetMinutes,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+final class $$TaskRemindersTableReferences
+    extends BaseReferences<_$AppDatabase, $TaskRemindersTable, TaskReminder> {
+  $$TaskRemindersTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $TasksTable _taskIdTable(_$AppDatabase db) => db.tasks.createAlias(
+    $_aliasNameGenerator(db.taskReminders.taskId, db.tasks.id),
+  );
+
+  $$TasksTableProcessedTableManager get taskId {
+    final $_column = $_itemColumn<String>('task_id')!;
+
+    final manager = $$TasksTableTableManager(
+      $_db,
+      $_db.tasks,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_taskIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$TaskRemindersTableFilterComposer
+    extends Composer<_$AppDatabase, $TaskRemindersTable> {
+  $$TaskRemindersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get offsetMinutes => $composableBuilder(
+    column: $table.offsetMinutes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$TasksTableFilterComposer get taskId {
+    final $$TasksTableFilterComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.folderId,
-      referencedTable: $db.folders,
+      getCurrentColumn: (t) => t.taskId,
+      referencedTable: $db.tasks,
       getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$FoldersTableAnnotationComposer(
+          }) => $$TasksTableFilterComposer(
             $db: $db,
-            $table: $db.folders,
+            $table: $db.tasks,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -6084,61 +9665,173 @@ class $$TaskFoldersTableAnnotationComposer
   }
 }
 
-class $$TaskFoldersTableTableManager
+class $$TaskRemindersTableOrderingComposer
+    extends Composer<_$AppDatabase, $TaskRemindersTable> {
+  $$TaskRemindersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get offsetMinutes => $composableBuilder(
+    column: $table.offsetMinutes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$TasksTableOrderingComposer get taskId {
+    final $$TasksTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.taskId,
+      referencedTable: $db.tasks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TasksTableOrderingComposer(
+            $db: $db,
+            $table: $db.tasks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TaskRemindersTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TaskRemindersTable> {
+  $$TaskRemindersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<bool> get enabled =>
+      $composableBuilder(column: $table.enabled, builder: (column) => column);
+
+  GeneratedColumn<int> get offsetMinutes => $composableBuilder(
+    column: $table.offsetMinutes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$TasksTableAnnotationComposer get taskId {
+    final $$TasksTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.taskId,
+      referencedTable: $db.tasks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TasksTableAnnotationComposer(
+            $db: $db,
+            $table: $db.tasks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TaskRemindersTableTableManager
     extends
         RootTableManager<
           _$AppDatabase,
-          $TaskFoldersTable,
-          TaskFolder,
-          $$TaskFoldersTableFilterComposer,
-          $$TaskFoldersTableOrderingComposer,
-          $$TaskFoldersTableAnnotationComposer,
-          $$TaskFoldersTableCreateCompanionBuilder,
-          $$TaskFoldersTableUpdateCompanionBuilder,
-          (TaskFolder, $$TaskFoldersTableReferences),
-          TaskFolder,
-          PrefetchHooks Function({bool taskId, bool folderId})
+          $TaskRemindersTable,
+          TaskReminder,
+          $$TaskRemindersTableFilterComposer,
+          $$TaskRemindersTableOrderingComposer,
+          $$TaskRemindersTableAnnotationComposer,
+          $$TaskRemindersTableCreateCompanionBuilder,
+          $$TaskRemindersTableUpdateCompanionBuilder,
+          (TaskReminder, $$TaskRemindersTableReferences),
+          TaskReminder,
+          PrefetchHooks Function({bool taskId})
         > {
-  $$TaskFoldersTableTableManager(_$AppDatabase db, $TaskFoldersTable table)
+  $$TaskRemindersTableTableManager(_$AppDatabase db, $TaskRemindersTable table)
     : super(
         TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
-              $$TaskFoldersTableFilterComposer($db: db, $table: table),
+              $$TaskRemindersTableFilterComposer($db: db, $table: table),
           createOrderingComposer: () =>
-              $$TaskFoldersTableOrderingComposer($db: db, $table: table),
+              $$TaskRemindersTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
-              $$TaskFoldersTableAnnotationComposer($db: db, $table: table),
+              $$TaskRemindersTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
+                Value<String> id = const Value.absent(),
                 Value<String> taskId = const Value.absent(),
-                Value<String> folderId = const Value.absent(),
+                Value<bool> enabled = const Value.absent(),
+                Value<int> offsetMinutes = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
-              }) => TaskFoldersCompanion(
+              }) => TaskRemindersCompanion(
+                id: id,
                 taskId: taskId,
-                folderId: folderId,
+                enabled: enabled,
+                offsetMinutes: offsetMinutes,
+                updatedAt: updatedAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
               ({
+                required String id,
                 required String taskId,
-                required String folderId,
+                required bool enabled,
+                required int offsetMinutes,
+                required DateTime updatedAt,
                 Value<int> rowid = const Value.absent(),
-              }) => TaskFoldersCompanion.insert(
+              }) => TaskRemindersCompanion.insert(
+                id: id,
                 taskId: taskId,
-                folderId: folderId,
+                enabled: enabled,
+                offsetMinutes: offsetMinutes,
+                updatedAt: updatedAt,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
                   e.readTable(table),
-                  $$TaskFoldersTableReferences(db, table, e),
+                  $$TaskRemindersTableReferences(db, table, e),
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({taskId = false, folderId = false}) {
+          prefetchHooksCallback: ({taskId = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [],
@@ -6163,23 +9856,10 @@ class $$TaskFoldersTableTableManager
                           state.withJoin(
                                 currentTable: table,
                                 currentColumn: table.taskId,
-                                referencedTable: $$TaskFoldersTableReferences
+                                referencedTable: $$TaskRemindersTableReferences
                                     ._taskIdTable(db),
-                                referencedColumn: $$TaskFoldersTableReferences
+                                referencedColumn: $$TaskRemindersTableReferences
                                     ._taskIdTable(db)
-                                    .id,
-                              )
-                              as T;
-                    }
-                    if (folderId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.folderId,
-                                referencedTable: $$TaskFoldersTableReferences
-                                    ._folderIdTable(db),
-                                referencedColumn: $$TaskFoldersTableReferences
-                                    ._folderIdTable(db)
                                     .id,
                               )
                               as T;
@@ -6196,56 +9876,52 @@ class $$TaskFoldersTableTableManager
       );
 }
 
-typedef $$TaskFoldersTableProcessedTableManager =
+typedef $$TaskRemindersTableProcessedTableManager =
     ProcessedTableManager<
       _$AppDatabase,
-      $TaskFoldersTable,
-      TaskFolder,
-      $$TaskFoldersTableFilterComposer,
-      $$TaskFoldersTableOrderingComposer,
-      $$TaskFoldersTableAnnotationComposer,
-      $$TaskFoldersTableCreateCompanionBuilder,
-      $$TaskFoldersTableUpdateCompanionBuilder,
-      (TaskFolder, $$TaskFoldersTableReferences),
-      TaskFolder,
-      PrefetchHooks Function({bool taskId, bool folderId})
+      $TaskRemindersTable,
+      TaskReminder,
+      $$TaskRemindersTableFilterComposer,
+      $$TaskRemindersTableOrderingComposer,
+      $$TaskRemindersTableAnnotationComposer,
+      $$TaskRemindersTableCreateCompanionBuilder,
+      $$TaskRemindersTableUpdateCompanionBuilder,
+      (TaskReminder, $$TaskRemindersTableReferences),
+      TaskReminder,
+      PrefetchHooks Function({bool taskId})
     >;
-typedef $$NotificationSettingsTableCreateCompanionBuilder =
-    NotificationSettingsCompanion Function({
-      required String id,
+typedef $$LocalNotificationSchedulesTableCreateCompanionBuilder =
+    LocalNotificationSchedulesCompanion Function({
       required String taskId,
-      required bool enabled,
-      required int daysBeforeDue,
-      required String notifyTime,
+      Value<int?> platformNotificationId,
       Value<DateTime?> scheduledAt,
+      Value<String?> lastError,
       Value<int> rowid,
     });
-typedef $$NotificationSettingsTableUpdateCompanionBuilder =
-    NotificationSettingsCompanion Function({
-      Value<String> id,
+typedef $$LocalNotificationSchedulesTableUpdateCompanionBuilder =
+    LocalNotificationSchedulesCompanion Function({
       Value<String> taskId,
-      Value<bool> enabled,
-      Value<int> daysBeforeDue,
-      Value<String> notifyTime,
+      Value<int?> platformNotificationId,
       Value<DateTime?> scheduledAt,
+      Value<String?> lastError,
       Value<int> rowid,
     });
 
-final class $$NotificationSettingsTableReferences
+final class $$LocalNotificationSchedulesTableReferences
     extends
         BaseReferences<
           _$AppDatabase,
-          $NotificationSettingsTable,
-          NotificationSetting
+          $LocalNotificationSchedulesTable,
+          LocalNotificationSchedule
         > {
-  $$NotificationSettingsTableReferences(
+  $$LocalNotificationSchedulesTableReferences(
     super.$_db,
     super.$_table,
     super.$_typedResult,
   );
 
   static $TasksTable _taskIdTable(_$AppDatabase db) => db.tasks.createAlias(
-    $_aliasNameGenerator(db.notificationSettings.taskId, db.tasks.id),
+    $_aliasNameGenerator(db.localNotificationSchedules.taskId, db.tasks.id),
   );
 
   $$TasksTableProcessedTableManager get taskId {
@@ -6263,37 +9939,27 @@ final class $$NotificationSettingsTableReferences
   }
 }
 
-class $$NotificationSettingsTableFilterComposer
-    extends Composer<_$AppDatabase, $NotificationSettingsTable> {
-  $$NotificationSettingsTableFilterComposer({
+class $$LocalNotificationSchedulesTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalNotificationSchedulesTable> {
+  $$LocalNotificationSchedulesTableFilterComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<String> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<bool> get enabled => $composableBuilder(
-    column: $table.enabled,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get daysBeforeDue => $composableBuilder(
-    column: $table.daysBeforeDue,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get notifyTime => $composableBuilder(
-    column: $table.notifyTime,
+  ColumnFilters<int> get platformNotificationId => $composableBuilder(
+    column: $table.platformNotificationId,
     builder: (column) => ColumnFilters(column),
   );
 
   ColumnFilters<DateTime> get scheduledAt => $composableBuilder(
     column: $table.scheduledAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastError => $composableBuilder(
+    column: $table.lastError,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6321,37 +9987,27 @@ class $$NotificationSettingsTableFilterComposer
   }
 }
 
-class $$NotificationSettingsTableOrderingComposer
-    extends Composer<_$AppDatabase, $NotificationSettingsTable> {
-  $$NotificationSettingsTableOrderingComposer({
+class $$LocalNotificationSchedulesTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalNotificationSchedulesTable> {
+  $$LocalNotificationSchedulesTableOrderingComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<String> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<bool> get enabled => $composableBuilder(
-    column: $table.enabled,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get daysBeforeDue => $composableBuilder(
-    column: $table.daysBeforeDue,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get notifyTime => $composableBuilder(
-    column: $table.notifyTime,
+  ColumnOrderings<int> get platformNotificationId => $composableBuilder(
+    column: $table.platformNotificationId,
     builder: (column) => ColumnOrderings(column),
   );
 
   ColumnOrderings<DateTime> get scheduledAt => $composableBuilder(
     column: $table.scheduledAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lastError => $composableBuilder(
+    column: $table.lastError,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -6379,28 +10035,17 @@ class $$NotificationSettingsTableOrderingComposer
   }
 }
 
-class $$NotificationSettingsTableAnnotationComposer
-    extends Composer<_$AppDatabase, $NotificationSettingsTable> {
-  $$NotificationSettingsTableAnnotationComposer({
+class $$LocalNotificationSchedulesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalNotificationSchedulesTable> {
+  $$LocalNotificationSchedulesTableAnnotationComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<bool> get enabled =>
-      $composableBuilder(column: $table.enabled, builder: (column) => column);
-
-  GeneratedColumn<int> get daysBeforeDue => $composableBuilder(
-    column: $table.daysBeforeDue,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get notifyTime => $composableBuilder(
-    column: $table.notifyTime,
+  GeneratedColumn<int> get platformNotificationId => $composableBuilder(
+    column: $table.platformNotificationId,
     builder: (column) => column,
   );
 
@@ -6408,6 +10053,9 @@ class $$NotificationSettingsTableAnnotationComposer
     column: $table.scheduledAt,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get lastError =>
+      $composableBuilder(column: $table.lastError, builder: (column) => column);
 
   $$TasksTableAnnotationComposer get taskId {
     final $$TasksTableAnnotationComposer composer = $composerBuilder(
@@ -6433,81 +10081,79 @@ class $$NotificationSettingsTableAnnotationComposer
   }
 }
 
-class $$NotificationSettingsTableTableManager
+class $$LocalNotificationSchedulesTableTableManager
     extends
         RootTableManager<
           _$AppDatabase,
-          $NotificationSettingsTable,
-          NotificationSetting,
-          $$NotificationSettingsTableFilterComposer,
-          $$NotificationSettingsTableOrderingComposer,
-          $$NotificationSettingsTableAnnotationComposer,
-          $$NotificationSettingsTableCreateCompanionBuilder,
-          $$NotificationSettingsTableUpdateCompanionBuilder,
-          (NotificationSetting, $$NotificationSettingsTableReferences),
-          NotificationSetting,
+          $LocalNotificationSchedulesTable,
+          LocalNotificationSchedule,
+          $$LocalNotificationSchedulesTableFilterComposer,
+          $$LocalNotificationSchedulesTableOrderingComposer,
+          $$LocalNotificationSchedulesTableAnnotationComposer,
+          $$LocalNotificationSchedulesTableCreateCompanionBuilder,
+          $$LocalNotificationSchedulesTableUpdateCompanionBuilder,
+          (
+            LocalNotificationSchedule,
+            $$LocalNotificationSchedulesTableReferences,
+          ),
+          LocalNotificationSchedule,
           PrefetchHooks Function({bool taskId})
         > {
-  $$NotificationSettingsTableTableManager(
+  $$LocalNotificationSchedulesTableTableManager(
     _$AppDatabase db,
-    $NotificationSettingsTable table,
+    $LocalNotificationSchedulesTable table,
   ) : super(
         TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
-              $$NotificationSettingsTableFilterComposer($db: db, $table: table),
+              $$LocalNotificationSchedulesTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
           createOrderingComposer: () =>
-              $$NotificationSettingsTableOrderingComposer(
+              $$LocalNotificationSchedulesTableOrderingComposer(
                 $db: db,
                 $table: table,
               ),
           createComputedFieldComposer: () =>
-              $$NotificationSettingsTableAnnotationComposer(
+              $$LocalNotificationSchedulesTableAnnotationComposer(
                 $db: db,
                 $table: table,
               ),
           updateCompanionCallback:
               ({
-                Value<String> id = const Value.absent(),
                 Value<String> taskId = const Value.absent(),
-                Value<bool> enabled = const Value.absent(),
-                Value<int> daysBeforeDue = const Value.absent(),
-                Value<String> notifyTime = const Value.absent(),
+                Value<int?> platformNotificationId = const Value.absent(),
                 Value<DateTime?> scheduledAt = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
-              }) => NotificationSettingsCompanion(
-                id: id,
+              }) => LocalNotificationSchedulesCompanion(
                 taskId: taskId,
-                enabled: enabled,
-                daysBeforeDue: daysBeforeDue,
-                notifyTime: notifyTime,
+                platformNotificationId: platformNotificationId,
                 scheduledAt: scheduledAt,
+                lastError: lastError,
                 rowid: rowid,
               ),
           createCompanionCallback:
               ({
-                required String id,
                 required String taskId,
-                required bool enabled,
-                required int daysBeforeDue,
-                required String notifyTime,
+                Value<int?> platformNotificationId = const Value.absent(),
                 Value<DateTime?> scheduledAt = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
-              }) => NotificationSettingsCompanion.insert(
-                id: id,
+              }) => LocalNotificationSchedulesCompanion.insert(
                 taskId: taskId,
-                enabled: enabled,
-                daysBeforeDue: daysBeforeDue,
-                notifyTime: notifyTime,
+                platformNotificationId: platformNotificationId,
                 scheduledAt: scheduledAt,
+                lastError: lastError,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
                   e.readTable(table),
-                  $$NotificationSettingsTableReferences(db, table, e),
+                  $$LocalNotificationSchedulesTableReferences(db, table, e),
                 ),
               )
               .toList(),
@@ -6537,10 +10183,10 @@ class $$NotificationSettingsTableTableManager
                                 currentTable: table,
                                 currentColumn: table.taskId,
                                 referencedTable:
-                                    $$NotificationSettingsTableReferences
+                                    $$LocalNotificationSchedulesTableReferences
                                         ._taskIdTable(db),
                                 referencedColumn:
-                                    $$NotificationSettingsTableReferences
+                                    $$LocalNotificationSchedulesTableReferences
                                         ._taskIdTable(db)
                                         .id,
                               )
@@ -6558,18 +10204,18 @@ class $$NotificationSettingsTableTableManager
       );
 }
 
-typedef $$NotificationSettingsTableProcessedTableManager =
+typedef $$LocalNotificationSchedulesTableProcessedTableManager =
     ProcessedTableManager<
       _$AppDatabase,
-      $NotificationSettingsTable,
-      NotificationSetting,
-      $$NotificationSettingsTableFilterComposer,
-      $$NotificationSettingsTableOrderingComposer,
-      $$NotificationSettingsTableAnnotationComposer,
-      $$NotificationSettingsTableCreateCompanionBuilder,
-      $$NotificationSettingsTableUpdateCompanionBuilder,
-      (NotificationSetting, $$NotificationSettingsTableReferences),
-      NotificationSetting,
+      $LocalNotificationSchedulesTable,
+      LocalNotificationSchedule,
+      $$LocalNotificationSchedulesTableFilterComposer,
+      $$LocalNotificationSchedulesTableOrderingComposer,
+      $$LocalNotificationSchedulesTableAnnotationComposer,
+      $$LocalNotificationSchedulesTableCreateCompanionBuilder,
+      $$LocalNotificationSchedulesTableUpdateCompanionBuilder,
+      (LocalNotificationSchedule, $$LocalNotificationSchedulesTableReferences),
+      LocalNotificationSchedule,
       PrefetchHooks Function({bool taskId})
     >;
 typedef $$AppSettingsTableCreateCompanionBuilder =
@@ -6734,23 +10380,386 @@ typedef $$AppSettingsTableProcessedTableManager =
       AppSetting,
       PrefetchHooks Function()
     >;
+typedef $$MigrationIssuesTableCreateCompanionBuilder =
+    MigrationIssuesCompanion Function({
+      Value<int> id,
+      required String entityId,
+      required String reason,
+      required String legacyData,
+    });
+typedef $$MigrationIssuesTableUpdateCompanionBuilder =
+    MigrationIssuesCompanion Function({
+      Value<int> id,
+      Value<String> entityId,
+      Value<String> reason,
+      Value<String> legacyData,
+    });
+
+class $$MigrationIssuesTableFilterComposer
+    extends Composer<_$AppDatabase, $MigrationIssuesTable> {
+  $$MigrationIssuesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entityId => $composableBuilder(
+    column: $table.entityId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get legacyData => $composableBuilder(
+    column: $table.legacyData,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$MigrationIssuesTableOrderingComposer
+    extends Composer<_$AppDatabase, $MigrationIssuesTable> {
+  $$MigrationIssuesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entityId => $composableBuilder(
+    column: $table.entityId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get legacyData => $composableBuilder(
+    column: $table.legacyData,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$MigrationIssuesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $MigrationIssuesTable> {
+  $$MigrationIssuesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get entityId =>
+      $composableBuilder(column: $table.entityId, builder: (column) => column);
+
+  GeneratedColumn<String> get reason =>
+      $composableBuilder(column: $table.reason, builder: (column) => column);
+
+  GeneratedColumn<String> get legacyData => $composableBuilder(
+    column: $table.legacyData,
+    builder: (column) => column,
+  );
+}
+
+class $$MigrationIssuesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $MigrationIssuesTable,
+          MigrationIssue,
+          $$MigrationIssuesTableFilterComposer,
+          $$MigrationIssuesTableOrderingComposer,
+          $$MigrationIssuesTableAnnotationComposer,
+          $$MigrationIssuesTableCreateCompanionBuilder,
+          $$MigrationIssuesTableUpdateCompanionBuilder,
+          (
+            MigrationIssue,
+            BaseReferences<
+              _$AppDatabase,
+              $MigrationIssuesTable,
+              MigrationIssue
+            >,
+          ),
+          MigrationIssue,
+          PrefetchHooks Function()
+        > {
+  $$MigrationIssuesTableTableManager(
+    _$AppDatabase db,
+    $MigrationIssuesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$MigrationIssuesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$MigrationIssuesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$MigrationIssuesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> entityId = const Value.absent(),
+                Value<String> reason = const Value.absent(),
+                Value<String> legacyData = const Value.absent(),
+              }) => MigrationIssuesCompanion(
+                id: id,
+                entityId: entityId,
+                reason: reason,
+                legacyData: legacyData,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String entityId,
+                required String reason,
+                required String legacyData,
+              }) => MigrationIssuesCompanion.insert(
+                id: id,
+                entityId: entityId,
+                reason: reason,
+                legacyData: legacyData,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$MigrationIssuesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $MigrationIssuesTable,
+      MigrationIssue,
+      $$MigrationIssuesTableFilterComposer,
+      $$MigrationIssuesTableOrderingComposer,
+      $$MigrationIssuesTableAnnotationComposer,
+      $$MigrationIssuesTableCreateCompanionBuilder,
+      $$MigrationIssuesTableUpdateCompanionBuilder,
+      (
+        MigrationIssue,
+        BaseReferences<_$AppDatabase, $MigrationIssuesTable, MigrationIssue>,
+      ),
+      MigrationIssue,
+      PrefetchHooks Function()
+    >;
+typedef $$DeletedEntitiesTableCreateCompanionBuilder =
+    DeletedEntitiesCompanion Function({
+      required String entityType,
+      required String entityId,
+      required DateTime deletedAt,
+      Value<int> rowid,
+    });
+typedef $$DeletedEntitiesTableUpdateCompanionBuilder =
+    DeletedEntitiesCompanion Function({
+      Value<String> entityType,
+      Value<String> entityId,
+      Value<DateTime> deletedAt,
+      Value<int> rowid,
+    });
+
+class $$DeletedEntitiesTableFilterComposer
+    extends Composer<_$AppDatabase, $DeletedEntitiesTable> {
+  $$DeletedEntitiesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get entityType => $composableBuilder(
+    column: $table.entityType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entityId => $composableBuilder(
+    column: $table.entityId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DeletedEntitiesTableOrderingComposer
+    extends Composer<_$AppDatabase, $DeletedEntitiesTable> {
+  $$DeletedEntitiesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get entityType => $composableBuilder(
+    column: $table.entityType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entityId => $composableBuilder(
+    column: $table.entityId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DeletedEntitiesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DeletedEntitiesTable> {
+  $$DeletedEntitiesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get entityType => $composableBuilder(
+    column: $table.entityType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get entityId =>
+      $composableBuilder(column: $table.entityId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+}
+
+class $$DeletedEntitiesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DeletedEntitiesTable,
+          DeletedEntity,
+          $$DeletedEntitiesTableFilterComposer,
+          $$DeletedEntitiesTableOrderingComposer,
+          $$DeletedEntitiesTableAnnotationComposer,
+          $$DeletedEntitiesTableCreateCompanionBuilder,
+          $$DeletedEntitiesTableUpdateCompanionBuilder,
+          (
+            DeletedEntity,
+            BaseReferences<_$AppDatabase, $DeletedEntitiesTable, DeletedEntity>,
+          ),
+          DeletedEntity,
+          PrefetchHooks Function()
+        > {
+  $$DeletedEntitiesTableTableManager(
+    _$AppDatabase db,
+    $DeletedEntitiesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DeletedEntitiesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DeletedEntitiesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DeletedEntitiesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> entityType = const Value.absent(),
+                Value<String> entityId = const Value.absent(),
+                Value<DateTime> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DeletedEntitiesCompanion(
+                entityType: entityType,
+                entityId: entityId,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String entityType,
+                required String entityId,
+                required DateTime deletedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => DeletedEntitiesCompanion.insert(
+                entityType: entityType,
+                entityId: entityId,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DeletedEntitiesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DeletedEntitiesTable,
+      DeletedEntity,
+      $$DeletedEntitiesTableFilterComposer,
+      $$DeletedEntitiesTableOrderingComposer,
+      $$DeletedEntitiesTableAnnotationComposer,
+      $$DeletedEntitiesTableCreateCompanionBuilder,
+      $$DeletedEntitiesTableUpdateCompanionBuilder,
+      (
+        DeletedEntity,
+        BaseReferences<_$AppDatabase, $DeletedEntitiesTable, DeletedEntity>,
+      ),
+      DeletedEntity,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
   $AppDatabaseManager(this._db);
+  $$FoldersTableTableManager get folders =>
+      $$FoldersTableTableManager(_db, _db.folders);
   $$TasksTableTableManager get tasks =>
       $$TasksTableTableManager(_db, _db.tasks);
   $$SubTasksTableTableManager get subTasks =>
       $$SubTasksTableTableManager(_db, _db.subTasks);
   $$TagsTableTableManager get tags => $$TagsTableTableManager(_db, _db.tags);
-  $$FoldersTableTableManager get folders =>
-      $$FoldersTableTableManager(_db, _db.folders);
   $$TaskTagsTableTableManager get taskTags =>
       $$TaskTagsTableTableManager(_db, _db.taskTags);
-  $$TaskFoldersTableTableManager get taskFolders =>
-      $$TaskFoldersTableTableManager(_db, _db.taskFolders);
-  $$NotificationSettingsTableTableManager get notificationSettings =>
-      $$NotificationSettingsTableTableManager(_db, _db.notificationSettings);
+  $$EcampusCoursesTableTableManager get ecampusCourses =>
+      $$EcampusCoursesTableTableManager(_db, _db.ecampusCourses);
+  $$EcampusItemsTableTableManager get ecampusItems =>
+      $$EcampusItemsTableTableManager(_db, _db.ecampusItems);
+  $$ImportSessionsTableTableManager get importSessions =>
+      $$ImportSessionsTableTableManager(_db, _db.importSessions);
+  $$TaskRemindersTableTableManager get taskReminders =>
+      $$TaskRemindersTableTableManager(_db, _db.taskReminders);
+  $$LocalNotificationSchedulesTableTableManager
+  get localNotificationSchedules =>
+      $$LocalNotificationSchedulesTableTableManager(
+        _db,
+        _db.localNotificationSchedules,
+      );
   $$AppSettingsTableTableManager get appSettings =>
       $$AppSettingsTableTableManager(_db, _db.appSettings);
+  $$MigrationIssuesTableTableManager get migrationIssues =>
+      $$MigrationIssuesTableTableManager(_db, _db.migrationIssues);
+  $$DeletedEntitiesTableTableManager get deletedEntities =>
+      $$DeletedEntitiesTableTableManager(_db, _db.deletedEntities);
 }

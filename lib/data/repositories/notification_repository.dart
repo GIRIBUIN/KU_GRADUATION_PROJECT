@@ -9,3 +9,12 @@ abstract class NotificationRepository {
 
   Future<void> deleteByTaskId(String taskId);
 }
+
+abstract interface class LocalNotificationStateStore {
+  Future<int> notificationId(String taskId, int preferred);
+  Future<void> recordSchedule(
+    String taskId,
+    DateTime? scheduledAt, {
+    String? error,
+  });
+}

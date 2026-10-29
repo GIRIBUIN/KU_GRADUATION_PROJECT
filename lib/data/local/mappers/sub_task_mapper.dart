@@ -11,7 +11,7 @@ class SubTaskMapper {
       id: row.id,
       taskId: row.taskId,
       title: row.title,
-      isDone: row.isDone,
+      isDone: row.completedAt != null,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     );
@@ -22,7 +22,7 @@ class SubTaskMapper {
       id: Value(subTask.id),
       taskId: Value(subTask.taskId),
       title: Value(subTask.title),
-      isDone: Value(subTask.isDone),
+      completedAt: Value(subTask.isDone ? subTask.updatedAt : null),
       createdAt: Value(subTask.createdAt),
       updatedAt: Value(subTask.updatedAt),
     );

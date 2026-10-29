@@ -5,11 +5,11 @@ import 'package:ku_task_management/data/local/app_database.dart';
 
 void main() {
   group('AppDatabase', () {
-    test('opens schema version 5 database', () async {
+    test('opens schema version 6 database', () async {
       final database = AppDatabase(NativeDatabase.memory());
       addTearDown(database.close);
 
-      expect(database.schemaVersion, 5);
+      expect(database.schemaVersion, 6);
 
       final row = await database
           .customSelect(
@@ -38,8 +38,11 @@ void main() {
           'tags',
           'folders',
           'task_tags',
-          'task_folders',
-          'notification_settings',
+          'ecampus_items',
+          'ecampus_courses',
+          'import_sessions',
+          'task_reminders',
+          'local_notification_schedules',
           'app_settings',
         }),
       );

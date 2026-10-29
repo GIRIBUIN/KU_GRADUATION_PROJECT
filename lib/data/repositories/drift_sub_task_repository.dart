@@ -20,33 +20,54 @@ class DriftSubTaskRepository implements SubTaskRepository {
 
   @override
   Future<List<SubTask>> getSubTasks(String taskId) async {
-    final rows = await (_database.select(_database.subTasks)
-          ..where((table) => table.taskId.equals(taskId))
-          ..orderBy([(table) => OrderingTerm(expression: table.createdAt)]))
-        .get();
+    final rows =
+        await (_database.select(_database.subTasks)
+              ..where(
+                (table) =>
+                    table.taskId.equals(taskId) & table.deletedAt.isNull(),
+              )
+              ..orderBy([(table) => OrderingTerm(expression: table.position)]))
+            .get();
 
     return rows.map(_mapper.fromRow).toList(growable: false);
   }
 
   @override
   Future<SubTask?> getSubTaskById(String id) async {
-    final row = await (_database.select(
-      _database.subTasks,
-    )..where((table) => table.id.equals(id))).getSingleOrNull();
+    final row =
+        await (_database.select(
+              _database.subTasks,
+            )..where((table) => table.id.equals(id) & table.deletedAt.isNull()))
+            .getSingleOrNull();
 
     return row == null ? null : _mapper.fromRow(row);
   }
 
   @override
-  Future<SubTask> createSubTask(SubTask subTask) async {
-    await _database
-        .into(_database.subTasks)
-        .insert(_mapper.toCompanion(subTask));
-    return (await getSubTaskById(subTask.id))!;
-  }
+  Future<SubTask> createSubTask(SubTask subTask) =>
+      _database.transaction(() async {
+        final last =
+            await (_database.select(_database.subTasks)
+                  ..where((t) => t.taskId.equals(subTask.taskId))
+                  ..orderBy([(t) => OrderingTerm.desc(t.position)])
+                  ..limit(1))
+                .getSingleOrNull();
+        await _database
+            .into(_database.subTasks)
+            .insert(
+              _mapper
+                  .toCompanion(subTask)
+                  .copyWith(position: Value((last?.position ?? -1) + 1)),
+            );
+        return (await getSubTaskById(subTask.id))!;
+      });
 
   @override
   Future<SubTask> updateSubTask(SubTask subTask) async {
+    final existing = await getSubTaskById(subTask.id);
+    if (existing == null || existing.taskId != subTask.taskId) {
+      throw StateError('하위 일정의 소속을 바꿀 수 없습니다.');
+    }
     await (_database.update(_database.subTasks)
           ..where((table) => table.id.equals(subTask.id)))
         .write(_mapper.toCompanion(subTask));
@@ -74,8 +95,10 @@ class DriftSubTaskRepository implements SubTaskRepository {
 
   @override
   Future<void> deleteSubTask(String id) async {
-    await (_database.delete(
+    await (_database.update(
       _database.subTasks,
-    )..where((table) => table.id.equals(id))).go();
+    )..where((t) => t.id.equals(id))).write(
+      db.SubTasksCompanion(deletedAt: Value(_now()), updatedAt: Value(_now())),
+    );
   }
 }

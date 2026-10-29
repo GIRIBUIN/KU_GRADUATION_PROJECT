@@ -1,3 +1,4 @@
+import '../../../core/utils/entity_id.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -47,6 +48,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   List<SubTask> _subTasks = const [];
   List<Tag> _tags = const [];
   List<Folder> _folders = const [];
+  String? _selectedFolderId;
   final Set<String> _selectedTagIds = {};
   DateTime? _dueDate;
   TaskPriority? _priority;
@@ -89,6 +91,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       _subTasks = subTasks;
       _tags = tags;
       _folders = folders;
+      _selectedFolderId = task?.folderIds.firstOrNull;
       _selectedTagIds
         ..clear()
         ..addAll(task?.tagIds ?? const []);
@@ -217,6 +220,14 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                       ),
                     ),
                     const SizedBox(height: 22),
+                    FolderPickerSection(
+                      folders: _folders,
+                      selectedId: _selectedFolderId,
+                      onSelect: (folder) =>
+                          setState(() => _selectedFolderId = folder?.id),
+                      onAdd: _createFolder,
+                    ),
+                    const SizedBox(height: 22),
                     TagPickerSection(
                       tags: _tags,
                       selectedIds: _selectedTagIds,
@@ -282,7 +293,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           : _memoController.text.trim(),
       parentTaskId: task.parentTaskId,
       tagIds: _selectedTagIds.toList(growable: false),
-      folderIds: task.folderIds,
+      folderIds: _selectedFolderId == null ? const [] : [_selectedFolderId!],
       ecampus: task.ecampus,
       sortOrder: task.sortOrder,
       createdAt: task.createdAt,
@@ -291,23 +302,42 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       deletedAt: task.deletedAt,
     );
 
-    await widget.taskRepository.updateTask(updated);
     final notificationEnabled = _effectiveNotificationEnabled(now);
-    final notification = await widget.notificationRepository.save(
-      NotificationSetting(
-        id: _notification?.id ?? 'notification_${task.id}',
-        taskId: task.id,
-        enabled: notificationEnabled,
-        daysBeforeDue: _notificationOffsetMinutes,
-        notifyTime: 'relative',
-        scheduledAt: _notification?.scheduledAt,
-      ),
+    final reminderDraft = NotificationSetting(
+      id: _notification?.id ?? 'notification_${task.id}',
+      taskId: task.id,
+      enabled: notificationEnabled,
+      daysBeforeDue: _notificationOffsetMinutes,
+      notifyTime: 'relative',
+      scheduledAt: _notification?.scheduledAt,
     );
-    await widget.localNotificationService.scheduleTaskNotification(
-      task: updated,
-      setting: notification,
-      requestPermissionBeforeScheduling: notificationEnabled,
-    );
+    Future<NotificationSetting> persist() async {
+      await widget.taskRepository.updateTask(updated);
+      return widget.notificationRepository.save(reminderDraft);
+    }
+
+    late NotificationSetting notification;
+    try {
+      final backend = widget.taskRepository;
+      notification = await (backend is TransactionalTaskRepository
+          ? (backend as TransactionalTaskRepository).atomic(persist)
+          : persist());
+    } catch (error) {
+      if (mounted) {
+        setState(() => _isSaving = false);
+        _showSnackBar(context, '저장하지 못했습니다: $error');
+      }
+      return;
+    }
+    try {
+      await widget.localNotificationService.scheduleTaskNotification(
+        task: updated,
+        setting: notification,
+        requestPermissionBeforeScheduling: notificationEnabled,
+      );
+    } catch (error) {
+      if (mounted) _showSnackBar(context, '일정은 저장됐지만 알림 예약에 실패했습니다.');
+    }
 
     if (!mounted) {
       return;
@@ -433,7 +463,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     final now = DateTime.now();
     await widget.subTaskRepository.createSubTask(
       SubTask(
-        id: 'sub_${widget.taskId}_${now.microsecondsSinceEpoch}',
+        id: newEntityId(),
         taskId: widget.taskId,
         title: title,
         isDone: false,
@@ -500,6 +530,29 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     });
   }
 
+  Future<void> _createFolder() async {
+    final draft = await showFolderCreateDialog(context);
+    if (draft == null || !mounted) return;
+    final now = DateTime.now();
+    final folder = await widget.folderRepository.createFolder(
+      Folder(
+        id: newEntityId(),
+        name: draft.name,
+        color: draft.color,
+        sortOrder: -1,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    final folders = await widget.folderRepository.getFolders();
+    if (mounted) {
+      setState(() {
+        _folders = folders;
+        _selectedFolderId = folder.id;
+      });
+    }
+  }
+
   Future<void> _createTag() async {
     final draft = await showTagCreateDialog(context, folders: _folders);
     if (draft == null || !mounted) {
@@ -509,7 +562,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     final now = DateTime.now();
     final tag = await widget.tagRepository.createTag(
       Tag(
-        id: 'tag_${now.microsecondsSinceEpoch}',
+        id: newEntityId(),
         name: draft.name,
         color: draft.color,
         createdAt: now,

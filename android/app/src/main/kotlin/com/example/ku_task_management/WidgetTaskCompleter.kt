@@ -67,14 +67,16 @@ object WidgetTaskCompleter {
                 null,
                 SQLiteDatabase.OPEN_READWRITE,
             ).use { db ->
+                val legacy = db.version < 6
+                val statusAssignment = if (legacy) "status = 'completed'," else ""
+                val activePredicate = if (legacy) "status = 'active'" else "completed_at IS NULL AND deleted_at IS NULL"
                 val updated = db.compileStatement(
                     """
                     UPDATE tasks
-                    SET status = 'completed',
-                        updated_at = ?,
+                    SET $statusAssignment updated_at = ?,
                         completed_at = ?
                     WHERE id = ?
-                      AND status = 'active'
+                      AND $activePredicate
                     """.trimIndent(),
                 ).apply {
                     bindLong(1, nowSeconds)

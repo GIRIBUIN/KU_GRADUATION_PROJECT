@@ -42,7 +42,9 @@ class _KuTaskAppState extends State<KuTaskApp> {
     _settingsRepository = DriftSettingsRepository(database: _database);
     _tagRepository = DriftTagRepository(database: _database);
     _folderRepository = DriftFolderRepository(database: _database);
-    _localNotificationService = LocalNotificationService();
+    _localNotificationService = LocalNotificationService(
+      stateStore: _notificationRepository,
+    );
     _widgetUpdateService = WidgetUpdateService(
       taskRepository: _taskRepository,
       settingsRepository: _settingsRepository,

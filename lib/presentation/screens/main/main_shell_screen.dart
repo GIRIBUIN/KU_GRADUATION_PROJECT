@@ -1,3 +1,4 @@
+import '../../../core/utils/entity_id.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -119,64 +120,7 @@ class _MainShellScreenState extends State<MainShellScreen>
 
   Future<AppSettings> _loadSettings() async {
     final settings = await widget.settingsRepository.getSettings();
-    return _repairAutoTagFolders(settings);
-  }
-
-  Future<AppSettings> _repairAutoTagFolders(AppSettings settings) async {
-    final tasks = await _loadTasks();
-    final folders = await widget.folderRepository.getFolders();
-    final tags = await widget.tagRepository.getTags();
-    final updatedTagFolderIds = {...settings.tagFolderIds};
-    var didChange = false;
-
-    final folderIds = folders.map((folder) => folder.id).toSet();
-    final existingEcampusFolderId = tasks
-        .where((task) => task.origin == TaskOrigin.ecampus)
-        .expand((task) => task.folderIds)
-        .where((folderId) => folderIds.contains(folderId))
-        .firstOrNull;
-    final ecampusFolder =
-        folders
-            .where((folder) => folder.id == settings.ecampusFolderId)
-            .firstOrNull ??
-        folders
-            .where((folder) => folder.id == existingEcampusFolderId)
-            .firstOrNull ??
-        folders
-            .where(
-              (folder) =>
-                  folder.name == _autoEcampusFolderName &&
-                  folder.parentFolderId == null,
-            )
-            .firstOrNull;
-    if (ecampusFolder != null && settings.ecampusFolderId != ecampusFolder.id) {
-      didChange = true;
-    }
-    if (ecampusFolder != null) {
-      final ecampusCourses = tasks
-          .map((task) => task.ecampus?.sourceCourse?.trim())
-          .whereType<String>()
-          .where((course) => course.isNotEmpty)
-          .toSet();
-      for (final tag in tags.where(
-        (tag) => ecampusCourses.contains(tag.name),
-      )) {
-        if (updatedTagFolderIds[tag.id] != ecampusFolder.id) {
-          updatedTagFolderIds[tag.id] = ecampusFolder.id;
-          didChange = true;
-        }
-      }
-    }
-
-    if (!didChange) {
-      return settings;
-    }
-    return widget.settingsRepository.saveSettings(
-      settings.copyWith(
-        tagFolderIds: updatedTagFolderIds,
-        ecampusFolderId: ecampusFolder?.id,
-      ),
-    );
+    return settings;
   }
 
   void _scheduleClockRefresh() {
@@ -397,8 +341,8 @@ class _MainShellScreenState extends State<MainShellScreen>
   }
 
   Future<void> _allowExcludedTaskSync(Task task) async {
-    await widget.taskRepository.deletePermanently(task.id);
     await _cancelTaskNotification(task.id);
+    await widget.taskRepository.deletePermanently(task.id);
     if (!mounted) {
       return;
     }
@@ -408,8 +352,8 @@ class _MainShellScreenState extends State<MainShellScreen>
   }
 
   Future<void> _deleteTaskPermanently(Task task) async {
-    await widget.taskRepository.deletePermanently(task.id);
     await _cancelTaskNotification(task.id);
+    await widget.taskRepository.deletePermanently(task.id);
     if (!mounted) {
       return;
     }
@@ -1202,7 +1146,6 @@ class _ManagementPage extends StatefulWidget {
 class _ManagementPageState extends State<_ManagementPage> {
   late Future<List<Tag>> _tagsFuture;
   late Future<List<Folder>> _foldersFuture;
-  final Set<String> _expandedFolderIds = {};
   var _showHiddenMetadata = false;
 
   @override
@@ -1439,38 +1382,41 @@ class _ManagementPageState extends State<_ManagementPage> {
     required List<Tag> tags,
     required int depth,
   }) {
-    if (!_showHiddenMetadata && _isFolderHidden(folder.id)) {
-      return const <Widget>[];
-    }
-    final children = folders
-        .where((candidate) => candidate.parentFolderId == folder.id)
-        .toList(growable: false);
-    children.sort(_compareMetadataFolders);
-    final folderTags = _tagsInFolder(folder.id, tags);
-    final isExpanded = _expandedFolderIds.contains(folder.id);
-    final childCount = children.length + folderTags.length;
-
+    if (!_showHiddenMetadata && _isFolderHidden(folder.id)) return [];
     return [
-      _FolderTreeRow(
-        folder: folder,
-        depth: depth,
-        isHidden: _isFolderHidden(folder.id),
-        childCount: childCount,
-        isExpanded: isExpanded,
+      _ManagementRow(
+        icon: Icons.folder_rounded,
+        iconColor: _colorFromHex(folder.color ?? '#22C55E'),
+        title: folder.name,
         dragItem: _MetadataDragItem.folder(folder.id),
-        onAcceptBefore: (item) =>
-            _moveMetadataBeforeFolder(item, folder, folders),
-        onAcceptInside: (item) => _moveMetadataToFolder(item, folder, folders),
-        onTap: childCount == 0 ? null : () => _toggleFolderExpanded(folder.id),
+        onAccept: (item) => _moveMetadataBeforeFolder(item, folder, folders),
+        onTap: () => _openFolderTasks(folder, tags),
         onEdit: () => _editFolder(folder, folders),
       ),
-      if (isExpanded) ...[
-        for (final child in children)
-          ..._folderTreeRowsFrom(child, folders, tags: tags, depth: depth + 1),
-        for (final tag in folderTags)
-          _tagManagementRow(tag, folders, depth: depth + 1),
-      ],
     ];
+  }
+
+  Future<void> _openFolderTasks(Folder folder, List<Tag> tags) async {
+    bool matches(Task task) =>
+        !_isHiddenInMainList(task) && task.folderIds.contains(folder.id);
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => _MetadataTaskListScreen(
+          title: folder.name,
+          subtitle: '폴더 작업',
+          icon: Icons.folder_rounded,
+          iconColor: _colorFromHex(folder.color ?? '#22C55E'),
+          tasks: widget.tasks.where(matches).toList(),
+          reloadTasks: widget.loadTasks,
+          taskFilter: matches,
+          availableTags: tags,
+          subTaskRepository: widget.subTaskRepository,
+          onToggleTask: widget.onToggleTask,
+          onDeleteTask: widget.onDeleteTask,
+          onOpenTaskDetail: widget.onOpenTaskDetail,
+        ),
+      ),
+    );
   }
 
   Widget _tagManagementRow(
@@ -1493,19 +1439,7 @@ class _ManagementPageState extends State<_ManagementPage> {
     );
   }
 
-  bool _isRootTag(Tag tag, Set<String> folderIds) {
-    final folderId = widget.settings.tagFolderIds[tag.id];
-    return folderId == null || !folderIds.contains(folderId);
-  }
-
-  List<Tag> _tagsInFolder(String folderId, List<Tag> tags) {
-    final folderTags = tags
-        .where((tag) => widget.settings.tagFolderIds[tag.id] == folderId)
-        .where((tag) => _showHiddenMetadata || !_isTagHidden(tag.id))
-        .toList(growable: false);
-    folderTags.sort(_compareMetadataTags);
-    return folderTags;
-  }
+  bool _isRootTag(Tag tag, Set<String> folderIds) => true;
 
   int _compareMetadataTags(Tag a, Tag b) {
     final orderA = widget.settings.tagSortOrders[a.id];
@@ -1530,268 +1464,53 @@ class _ManagementPageState extends State<_ManagementPage> {
     return a.name.compareTo(b.name);
   }
 
-  void _toggleFolderExpanded(String folderId) {
-    setState(() {
-      if (!_expandedFolderIds.remove(folderId)) {
-        _expandedFolderIds.add(folderId);
-      }
-    });
-  }
-
-  bool _isTagHidden(String tagId) {
-    return widget.settings.hiddenTagIds.contains(tagId);
-  }
-
-  bool _isFolderHidden(String folderId) {
-    return widget.settings.hiddenFolderIds.contains(folderId);
-  }
-
-  Future<void> _setFolderHidden(String folderId, bool isHidden) {
-    final hiddenIds = {...widget.settings.hiddenFolderIds};
-    if (isHidden) {
-      hiddenIds.add(folderId);
+  bool _isTagHidden(String id) => widget.settings.hiddenTagIds.contains(id);
+  bool _isFolderHidden(String id) =>
+      widget.settings.hiddenFolderIds.contains(id);
+  Future<void> _setFolderHidden(String id, bool hidden) {
+    final ids = {...widget.settings.hiddenFolderIds};
+    if (hidden) {
+      ids.add(id);
     } else {
-      hiddenIds.remove(folderId);
+      ids.remove(id);
     }
     return widget.onSettingsChanged(
-      widget.settings.copyWith(hiddenFolderIds: hiddenIds),
-    );
-  }
-
-  Future<void> _setTagFolder(String tagId, String? folderId) {
-    final tagFolderIds = {...widget.settings.tagFolderIds};
-    if (folderId == null) {
-      tagFolderIds.remove(tagId);
-    } else {
-      tagFolderIds[tagId] = folderId;
-    }
-    return widget.onSettingsChanged(
-      widget.settings.copyWith(tagFolderIds: tagFolderIds),
+      widget.settings.copyWith(hiddenFolderIds: ids),
     );
   }
 
   Future<void> _moveMetadataToRoot(
     _MetadataDragItem item,
     List<Folder> folders,
-  ) async {
-    if (item.type == _MetadataDragType.tag) {
-      await _setTagFolder(item.id, null);
-      return;
-    }
-
-    final folder = await widget.folderRepository.getFolderById(item.id);
-    if (folder == null || folder.parentFolderId == null) {
-      return;
-    }
-    await widget.folderRepository.updateFolder(
-      Folder(
-        id: folder.id,
-        name: folder.name,
-        color: folder.color,
-        icon: folder.icon,
-        parentFolderId: null,
-        sortOrder: _nextFolderSortOrder(null, folders),
-        createdAt: folder.createdAt,
-        updatedAt: DateTime.now(),
-      ),
-    );
-    if (mounted) {
-      _refreshMetadata();
-    }
-  }
-
-  Future<void> _moveMetadataToFolder(
-    _MetadataDragItem item,
-    Folder targetFolder,
-    List<Folder> folders,
-  ) async {
-    if (item.type == _MetadataDragType.tag) {
-      await _setTagFolder(item.id, targetFolder.id);
-      return;
-    }
-
-    if (item.id == targetFolder.id ||
-        _isFolderDescendant(targetFolder.id, item.id, folders)) {
-      return;
-    }
-    final folder = folders.where((folder) => folder.id == item.id).firstOrNull;
-    if (folder == null) {
-      return;
-    }
-    if (folder.parentFolderId == targetFolder.id) {
-      return;
-    }
-    await widget.folderRepository.updateFolder(
-      Folder(
-        id: folder.id,
-        name: folder.name,
-        color: folder.color,
-        icon: folder.icon,
-        parentFolderId: targetFolder.id,
-        sortOrder: _nextFolderSortOrder(targetFolder.id, folders),
-        createdAt: folder.createdAt,
-        updatedAt: DateTime.now(),
-      ),
-    );
-    if (mounted) {
-      _expandedFolderIds.add(targetFolder.id);
-      _refreshMetadata();
-    }
-  }
-
+  ) async {}
   Future<void> _moveMetadataBeforeFolder(
     _MetadataDragItem item,
-    Folder targetFolder,
+    Folder target,
     List<Folder> folders,
   ) async {
-    if (item.type != _MetadataDragType.folder || item.id == targetFolder.id) {
-      return;
-    }
-    final folder = folders.where((folder) => folder.id == item.id).firstOrNull;
-    if (folder == null ||
-        _isFolderDescendant(targetFolder.id, item.id, folders)) {
-      return;
-    }
-    if (folder.parentFolderId != targetFolder.parentFolderId) {
-      final updatedFolder = Folder(
-        id: folder.id,
-        name: folder.name,
-        color: folder.color,
-        icon: folder.icon,
-        parentFolderId: targetFolder.parentFolderId,
-        sortOrder: targetFolder.sortOrder,
-        createdAt: folder.createdAt,
-        updatedAt: DateTime.now(),
-      );
-      await widget.folderRepository.updateFolder(updatedFolder);
-      final updatedFolders = [
-        for (final candidate in folders)
-          candidate.id == updatedFolder.id ? updatedFolder : candidate,
-      ];
-      await _moveFolderBeforeFolder(
-        updatedFolder,
-        targetFolder,
-        updatedFolders,
-      );
-      return;
-    }
-    await _moveFolderBeforeFolder(folder, targetFolder, folders);
-  }
-
-  Future<void> _moveFolderBeforeFolder(
-    Folder movedFolder,
-    Folder targetFolder,
-    List<Folder> folders,
-  ) async {
-    final siblings =
-        folders
-            .where(
-              (folder) => folder.parentFolderId == targetFolder.parentFolderId,
-            )
-            .toList(growable: false)
-          ..sort(_compareMetadataFolders);
-    final orderedIds = siblings
-        .map((folder) => folder.id)
-        .where((id) => id != movedFolder.id)
-        .toList(growable: true);
-    final targetIndex = orderedIds.indexOf(targetFolder.id);
-    orderedIds.insert(
-      targetIndex < 0 ? orderedIds.length : targetIndex,
-      movedFolder.id,
-    );
-    await widget.folderRepository.updateFolderOrder(orderedIds);
-    if (mounted) {
-      _refreshMetadata();
-    }
-  }
-
-  int _nextFolderSortOrder(
-    String? parentFolderId,
-    List<Folder> folders, {
-    int fallback = 0,
-  }) {
-    final siblings = folders
-        .where((folder) => folder.parentFolderId == parentFolderId)
-        .toList(growable: false);
-    if (siblings.isEmpty) {
-      return fallback;
-    }
-    return siblings
-            .map((folder) => folder.sortOrder)
-            .reduce((a, b) => a > b ? a : b) +
-        1;
+    if (item.type != _MetadataDragType.folder || item.id == target.id) return;
+    final ids = folders.map((f) => f.id).toList()..remove(item.id);
+    ids.insert(ids.indexOf(target.id), item.id);
+    await widget.folderRepository.updateFolderOrder(ids);
+    _refreshMetadata();
   }
 
   Future<void> _moveMetadataBeforeTag(
     _MetadataDragItem item,
-    Tag targetTag,
+    Tag target,
     List<Folder> folders,
   ) async {
-    if (item.type != _MetadataDragType.tag || item.id == targetTag.id) {
-      return;
-    }
-    final targetFolderId = widget.settings.tagFolderIds[targetTag.id];
-    final tagFolderIds = {...widget.settings.tagFolderIds};
-    if (targetFolderId == null) {
-      tagFolderIds.remove(item.id);
-    } else {
-      tagFolderIds[item.id] = targetFolderId;
-    }
-
-    final scopeTags = await widget.tagRepository.getTags();
-    final folderIds = folders.map((folder) => folder.id).toSet();
-    final sameScopeTags =
-        scopeTags
-            .where((tag) {
-              final folderId = tagFolderIds[tag.id];
-              final isRoot = folderId == null || !folderIds.contains(folderId);
-              final targetIsRoot =
-                  targetFolderId == null || !folderIds.contains(targetFolderId);
-              return targetIsRoot ? isRoot : folderId == targetFolderId;
-            })
-            .toList(growable: false)
-          ..sort(_compareMetadataTags);
-
-    final orderedIds = sameScopeTags
-        .map((tag) => tag.id)
-        .where((id) => id != item.id)
-        .toList(growable: true);
-    final targetIndex = orderedIds.indexOf(targetTag.id);
-    orderedIds.insert(
-      targetIndex < 0 ? orderedIds.length : targetIndex,
-      item.id,
-    );
-
-    final tagSortOrders = {...widget.settings.tagSortOrders};
-    for (var index = 0; index < orderedIds.length; index++) {
-      tagSortOrders[orderedIds[index]] = index;
-    }
-
+    if (item.type != _MetadataDragType.tag || item.id == target.id) return;
+    final tags = await widget.tagRepository.getTags();
+    tags.sort(_compareMetadataTags);
+    final ids = tags.map((t) => t.id).toList()..remove(item.id);
+    ids.insert(ids.indexOf(target.id), item.id);
     await widget.onSettingsChanged(
       widget.settings.copyWith(
-        tagFolderIds: tagFolderIds,
-        tagSortOrders: tagSortOrders,
+        tagSortOrders: {for (var i = 0; i < ids.length; i++) ids[i]: i},
       ),
     );
-  }
-
-  bool _isFolderDescendant(
-    String candidateId,
-    String ancestorId,
-    List<Folder> folders,
-  ) {
-    var current = folders
-        .where((folder) => folder.id == candidateId)
-        .firstOrNull;
-    while (current?.parentFolderId != null) {
-      if (current!.parentFolderId == ancestorId) {
-        return true;
-      }
-      current = folders
-          .where((folder) => folder.id == current!.parentFolderId)
-          .firstOrNull;
-    }
-    return false;
+    _refreshMetadata();
   }
 
   Future<void> _createTag(List<Folder> folders) async {
@@ -1804,16 +1523,15 @@ class _ManagementPageState extends State<_ManagementPage> {
     }
 
     final now = DateTime.now();
-    final tag = await widget.tagRepository.createTag(
+    await widget.tagRepository.createTag(
       Tag(
-        id: 'tag_${now.microsecondsSinceEpoch}',
+        id: newEntityId(),
         name: result.name,
         color: result.color,
         createdAt: now,
         updatedAt: now,
       ),
     );
-    await _setTagFolder(tag.id, result.folderId);
     if (!mounted) {
       return;
     }
@@ -1909,12 +1627,18 @@ class _ManagementPageState extends State<_ManagementPage> {
     final now = DateTime.now();
     await widget.folderRepository.createFolder(
       Folder(
-        id: 'folder_${now.microsecondsSinceEpoch}',
+        id: newEntityId(),
         name: result.name,
         color: result.color,
         icon: 'folder',
         parentFolderId: result.parentFolderId,
-        sortOrder: _nextFolderSortOrder(result.parentFolderId, folders),
+        sortOrder:
+            (folders.isEmpty
+                ? -1
+                : folders
+                      .map((f) => f.sortOrder)
+                      .reduce((a, b) => a > b ? a : b)) +
+            1,
         createdAt: now,
         updatedAt: now,
       ),
@@ -1967,7 +1691,12 @@ class _ManagementPageState extends State<_ManagementPage> {
         parentFolderId: result.parentFolderId,
         sortOrder: result.parentFolderId == folder.parentFolderId
             ? folder.sortOrder
-            : _nextFolderSortOrder(result.parentFolderId, folders),
+            : (folders.isEmpty
+                      ? -1
+                      : folders
+                            .map((f) => f.sortOrder)
+                            .reduce((a, b) => a > b ? a : b)) +
+                  1,
         createdAt: folder.createdAt,
         updatedAt: now,
       ),
@@ -2020,8 +1749,10 @@ class _MetadataTaskListScreen extends StatefulWidget {
     required this.onOpenTaskDetail,
     this.reloadTasks,
     this.taskFilter,
+    this.availableTags = const [],
   });
 
+  final List<Tag> availableTags;
   final String title;
   final String subtitle;
   final IconData icon;
@@ -2041,6 +1772,7 @@ class _MetadataTaskListScreen extends StatefulWidget {
 
 class _MetadataTaskListScreenState extends State<_MetadataTaskListScreen> {
   late List<Task> _tasks;
+  String? _selectedTagId;
 
   @override
   void initState() {
@@ -2084,7 +1816,14 @@ class _MetadataTaskListScreenState extends State<_MetadataTaskListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final sortedTasks = List<Task>.of(_tasks)..sort(_compareMetadataTasks);
+    final sortedTasks =
+        _tasks
+            .where(
+              (t) =>
+                  _selectedTagId == null || t.tagIds.contains(_selectedTagId),
+            )
+            .toList()
+          ..sort(_compareMetadataTasks);
     final incompleteTasks = sortedTasks
         .where((task) => task.status == TaskStatus.active)
         .toList(growable: false);
@@ -2136,6 +1875,22 @@ class _MetadataTaskListScreenState extends State<_MetadataTaskListScreen> {
               ],
             ),
             const SizedBox(height: 20),
+            if (widget.availableTags.isNotEmpty) ...[
+              DropdownButtonFormField<String>(
+                initialValue: _selectedTagId,
+                decoration: const InputDecoration(labelText: '폴더 안에서 태그로 찾기'),
+                items: [
+                  const DropdownMenuItem<String>(
+                    value: null,
+                    child: Text('모든 태그'),
+                  ),
+                  for (final tag in widget.availableTags)
+                    DropdownMenuItem(value: tag.id, child: Text(tag.name)),
+                ],
+                onChanged: (value) => setState(() => _selectedTagId = value),
+              ),
+              const SizedBox(height: 20),
+            ],
             if (sortedTasks.isEmpty)
               const _EmptyBlock(message: '작업 없음')
             else ...[
@@ -4388,122 +4143,6 @@ class _MetadataDragItem {
   final String id;
 }
 
-class _FolderTreeRow extends StatelessWidget {
-  const _FolderTreeRow({
-    required this.folder,
-    required this.depth,
-    required this.isHidden,
-    required this.childCount,
-    required this.isExpanded,
-    required this.onEdit,
-    this.dragItem,
-    this.onAcceptBefore,
-    this.onAcceptInside,
-    this.onTap,
-  });
-
-  final Folder folder;
-  final int depth;
-  final bool isHidden;
-  final int childCount;
-  final bool isExpanded;
-  final VoidCallback onEdit;
-  final _MetadataDragItem? dragItem;
-  final ValueChanged<_MetadataDragItem>? onAcceptBefore;
-  final ValueChanged<_MetadataDragItem>? onAcceptInside;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = _colorFromHex(folder.color, fallback: AppTheme.successGreen);
-    final baseRow = ListTile(
-      onTap: onTap,
-      contentPadding: EdgeInsets.only(left: 16 + depth * 20, right: 8),
-      leading: Icon(
-        isHidden ? Icons.visibility_off_outlined : Icons.folder_rounded,
-        color: isHidden ? AppTheme.muted : color,
-      ),
-      title: Text(
-        folder.name,
-        style: const TextStyle(fontWeight: FontWeight.w800),
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (childCount > 0)
-            Icon(
-              isExpanded
-                  ? Icons.keyboard_arrow_up_rounded
-                  : Icons.keyboard_arrow_down_rounded,
-              color: AppTheme.muted,
-            ),
-          IconButton(
-            onPressed: onEdit,
-            icon: const Icon(Icons.edit_outlined),
-            tooltip: '폴더 편집',
-          ),
-        ],
-      ),
-    );
-    Widget row = baseRow;
-    final acceptInside = onAcceptInside;
-    if (acceptInside != null) {
-      row = DragTarget<_MetadataDragItem>(
-        onWillAcceptWithDetails: (details) => details.data != dragItem,
-        onAcceptWithDetails: (details) => acceptInside(details.data),
-        builder: (context, candidateData, rejectedData) {
-          return ColoredBox(
-            color: candidateData.isEmpty
-                ? Colors.transparent
-                : AppTheme.successGreen.withValues(alpha: 0.08),
-            child: baseRow,
-          );
-        },
-      );
-    }
-    final acceptBefore = onAcceptBefore;
-    if (acceptBefore != null) {
-      row = Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          DragTarget<_MetadataDragItem>(
-            onWillAcceptWithDetails: (details) =>
-                details.data.type == _MetadataDragType.folder &&
-                details.data != dragItem,
-            onAcceptWithDetails: (details) => acceptBefore(details.data),
-            builder: (context, candidateData, rejectedData) {
-              return ColoredBox(
-                color: candidateData.isEmpty
-                    ? Colors.transparent
-                    : AppTheme.primaryBlue.withValues(alpha: 0.18),
-                child: const SizedBox(height: 8),
-              );
-            },
-          ),
-          row,
-        ],
-      );
-    }
-    final item = dragItem;
-    if (item == null) {
-      return row;
-    }
-    return LongPressDraggable<_MetadataDragItem>(
-      data: item,
-      feedback: Material(
-        elevation: 4,
-        borderRadius: BorderRadius.circular(8),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 240),
-          child: baseRow,
-        ),
-      ),
-      childWhenDragging: Opacity(opacity: 0.35, child: row),
-      child: row,
-    );
-  }
-}
-
 class _ManagementLoadingRow extends StatelessWidget {
   const _ManagementLoadingRow();
 
@@ -4641,29 +4280,6 @@ class _TagEditDialogState extends State<_TagEditDialog> {
                 }
               },
             ),
-            if (widget.folders.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String?>(
-                initialValue: _selectedFolderId,
-                decoration: const InputDecoration(labelText: '폴더'),
-                items: [
-                  const DropdownMenuItem<String?>(
-                    value: null,
-                    child: Text('루트'),
-                  ),
-                  for (final folder in _folderCandidates)
-                    DropdownMenuItem<String?>(
-                      value: folder.id,
-                      child: Text(folder.name),
-                    ),
-                ],
-                onChanged: (value) {
-                  setState(() {
-                    _selectedFolderId = value;
-                  });
-                },
-              ),
-            ],
             if (widget.tag != null) ...[
               const SizedBox(height: 12),
               SwitchListTile(
@@ -4716,12 +4332,6 @@ class _TagEditDialogState extends State<_TagEditDialog> {
       ),
     );
   }
-
-  List<Folder> get _folderCandidates {
-    final folders = List<Folder>.of(widget.folders)
-      ..sort((a, b) => a.name.compareTo(b.name));
-    return folders;
-  }
 }
 
 class _FolderEditDialog extends StatefulWidget {
@@ -4753,7 +4363,7 @@ class _FolderEditDialogState extends State<_FolderEditDialog> {
     _colorController = TextEditingController(
       text: _normalizeHex(widget.folder?.color ?? '#22C55E'),
     );
-    _parentFolderId = widget.folder?.parentFolderId;
+    _parentFolderId = null;
     _isHidden = widget.isHidden;
   }
 
@@ -4824,29 +4434,6 @@ class _FolderEditDialogState extends State<_FolderEditDialog> {
                 }
               },
             ),
-            if (_parentCandidates.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String?>(
-                initialValue: _parentFolderId,
-                decoration: const InputDecoration(labelText: '상위 폴더'),
-                items: [
-                  const DropdownMenuItem<String?>(
-                    value: null,
-                    child: Text('없음'),
-                  ),
-                  for (final folder in _parentCandidates)
-                    DropdownMenuItem<String?>(
-                      value: folder.id,
-                      child: Text(folder.name),
-                    ),
-                ],
-                onChanged: (value) {
-                  setState(() {
-                    _parentFolderId = value;
-                  });
-                },
-              ),
-            ],
             if (widget.folder != null) ...[
               const SizedBox(height: 12),
               SwitchListTile(
@@ -4900,35 +4487,6 @@ class _FolderEditDialogState extends State<_FolderEditDialog> {
         isHidden: _isHidden,
       ),
     );
-  }
-
-  List<Folder> get _parentCandidates {
-    final editingId = widget.folder?.id;
-    return widget.folders
-        .where((folder) => !_isSelfOrDescendant(folder.id, editingId))
-        .toList(growable: false);
-  }
-
-  bool _isSelfOrDescendant(String candidateId, String? editingId) {
-    if (editingId == null) {
-      return false;
-    }
-    if (candidateId == editingId) {
-      return true;
-    }
-
-    var current = widget.folders
-        .where((folder) => folder.id == candidateId)
-        .firstOrNull;
-    while (current?.parentFolderId != null) {
-      if (current!.parentFolderId == editingId) {
-        return true;
-      }
-      current = widget.folders
-          .where((folder) => folder.id == current!.parentFolderId)
-          .firstOrNull;
-    }
-    return false;
   }
 }
 
@@ -5398,8 +4956,6 @@ Color _colorFromHex(String? value, {Color fallback = AppTheme.primaryBlue}) {
   }
   return Color(int.parse('FF${normalized.substring(1)}', radix: 16));
 }
-
-const _autoEcampusFolderName = 'e-campus';
 
 String _normalizeHex(String? value) {
   final trimmed = value?.trim() ?? '';

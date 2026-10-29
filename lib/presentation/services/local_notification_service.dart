@@ -3,6 +3,7 @@ import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../../data/models/task_models.dart';
+import '../../data/repositories/notification_repository.dart';
 import '../../data/services/notification_schedule_service.dart';
 
 class LocalNotificationService {
@@ -11,9 +12,11 @@ class LocalNotificationService {
     NotificationScheduleService scheduleService =
         const NotificationScheduleService(),
     DateTime Function()? now,
+    LocalNotificationStateStore? stateStore,
   }) : _plugin = plugin ?? FlutterLocalNotificationsPlugin(),
        _scheduleService = scheduleService,
-       _now = now ?? DateTime.now;
+       _now = now ?? DateTime.now,
+       _stateStore = stateStore;
 
   static const _channelId = 'task_due';
   static const _channelName = '작업 마감 알림';
@@ -22,6 +25,7 @@ class LocalNotificationService {
   final FlutterLocalNotificationsPlugin _plugin;
   final NotificationScheduleService _scheduleService;
   final DateTime Function() _now;
+  final LocalNotificationStateStore? _stateStore;
   var _initialized = false;
 
   Future<void> initialize() async {
@@ -116,31 +120,42 @@ class LocalNotificationService {
     }
 
     final androidScheduleMode = await _androidScheduleMode();
-    await _plugin.zonedSchedule(
-      id: notificationIdForTask(task.id),
-      title: 'KU Todo',
-      body: '${task.title} 마감 알림',
-      scheduledDate: tz.TZDateTime.from(schedule.scheduledAt, tz.local),
-      notificationDetails: const NotificationDetails(
-        android: AndroidNotificationDetails(
-          _channelId,
-          _channelName,
-          channelDescription: _channelDescription,
-          importance: Importance.high,
-          priority: Priority.high,
+    try {
+      await _plugin.zonedSchedule(
+        id: await _notificationId(task.id),
+        title: 'KU Todo',
+        body: '${task.title} 마감 알림',
+        scheduledDate: tz.TZDateTime.from(schedule.scheduledAt, tz.local),
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            _channelId,
+            _channelName,
+            channelDescription: _channelDescription,
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+          iOS: DarwinNotificationDetails(),
+          macOS: DarwinNotificationDetails(),
         ),
-        iOS: DarwinNotificationDetails(),
-        macOS: DarwinNotificationDetails(),
-      ),
-      androidScheduleMode: androidScheduleMode,
-      payload: task.id,
-    );
+        androidScheduleMode: androidScheduleMode,
+        payload: task.id,
+      );
+      await _stateStore?.recordSchedule(task.id, schedule.scheduledAt);
+    } catch (error) {
+      await _stateStore?.recordSchedule(task.id, null, error: error.toString());
+      rethrow;
+    }
   }
 
   Future<void> cancelTaskNotification(String taskId) async {
     await initialize();
-    await _plugin.cancel(id: notificationIdForTask(taskId));
+    await _plugin.cancel(id: await _notificationId(taskId));
+    await _stateStore?.recordSchedule(taskId, null);
   }
+
+  Future<int> _notificationId(String id) async =>
+      await _stateStore?.notificationId(id, notificationIdForTask(id)) ??
+      notificationIdForTask(id);
 
   int notificationIdForTask(String taskId) {
     var hash = 0;

@@ -394,7 +394,6 @@ class _TagCreateDialog extends StatefulWidget {
 class _TagCreateDialogState extends State<_TagCreateDialog> {
   final _nameController = TextEditingController();
   final _colorController = TextEditingController(text: '#3B82F6');
-  String? _folderId;
   String? _errorText;
 
   @override
@@ -416,31 +415,6 @@ class _TagCreateDialogState extends State<_TagCreateDialog> {
           initialColor: AppTheme.primaryBlue,
           errorText: _errorText,
           onColorChanged: () => setState(() => _errorText = null),
-          extra: [
-            if (widget.folders.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String?>(
-                initialValue: _folderId,
-                decoration: const InputDecoration(labelText: '폴더 위치'),
-                items: [
-                  const DropdownMenuItem<String?>(
-                    value: null,
-                    child: Text('루트'),
-                  ),
-                  for (final folder in widget.folders)
-                    DropdownMenuItem<String?>(
-                      value: folder.id,
-                      child: Text(folder.name),
-                    ),
-                ],
-                onChanged: (value) {
-                  setState(() {
-                    _folderId = value;
-                  });
-                },
-              ),
-            ],
-          ],
         ),
       ),
       actions: [
@@ -466,7 +440,7 @@ class _TagCreateDialogState extends State<_TagCreateDialog> {
     }
     Navigator.of(
       context,
-    ).pop(TagDraft(name: name, color: color, folderId: _folderId));
+    ).pop(TagDraft(name: name, color: color, folderId: null));
   }
 }
 
@@ -482,7 +456,6 @@ class _FolderCreateDialog extends StatefulWidget {
 class _FolderCreateDialogState extends State<_FolderCreateDialog> {
   final _nameController = TextEditingController();
   final _colorController = TextEditingController(text: '#22C55E');
-  String? _parentFolderId;
   String? _errorText;
 
   @override
@@ -505,31 +478,6 @@ class _FolderCreateDialogState extends State<_FolderCreateDialog> {
           errorText: _errorText,
           icon: Icons.folder_rounded,
           onColorChanged: () => setState(() => _errorText = null),
-          extra: [
-            if (widget.folders.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String?>(
-                initialValue: _parentFolderId,
-                decoration: const InputDecoration(labelText: '상위 폴더'),
-                items: [
-                  const DropdownMenuItem<String?>(
-                    value: null,
-                    child: Text('없음'),
-                  ),
-                  for (final folder in widget.folders)
-                    DropdownMenuItem<String?>(
-                      value: folder.id,
-                      child: Text(folder.name),
-                    ),
-                ],
-                onChanged: (value) {
-                  setState(() {
-                    _parentFolderId = value;
-                  });
-                },
-              ),
-            ],
-          ],
         ),
       ),
       actions: [
@@ -553,9 +501,9 @@ class _FolderCreateDialogState extends State<_FolderCreateDialog> {
       setState(() => _errorText = '#RRGGBB 형식으로 입력해주세요.');
       return;
     }
-    Navigator.of(context).pop(
-      FolderDraft(name: name, color: color, parentFolderId: _parentFolderId),
-    );
+    Navigator.of(
+      context,
+    ).pop(FolderDraft(name: name, color: color, parentFolderId: null));
   }
 }
 
@@ -568,7 +516,6 @@ class _MetadataFormBody extends StatelessWidget {
     required this.errorText,
     required this.onColorChanged,
     this.icon,
-    this.extra = const [],
   });
 
   final TextEditingController nameController;
@@ -578,7 +525,6 @@ class _MetadataFormBody extends StatelessWidget {
   final String? errorText;
   final VoidCallback onColorChanged;
   final IconData? icon;
-  final List<Widget> extra;
 
   @override
   Widget build(BuildContext context) {
@@ -635,7 +581,6 @@ class _MetadataFormBody extends StatelessWidget {
           ),
           onChanged: (_) => onColorChanged(),
         ),
-        ...extra,
       ],
     );
   }

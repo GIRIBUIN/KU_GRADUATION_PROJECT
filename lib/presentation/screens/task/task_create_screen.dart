@@ -1,3 +1,4 @@
+import '../../../core/utils/entity_id.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -45,6 +46,7 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
   final List<_DraftSubTask> _subTasks = [];
   List<Tag> _tags = const [];
   List<Folder> _folders = const [];
+  String? _selectedFolderId;
   final Set<String> _selectedTagIds = {};
 
   DateTime? _dueDate;
@@ -196,6 +198,14 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
                 ),
               ),
               const SizedBox(height: 22),
+              FolderPickerSection(
+                folders: _folders,
+                selectedId: _selectedFolderId,
+                onSelect: (folder) =>
+                    setState(() => _selectedFolderId = folder?.id),
+                onAdd: _createFolder,
+              ),
+              const SizedBox(height: 22),
               TagPickerSection(
                 tags: _tags,
                 selectedIds: _selectedTagIds,
@@ -260,6 +270,7 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
         _memoController.text.trim().isNotEmpty ||
         _dueDate != widget.initialDueDate ||
         _priority != null ||
+        _selectedFolderId != null ||
         _subTasks.isNotEmpty ||
         _selectedTagIds.isNotEmpty;
   }
@@ -270,68 +281,76 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
       _showSnackBar(context, '제목을 입력해주세요.');
       return;
     }
-    if (_isSaving) {
-      return;
-    }
-
-    setState(() {
-      _isSaving = true;
-    });
-
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
     final now = DateTime.now();
-    final taskId = 'task_${now.microsecondsSinceEpoch}';
-    final task = await widget.taskRepository.createTask(
-      Task(
-        id: taskId,
-        origin: TaskOrigin.personal,
-        status: TaskStatus.active,
-        title: title,
-        dueDate: _dueDate,
-        priority: _priority,
-        memo: _memoController.text.trim().isEmpty
-            ? null
-            : _memoController.text.trim(),
-        tagIds: _selectedTagIds.toList(growable: false),
-        folderIds: const [],
-        createdAt: now,
-        updatedAt: now,
-      ),
+    final notificationEnabled = _effectiveNotificationEnabled(now);
+    final offset = _notificationOffsetMinutes;
+    final drafts = List<_DraftSubTask>.of(_subTasks);
+    final draft = Task(
+      id: newEntityId(),
+      origin: TaskOrigin.personal,
+      status: TaskStatus.active,
+      title: title,
+      dueDate: _dueDate,
+      priority: _priority,
+      memo: _memoController.text.trim().isEmpty
+          ? null
+          : _memoController.text.trim(),
+      tagIds: _selectedTagIds.toList(),
+      folderIds: _selectedFolderId == null ? const [] : [_selectedFolderId!],
+      createdAt: now,
+      updatedAt: now,
     );
-
-    for (var index = 0; index < _subTasks.length; index++) {
-      final subTask = _subTasks[index];
-      await widget.subTaskRepository.createSubTask(
-        SubTask(
-          id: 'sub_${task.id}_${now.microsecondsSinceEpoch}_$index',
+    Future<(Task, NotificationSetting)> persist() async {
+      final task = await widget.taskRepository.createTask(draft);
+      for (final sub in drafts) {
+        await widget.subTaskRepository.createSubTask(
+          SubTask(
+            id: newEntityId(),
+            taskId: task.id,
+            title: sub.title,
+            isDone: sub.isDone,
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+      }
+      final reminder = await widget.notificationRepository.save(
+        NotificationSetting(
+          id: 'notification_${task.id}',
           taskId: task.id,
-          title: subTask.title,
-          isDone: subTask.isDone,
-          createdAt: now,
-          updatedAt: now,
+          enabled: notificationEnabled,
+          daysBeforeDue: offset,
+          notifyTime: 'relative',
         ),
       );
+      return (task, reminder);
     }
 
-    final notificationEnabled = _effectiveNotificationEnabled(now);
-    final notification = await widget.notificationRepository.save(
-      NotificationSetting(
-        id: 'notification_${task.id}',
-        taskId: task.id,
-        enabled: notificationEnabled,
-        daysBeforeDue: _notificationOffsetMinutes,
-        notifyTime: 'relative',
-      ),
-    );
-    await widget.localNotificationService.scheduleTaskNotification(
-      task: task,
-      setting: notification,
-      requestPermissionBeforeScheduling: notificationEnabled,
-    );
-
-    if (!mounted) {
+    late (Task, NotificationSetting) saved;
+    try {
+      final backend = widget.taskRepository;
+      saved = await (backend is TransactionalTaskRepository
+          ? (backend as TransactionalTaskRepository).atomic(persist)
+          : persist());
+    } catch (error) {
+      if (mounted) {
+        setState(() => _isSaving = false);
+        _showSnackBar(context, '저장하지 못했습니다: $error');
+      }
       return;
     }
-
+    try {
+      await widget.localNotificationService.scheduleTaskNotification(
+        task: saved.$1,
+        setting: saved.$2,
+        requestPermissionBeforeScheduling: notificationEnabled,
+      );
+    } catch (error) {
+      if (mounted) _showSnackBar(context, '일정은 저장됐지만 알림 예약에 실패했습니다.');
+    }
+    if (!mounted) return;
     _didPopAfterSave = true;
     Navigator.of(context).pop(true);
   }
@@ -453,6 +472,29 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
     });
   }
 
+  Future<void> _createFolder() async {
+    final draft = await showFolderCreateDialog(context);
+    if (draft == null || !mounted) return;
+    final now = DateTime.now();
+    final folder = await widget.folderRepository.createFolder(
+      Folder(
+        id: newEntityId(),
+        name: draft.name,
+        color: draft.color,
+        sortOrder: -1,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    final folders = await widget.folderRepository.getFolders();
+    if (mounted) {
+      setState(() {
+        _folders = folders;
+        _selectedFolderId = folder.id;
+      });
+    }
+  }
+
   Future<void> _createTag() async {
     final draft = await showTagCreateDialog(context, folders: _folders);
     if (draft == null || !mounted) {
@@ -462,7 +504,7 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
     final now = DateTime.now();
     final tag = await widget.tagRepository.createTag(
       Tag(
-        id: 'tag_${now.microsecondsSinceEpoch}',
+        id: newEntityId(),
         name: draft.name,
         color: draft.color,
         createdAt: now,

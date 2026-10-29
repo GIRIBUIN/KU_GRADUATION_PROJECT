@@ -27,6 +27,22 @@ class EcampusTodoParser {
       }
     }
 
+    if (tasks.isEmpty &&
+        failures.isEmpty &&
+        document.querySelector(
+              'div.todo_wrap#no_data, div.todo_wrap.no_data',
+            ) ==
+            null) {
+      failures.add(const EcampusParseFailure(reason: '할 일 목록 구조를 확인할 수 없습니다.'));
+    }
+    final seen = <String>{};
+    for (final task in tasks) {
+      if (!seen.add(task.sourceKey)) {
+        failures.add(
+          EcampusParseFailure(reason: '중복 원본 식별자: ${task.sourceKey}'),
+        );
+      }
+    }
     return EcampusTodoParseResult(tasks: tasks, failures: failures);
   }
 

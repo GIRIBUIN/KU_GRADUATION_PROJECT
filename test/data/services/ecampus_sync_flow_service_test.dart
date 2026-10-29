@@ -58,7 +58,7 @@ void main() {
     });
 
     test(
-      'auto-completes active e-campus tasks missing from successful sync when due date is future',
+      'preview keeps missing future tasks unchanged until user confirmation',
       () async {
         final missingFutureTask = _task(
           id: 'missing-future',
@@ -84,11 +84,9 @@ void main() {
           syncedAt: syncedAt,
         );
 
-        expect(taskRepository.updatedStatuses, {
-          'missing-future': TaskStatus.completed,
-        });
-        expect(result.items.last.kind, SyncItemKind.completed);
-        expect(result.items.last.existingTask?.id, 'missing-future');
+        expect(taskRepository.updatedStatuses, isEmpty);
+        expect(result.items.single.kind, SyncItemKind.alreadyImported);
+        expect(result.items.single.existingTask?.id, 'synced');
       },
     );
 

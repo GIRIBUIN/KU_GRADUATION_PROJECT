@@ -25,6 +25,8 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
   final Set<String> _savedExcludeKeys = {};
   final Set<String> _allowedExcludeKeys = {};
   final Set<String> _importedKeys = {};
+  final Set<String> _applyTitleKeys = {};
+  final Set<String> _applyDueKeys = {};
   final Map<String, Task> _excludedTasksByKey = {};
   final Map<String, SyncItem> _savedExcludedItemsByKey = {};
   final Map<String, SyncItem> _importedItemsByKey = {};
@@ -128,6 +130,38 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
                     selected: _selectedKeys.contains(_itemKey(item)),
                     onChanged: (selected) => _toggle(item, selected),
                   ),
+                  if (item.kind == SyncItemKind.updateCandidate) ...[
+                    CheckboxListTile(
+                      dense: true,
+                      title: const Text('원본 제목으로 변경'),
+                      subtitle: Text(item.parsedTask?.title ?? ''),
+                      value: _applyTitleKeys.contains(_itemKey(item)),
+                      onChanged: (value) => setState(() {
+                        if (value == true) {
+                          _applyTitleKeys.add(_itemKey(item));
+                        } else {
+                          _applyTitleKeys.remove(_itemKey(item));
+                        }
+                      }),
+                    ),
+                    CheckboxListTile(
+                      dense: true,
+                      title: const Text('원본 마감일로 변경'),
+                      subtitle: Text(
+                        item.parsedTask?.dueLabel ??
+                            item.parsedTask?.dueDate?.toLocal().toString() ??
+                            '없음',
+                      ),
+                      value: _applyDueKeys.contains(_itemKey(item)),
+                      onChanged: (value) => setState(() {
+                        if (value == true) {
+                          _applyDueKeys.add(_itemKey(item));
+                        } else {
+                          _applyDueKeys.remove(_itemKey(item));
+                        }
+                      }),
+                    ),
+                  ],
                   const SizedBox(height: 10),
                 ],
               const SizedBox(height: 24),
@@ -286,6 +320,14 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
   Future<void> _importSelectedItems() async {
     final selectedItems = _visibleImportCandidates()
         .where((item) => _selectedKeys.contains(_itemKey(item)))
+        .map(
+          (item) => item.kind == SyncItemKind.updateCandidate
+              ? item.withFields(
+                  title: _applyTitleKeys.contains(_itemKey(item)),
+                  dueDate: _applyDueKeys.contains(_itemKey(item)),
+                )
+              : item,
+        )
         .toList(growable: false);
 
     if (selectedItems.isEmpty) {
@@ -305,6 +347,8 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
       if (!mounted) {
         return;
       }
+
+      setState(() => _isSaving = false);
 
       await showDialog<void>(
         context: context,

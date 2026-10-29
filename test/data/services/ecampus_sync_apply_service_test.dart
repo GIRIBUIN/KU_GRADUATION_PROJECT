@@ -43,25 +43,15 @@ void main() {
       expect(applied.single.status, TaskStatus.active);
       expect(applied.single.origin, TaskOrigin.ecampus);
       expect(applied.single.title, '자료구조 과제');
-      expect(applied.single.memo, '자료구조');
+      expect(applied.single.memo, isNull);
       expect(applied.single.priority, TaskPriority.medium);
-      expect(applied.single.tagIds, [tagRepository.tags.values.single.id]);
-      expect(applied.single.folderIds, [
-        folderRepository.folders.values.single.id,
-      ]);
+      expect(applied.single.tagIds, isEmpty);
+      expect(applied.single.folderIds, isEmpty);
       expect(applied.single.ecampus?.sourceKey, 'course:item:report');
       expect(applied.single.ecampus?.lastSyncedAt, syncedAt);
-      expect(tagRepository.tags.values.single.name, '자료구조');
-      expect(tagRepository.tags.values.single.color, '#3B82F6');
-      expect(folderRepository.folders.values.single.name, 'e-campus');
-      expect(settingsRepository.settings.tagFolderIds, {
-        tagRepository.tags.values.single.id:
-            folderRepository.folders.values.single.id,
-      });
-      expect(
-        settingsRepository.settings.ecampusFolderId,
-        folderRepository.folders.values.single.id,
-      );
+      expect(tagRepository.tags, isEmpty);
+      expect(folderRepository.folders, isEmpty);
+      expect(settingsRepository.settings.tagFolderIds, isEmpty);
     });
 
     test(
@@ -88,52 +78,41 @@ void main() {
         expect(applied.single.id, 'existing');
         expect(applied.single.title, '변경된 과제');
         expect(applied.single.status, TaskStatus.active);
-        expect(applied.single.tagIds, [
-          'tag-1',
-          tagRepository.tags.values.single.id,
-        ]);
-        expect(applied.single.folderIds, [
-          'folder-1',
-          folderRepository.folders.values.single.id,
-        ]);
-        expect(settingsRepository.settings.tagFolderIds, {
-          tagRepository.tags.values.single.id:
-              folderRepository.folders.values.single.id,
-        });
-        expect(
-          settingsRepository.settings.ecampusFolderId,
-          folderRepository.folders.values.single.id,
-        );
+        expect(applied.single.tagIds, ['tag-1']);
+        expect(applied.single.folderIds, ['folder-1']);
+        expect(applied.single.memo, existing.memo);
+        expect(settingsRepository.settings.tagFolderIds, isEmpty);
         expect(applied.single.createdAt, existing.createdAt);
         expect(applied.single.updatedAt, syncedAt);
       },
     );
 
-    test('reuses saved e-campus folder id after folder is renamed', () async {
-      final renamedFolder = await folderRepository.createFolder(
-        Folder(
-          id: 'folder-ecampus',
-          name: '학교',
-          color: '#1262D6',
-          icon: 'folder',
-          createdAt: syncedAt,
-          updatedAt: syncedAt,
-        ),
-      );
-      settingsRepository.settings = settingsRepository.settings.copyWith(
-        ecampusFolderId: renamedFolder.id,
-      );
+    test(
+      'new imports do not force the saved automatic folder onto user tasks',
+      () async {
+        final renamedFolder = await folderRepository.createFolder(
+          Folder(
+            id: 'folder-ecampus',
+            name: '학교',
+            color: '#1262D6',
+            icon: 'folder',
+            createdAt: syncedAt,
+            updatedAt: syncedAt,
+          ),
+        );
+        settingsRepository.settings = settingsRepository.settings.copyWith(
+          ecampusFolderId: renamedFolder.id,
+        );
 
-      final applied = await service.importItems([
-        SyncItem(kind: SyncItemKind.newItem, parsedTask: _parsedTask()),
-      ]);
+        final applied = await service.importItems([
+          SyncItem(kind: SyncItemKind.newItem, parsedTask: _parsedTask()),
+        ]);
 
-      expect(applied.single.folderIds, [renamedFolder.id]);
-      expect(folderRepository.folders, hasLength(1));
-      expect(settingsRepository.settings.tagFolderIds, {
-        tagRepository.tags.values.single.id: renamedFolder.id,
-      });
-    });
+        expect(applied.single.folderIds, isEmpty);
+        expect(folderRepository.folders, hasLength(1));
+        expect(settingsRepository.settings.tagFolderIds, isEmpty);
+      },
+    );
 
     test(
       'does not update completed, deleted, excluded, or error items',
@@ -178,23 +157,26 @@ void main() {
       expect(folderRepository.folders, isEmpty);
     });
 
-    test('marks existing active items as excluded', () async {
-      final existing = _task(id: 'existing', sourceKey: 'course:item:report');
-      await repository.createTask(existing);
+    test(
+      'excluding a source update keeps the imported task and user fields',
+      () async {
+        final existing = _task(id: 'existing', sourceKey: 'course:item:report');
+        await repository.createTask(existing);
 
-      final applied = await service.excludeItems([
-        SyncItem(
-          kind: SyncItemKind.updateCandidate,
-          parsedTask: _parsedTask(title: '제외할 과제'),
-          existingTask: existing,
-        ),
-      ]);
+        final applied = await service.excludeItems([
+          SyncItem(
+            kind: SyncItemKind.updateCandidate,
+            parsedTask: _parsedTask(title: '제외할 과제'),
+            existingTask: existing,
+          ),
+        ]);
 
-      expect(applied, hasLength(1));
-      expect(applied.single.id, 'existing');
-      expect(applied.single.status, TaskStatus.excluded);
-      expect(applied.single.title, '제외할 과제');
-    });
+        expect(applied, hasLength(1));
+        expect(applied.single.id, 'existing');
+        expect(applied.single.status, TaskStatus.active);
+        expect(applied.single.title, existing.title);
+      },
+    );
 
     test('does not exclude completed or deleted existing tasks', () async {
       final completed = _task(

@@ -37,10 +37,7 @@ class ParsedEcampusTask {
 }
 
 class EcampusTodoParseResult {
-  const EcampusTodoParseResult({
-    required this.tasks,
-    required this.failures,
-  });
+  const EcampusTodoParseResult({required this.tasks, required this.failures});
 
   final List<ParsedEcampusTask> tasks;
   final List<EcampusParseFailure> failures;
@@ -49,20 +46,14 @@ class EcampusTodoParseResult {
 }
 
 class EcampusParseFailure {
-  const EcampusParseFailure({
-    required this.reason,
-    this.rawHtml,
-  });
+  const EcampusParseFailure({required this.reason, this.rawHtml});
 
   final String reason;
   final String? rawHtml;
 }
 
 class SyncResult {
-  const SyncResult({
-    required this.items,
-    required this.syncedAt,
-  });
+  const SyncResult({required this.items, required this.syncedAt});
 
   final List<SyncItem> items;
   final DateTime syncedAt;
@@ -96,12 +87,25 @@ class SyncItem {
     this.parsedTask,
     this.existingTask,
     this.errorMessage,
+    this.applyTitle = true,
+    this.applyDueDate = true,
   });
 
   final SyncItemKind kind;
   final ParsedEcampusTask? parsedTask;
   final Task? existingTask;
   final String? errorMessage;
+  final bool applyTitle;
+  final bool applyDueDate;
+
+  SyncItem withFields({required bool title, required bool dueDate}) => SyncItem(
+    kind: kind,
+    parsedTask: parsedTask,
+    existingTask: existingTask,
+    errorMessage: errorMessage,
+    applyTitle: title,
+    applyDueDate: dueDate,
+  );
 }
 
 String buildEcampusSourceKey({
@@ -109,9 +113,5 @@ String buildEcampusSourceKey({
   required String rawItemId,
   required String rawType,
 }) {
-  return [
-    rawLectureId.trim(),
-    rawItemId.trim(),
-    rawType.trim(),
-  ].join(':');
+  return [rawLectureId.trim(), rawItemId.trim(), rawType.trim()].join(':');
 }

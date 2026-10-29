@@ -53,19 +53,6 @@ class DefaultEcampusSyncFlowService implements EcampusSyncFlowService {
       syncedAt: syncedAt,
     );
 
-    if (result.errorItems.isEmpty) {
-      final autoCompletedItems = await _completeMissingFutureDueTasks(
-        existingTasks: existingTasks,
-        result: result,
-      );
-      if (autoCompletedItems.isNotEmpty) {
-        return SyncResult(
-          items: [...result.items, ...autoCompletedItems],
-          syncedAt: result.syncedAt,
-        );
-      }
-    }
-
     return result;
   }
 
@@ -97,40 +84,5 @@ class DefaultEcampusSyncFlowService implements EcampusSyncFlowService {
 
       await _taskRepository.deletePermanently(task.id);
     }
-  }
-
-  Future<List<SyncItem>> _completeMissingFutureDueTasks({
-    required List<Task> existingTasks,
-    required SyncResult result,
-  }) async {
-    final completedItems = <SyncItem>[];
-    final syncedSourceKeys = result.items
-        .map((item) => item.parsedTask?.sourceKey.trim())
-        .whereType<String>()
-        .where((sourceKey) => sourceKey.isNotEmpty)
-        .toSet();
-
-    for (final task in existingTasks) {
-      final sourceKey = task.ecampus?.sourceKey.trim();
-      if (task.status != TaskStatus.active ||
-          sourceKey == null ||
-          sourceKey.isEmpty ||
-          syncedSourceKeys.contains(sourceKey)) {
-        continue;
-      }
-
-      final dueDate = task.ecampus?.sourceDueDate ?? task.dueDate;
-      if (dueDate != null && dueDate.isAfter(result.syncedAt)) {
-        final completedTask = await _taskRepository.updateTaskStatus(
-          task.id,
-          TaskStatus.completed,
-        );
-        completedItems.add(
-          SyncItem(kind: SyncItemKind.completed, existingTask: completedTask),
-        );
-      }
-    }
-
-    return completedItems;
   }
 }

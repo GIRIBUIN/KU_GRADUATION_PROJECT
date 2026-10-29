@@ -1,0 +1,70 @@
+{
+  "recorded_at_utc": "2026-10-29T14:39:52.139024Z",
+  "git_commit": "7fabd858d7d3acee03360e8e03d5186fa80326b3",
+  "source_git_blob_hashes": {
+    "lib/data/local/app_database.dart": "73231a8406ecd41fbb1b44d585b6a894b1935e67",
+    "lib/data/repositories/drift_task_repository.dart": "129f191ef4ea90f2184714a70da1cb93d10cb93b",
+    "lib/data/repositories/drift_folder_repository.dart": "1526224d6244ea13ad0be9fd034cd6180ebd56fa",
+    "lib/data/services/ecampus_sync_apply_service.dart": "f5a105bad7ba1379665d510981f5b2414ad11280",
+    "lib/data/services/ecampus_sync_flow_service.dart": "e69a60033698c0c492079d4045f419d16e166be5",
+    "lib/data/services/ecampus_todo_parser.dart": "2f189d83932bc8d0ce8912483af6fa1a3b39274a",
+    "test/benchmarks/db_contract_audit.dart": "09bd65b7200d8113d56ded736c8737cda9e9f281"
+  },
+  "command": "flutter test --no-pub --reporter expanded test/benchmarks/db_contract_audit.dart",
+  "environment": {
+    "os": "windows",
+    "dart": "3.12.2 (stable) (Tue Jun 9 01:11:39 2026 -0700) on \"windows_x64\"",
+    "database": "current Flutter schema v5; NativeDatabase.memory"
+  },
+  "scope": "Synthetic API-level reproductions; no production data, network, device or Kotlin execution.",
+  "observations": [
+    {
+      "id": "folder-cardinality",
+      "input_folder_ids": [
+        "folder-a",
+        "folder-b"
+      ],
+      "stored_folder_ids": [
+        "folder-a"
+      ],
+      "finding": "Task model accepts multiple folders but repository keeps first."
+    },
+    {
+      "id": "completion-state",
+      "steps": [
+        "create active task",
+        "complete",
+        "update status to active"
+      ],
+      "status": "active",
+      "completed_at": "2026-10-29T21:00:00.000",
+      "finding": "Active task retains completion timestamp through status update."
+    },
+    {
+      "id": "user-memo",
+      "input_memo": "User-owned memo",
+      "source_course": "Source course",
+      "memo_after_source_update": "Source course",
+      "finding": "Applying a source change replaces user memo with course name."
+    },
+    {
+      "id": "preview-side-effect",
+      "boundary": "Todo service receives fixed HTML; no HTTP request or real login.",
+      "input_html": "<html><body>Unexpected page</body></html>",
+      "parser_task_count": 0,
+      "parser_failure_count": 0,
+      "preview_error_count": 0,
+      "status_before_preview": "active",
+      "status_after_preview": "completed",
+      "finding": "Unrecognized HTML yields empty success; preview completes missing future task before user confirmation."
+    },
+    {
+      "id": "folder-parent-reference",
+      "foreign_keys_pragma": 0,
+      "deleted_parent_id": "folder-b",
+      "remaining_child_parent_id": "folder-b",
+      "finding": "Fresh test connection allows a child to retain a deleted parent reference.",
+      "limitation": "NativeDatabase.memory only; device connection not checked."
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+%% Source: lib/data/local/app_database.dart, schemaVersion 6 (2026-10-30)
+%% Arrows point from a foreign-key column to the referenced table.
+flowchart BT
+    Tasks["Tasks · 할 일<br/>제목 / 마감 / 메모<br/>완료 시각 / 삭제 시각"]
+    Folders["Folders · 폴더<br/>하위 폴더 없음"]
+    Tags["Tags · 전역 태그"]
+    TaskTags["TaskTags · 할 일–태그 연결"]
+    SubTasks["SubTasks · 체크 항목"]
+
+    Items["EcampusItems · 가져온 원본<br/>원본 번호 / 제목 / 마감<br/>가져오기 상태"]
+    Courses["EcampusCourses · 강의"]
+
+    Reminders["TaskReminders · 알림 설정<br/>사용 여부 / 몇 분 전"]
+    Schedules["LocalNotificationSchedules<br/>현재 기기의 알림 예약 상태"]
+
+    Tasks -->|"folder_id · 폴더 최대 1개"| Folders
+    SubTasks -->|"task_id"| Tasks
+    TaskTags -->|"task_id"| Tasks
+    TaskTags -->|"tag_id"| Tags
+
+    Items -->|"task_id · 선택 연결, 중복 불가"| Tasks
+    Items -->|"course_id · 선택 연결"| Courses
+    Courses -->|"tag_id · 선택 연결"| Tags
+
+    Reminders -->|"task_id · 할 일당 최대 1개"| Tasks
+    Schedules -->|"task_id · 할 일당 최대 1개"| Tasks
+
+    subgraph Independent["외래키 연결 없는 보조 테이블"]
+        Sessions["ImportSessions · 가져오기 실행 기록"]
+        Settings["AppSettings · 앱 설정"]
+        Issues["MigrationIssues · 이관 문제 기록"]
+        Deleted["DeletedEntities · 영구 삭제 기록"]
+    end

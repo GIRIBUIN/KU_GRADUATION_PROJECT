@@ -1,0 +1,70 @@
+{
+  "recorded_at_utc": "2026-10-29T15:36:30.841250Z",
+  "label": "after-db-v6",
+  "git_commit": "7fabd858d7d3acee03360e8e03d5186fa80326b3",
+  "source_git_blob_hashes": {
+    "lib/data/local/app_database.dart": "7c3b37bc74ebc17e907ac00f82835d832289f256",
+    "lib/data/repositories/drift_task_repository.dart": "7a73dbf9515015f825c6fb909068bd77d9d78834",
+    "lib/data/repositories/drift_folder_repository.dart": "2c6a601130eb8dee818da1ec8267698190a6da3f",
+    "lib/data/services/ecampus_sync_apply_service.dart": "782196c2221f5882fae2b5411ac9816b05e06283",
+    "lib/data/services/ecampus_sync_flow_service.dart": "dcbe0e21c9d2261c8f701979642fc2ca48711341",
+    "lib/data/services/ecampus_todo_parser.dart": "73fad785cb7f582c851de2600a3083814c21efff",
+    "test/benchmarks/db_contract_audit.dart": "bbbf64f13e6195ac6b1831d41387e09f8aaec8a5"
+  },
+  "command": "flutter test --no-pub --reporter expanded test/benchmarks/db_contract_audit.dart",
+  "environment": {
+    "os": "windows",
+    "dart": "3.12.2 (stable) (Tue Jun 9 01:11:39 2026 -0700) on \"windows_x64\"",
+    "database": "current Flutter schema v6; NativeDatabase.memory"
+  },
+  "scope": "Synthetic API-level reproductions; no production data, network, device or Kotlin execution.",
+  "observations": [
+    {
+      "id": "folder-cardinality",
+      "input_folder_ids": [
+        "folder-a",
+        "folder-b"
+      ],
+      "error_type": "ArgumentError",
+      "stored": false,
+      "finding": "Multiple folder assignment is rejected without creating a partial task."
+    },
+    {
+      "id": "completion-state",
+      "steps": [
+        "create active task",
+        "complete",
+        "update status to active"
+      ],
+      "status": "active",
+      "completed_at": null,
+      "finding": "Reopened task has no completion timestamp."
+    },
+    {
+      "id": "user-memo",
+      "input_memo": "User-owned memo",
+      "source_course": "Source course",
+      "memo_after_source_update": "User-owned memo",
+      "finding": "Applying a source change preserves the user memo."
+    },
+    {
+      "id": "preview-side-effect",
+      "boundary": "Todo service receives fixed HTML; no HTTP request or real login.",
+      "input_html": "<html><body>Unexpected page</body></html>",
+      "parser_task_count": 0,
+      "parser_failure_count": 1,
+      "preview_error_count": 1,
+      "status_before_preview": "active",
+      "status_after_preview": "active",
+      "finding": "Unrecognized HTML is reported as an error; preview leaves existing task unchanged."
+    },
+    {
+      "id": "folder-parent-reference",
+      "foreign_keys_pragma": 1,
+      "deleted_folder": "folder-b",
+      "remaining_task_folder_ids": [],
+      "finding": "Folder is soft-deleted and task is detached in one transaction; no hierarchy exists.",
+      "limitation": "NativeDatabase.memory only; device connection not checked."
+    }
+  ]
+}

@@ -1,0 +1,425 @@
+{"protocolVersion":"0.1.1","runnerVersion":null,"pid":11816,"type":"start","time":0}
+{"suite":{"id":0,"platform":"vm","path":"D:/_workspace/repos/kutodo/test/data/local/app_database_test.dart"},"type":"suite","time":0}
+{"test":{"id":1,"name":"loading D:/_workspace/repos/kutodo/test/data/local/app_database_test.dart","suiteID":0,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":0}
+{"count":23,"time":5,"type":"allSuites"}
+
+[{"event":"test.startedProcess","params":{"vmServiceUri":null}}]
+{"testID":1,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":1637}
+{"group":{"id":2,"suiteID":0,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":2,"line":null,"column":null,"url":null},"type":"group","time":1638}
+{"group":{"id":3,"suiteID":0,"parentID":2,"name":"AppDatabase","metadata":{"skip":false,"skipReason":null},"testCount":2,"line":7,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/local/app_database_test.dart"},"type":"group","time":1639}
+{"test":{"id":4,"name":"AppDatabase opens schema version 6 database","suiteID":0,"groupIDs":[2,3],"metadata":{"skip":false,"skipReason":null},"line":8,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/local/app_database_test.dart"},"type":"testStart","time":1639}
+{"testID":4,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1737}
+{"test":{"id":5,"name":"AppDatabase creates core tables","suiteID":0,"groupIDs":[2,3],"metadata":{"skip":false,"skipReason":null},"line":24,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/local/app_database_test.dart"},"type":"testStart","time":1737}
+{"testID":5,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1744}
+{"suite":{"id":6,"platform":"vm","path":"D:/_workspace/repos/kutodo/test/data/local/database_v6_test.dart"},"type":"suite","time":1762}
+{"test":{"id":7,"name":"loading D:/_workspace/repos/kutodo/test/data/local/database_v6_test.dart","suiteID":6,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":1762}
+
+[{"event":"test.startedProcess","params":{"vmServiceUri":null}}]
+{"testID":7,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":2143}
+{"group":{"id":8,"suiteID":6,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":9,"line":null,"column":null,"url":null},"type":"group","time":2143}
+{"test":{"id":9,"name":"migration reports ambiguous legacy data without discarding the original rows","suiteID":6,"groupIDs":[8],"metadata":{"skip":false,"skipReason":null},"line":55,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/local/database_v6_test.dart"},"type":"testStart","time":2143}
+{"testID":9,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2229}
+{"test":{"id":10,"name":"local notification IDs remain unique and scheduling state stays separate","suiteID":6,"groupIDs":[8],"metadata":{"skip":false,"skipReason":null},"line":125,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/local/database_v6_test.dart"},"type":"testStart","time":2229}
+{"testID":10,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2252}
+{"test":{"id":11,"name":"fresh v6 enforces FK and separates state, source and reminder data","suiteID":6,"groupIDs":[8],"metadata":{"skip":false,"skipReason":null},"line":146,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/local/database_v6_test.dart"},"type":"testStart","time":2253}
+{"testID":11,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2262}
+{"test":{"id":12,"name":"single folder, global tags, reopen and restore keep coherent state","suiteID":6,"groupIDs":[8],"metadata":{"skip":false,"skipReason":null},"line":182,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/local/database_v6_test.dart"},"type":"testStart","time":2262}
+{"testID":12,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2296}
+{"test":{"id":13,"name":"import is atomic when a later selected item cannot be stored","suiteID":6,"groupIDs":[8],"metadata":{"skip":false,"skipReason":null},"line":227,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/local/database_v6_test.dart"},"type":"testStart","time":2296}
+{"testID":13,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2311}
+{"test":{"id":14,"name":"source updates preserve memo and repeated import does not duplicate","suiteID":6,"groupIDs":[8],"metadata":{"skip":false,"skipReason":null},"line":244,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/local/database_v6_test.dart"},"type":"testStart","time":2312}
+{"testID":14,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2335}
+{"test":{"id":15,"name":"reminders are unique per task and negative offsets are rejected","suiteID":6,"groupIDs":[8],"metadata":{"skip":false,"skipReason":null},"line":288,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/local/database_v6_test.dart"},"type":"testStart","time":2335}
+{"testID":15,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2347}
+{"test":{"id":16,"name":"v5 migration preserves IDs and data, flattens folders and archives all rows","suiteID":6,"groupIDs":[8],"metadata":{"skip":false,"skipReason":null},"line":336,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/local/database_v6_test.dart"},"type":"testStart","time":2347}
+{"testID":16,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":3054}
+{"test":{"id":17,"name":"migration failure rolls table renames back instead of damaging v5","suiteID":6,"groupIDs":[8],"metadata":{"skip":false,"skipReason":null},"line":442,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/local/database_v6_test.dart"},"type":"testStart","time":3054}
+{"testID":17,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":3059}
+{"suite":{"id":18,"platform":"vm","path":"D:/_workspace/repos/kutodo/test/data/repositories/drift_metadata_repositories_test.dart"},"type":"suite","time":3078}
+{"test":{"id":19,"name":"loading D:/_workspace/repos/kutodo/test/data/repositories/drift_metadata_repositories_test.dart","suiteID":18,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":3078}
+
+[{"event":"test.startedProcess","params":{"vmServiceUri":null}}]
+{"testID":19,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":3520}
+{"group":{"id":20,"suiteID":18,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":11,"line":null,"column":null,"url":null},"type":"group","time":3521}
+{"group":{"id":21,"suiteID":18,"parentID":20,"name":"DriftTagRepository","metadata":{"skip":false,"skipReason":null},"testCount":1,"line":49,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_metadata_repositories_test.dart"},"type":"group","time":3522}
+{"test":{"id":22,"name":"DriftTagRepository creates, updates, lists, and deletes tags with relations","suiteID":18,"groupIDs":[20,21],"metadata":{"skip":false,"skipReason":null},"line":50,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_metadata_repositories_test.dart"},"type":"testStart","time":3522}
+{"testID":22,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":3594}
+{"group":{"id":23,"suiteID":18,"parentID":20,"name":"DriftFolderRepository","metadata":{"skip":false,"skipReason":null},"testCount":2,"line":84,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_metadata_repositories_test.dart"},"type":"group","time":3594}
+{"test":{"id":24,"name":"DriftFolderRepository creates, updates, lists, and deletes folders with relations","suiteID":18,"groupIDs":[20,23],"metadata":{"skip":false,"skipReason":null},"line":85,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_metadata_repositories_test.dart"},"type":"testStart","time":3594}
+{"testID":24,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":3607}
+{"test":{"id":25,"name":"DriftFolderRepository stores folder order within the same parent","suiteID":18,"groupIDs":[20,23],"metadata":{"skip":false,"skipReason":null},"line":114,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_metadata_repositories_test.dart"},"type":"testStart","time":3608}
+{"testID":25,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":3615}
+{"group":{"id":26,"suiteID":18,"parentID":20,"name":"DriftNotificationRepository","metadata":{"skip":false,"skipReason":null},"testCount":2,"line":136,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_metadata_repositories_test.dart"},"type":"group","time":3616}
+{"test":{"id":27,"name":"DriftNotificationRepository saves one notification per task and deletes by taskId","suiteID":18,"groupIDs":[20,26],"metadata":{"skip":false,"skipReason":null},"line":137,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_metadata_repositories_test.dart"},"type":"testStart","time":3616}
+{"testID":27,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":3629}
+{"test":{"id":28,"name":"DriftNotificationRepository lists saved notifications for restart rescheduling","suiteID":18,"groupIDs":[20,26],"metadata":{"skip":false,"skipReason":null},"line":152,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_metadata_repositories_test.dart"},"type":"testStart","time":3630}
+{"testID":28,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":3637}
+{"group":{"id":29,"suiteID":18,"parentID":20,"name":"DriftSettingsRepository","metadata":{"skip":false,"skipReason":null},"testCount":2,"line":182,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_metadata_repositories_test.dart"},"type":"group","time":3637}
+{"test":{"id":30,"name":"DriftSettingsRepository returns defaults and saves settings as key value rows","suiteID":18,"groupIDs":[20,29],"metadata":{"skip":false,"skipReason":null},"line":183,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_metadata_repositories_test.dart"},"type":"testStart","time":3637}
+{"testID":30,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":3654}
+{"test":{"id":31,"name":"DriftSettingsRepository persists home layout across a database close and reopen","suiteID":18,"groupIDs":[20,29],"metadata":{"skip":false,"skipReason":null},"line":282,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_metadata_repositories_test.dart"},"type":"testStart","time":3655}
+{"testID":31,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":3705}
+{"group":{"id":32,"suiteID":18,"parentID":20,"name":"home layout settings compatibility","metadata":{"skip":false,"skipReason":null},"testCount":4,"line":317,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_metadata_repositories_test.dart"},"type":"group","time":3706}
+{"test":{"id":33,"name":"home layout settings compatibility loads legacy settings with the four original visible sections","suiteID":18,"groupIDs":[20,32],"metadata":{"skip":false,"skipReason":null},"line":320,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_metadata_repositories_test.dart"},"type":"testStart","time":3706}
+{"testID":33,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":3710}
+{"test":{"id":34,"name":"home layout settings compatibility repairs duplicate, unknown and missing section IDs","suiteID":18,"groupIDs":[20,32],"metadata":{"skip":false,"skipReason":null},"line":327,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_metadata_repositories_test.dart"},"type":"testStart","time":3710}
+{"testID":34,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":3715}
+{"test":{"id":35,"name":"home layout settings compatibility uses safe defaults for malformed stored values","suiteID":18,"groupIDs":[20,32],"metadata":{"skip":false,"skipReason":null},"line":342,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_metadata_repositories_test.dart"},"type":"testStart","time":3716}
+{"testID":35,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":3721}
+{"test":{"id":36,"name":"home layout settings compatibility preserves explicit show-all and hide-all configurations","suiteID":18,"groupIDs":[20,32],"metadata":{"skip":false,"skipReason":null},"line":353,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_metadata_repositories_test.dart"},"type":"testStart","time":3722}
+{"testID":36,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":3727}
+{"suite":{"id":37,"platform":"vm","path":"D:/_workspace/repos/kutodo/test/data/repositories/drift_sub_task_repository_test.dart"},"type":"suite","time":3744}
+{"test":{"id":38,"name":"loading D:/_workspace/repos/kutodo/test/data/repositories/drift_sub_task_repository_test.dart","suiteID":37,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":3744}
+
+[{"event":"test.startedProcess","params":{"vmServiceUri":null}}]
+{"testID":38,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":4159}
+{"group":{"id":39,"suiteID":37,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":4,"line":null,"column":null,"url":null},"type":"group","time":4160}
+{"group":{"id":40,"suiteID":37,"parentID":39,"name":"DriftSubTaskRepository","metadata":{"skip":false,"skipReason":null},"testCount":4,"line":31,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_sub_task_repository_test.dart"},"type":"group","time":4160}
+{"test":{"id":41,"name":"DriftSubTaskRepository creates and lists subtasks by task id","suiteID":37,"groupIDs":[39,40],"metadata":{"skip":false,"skipReason":null},"line":32,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_sub_task_repository_test.dart"},"type":"testStart","time":4160}
+{"testID":41,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":4235}
+{"test":{"id":42,"name":"DriftSubTaskRepository updates subtask title and done state","suiteID":37,"groupIDs":[39,40],"metadata":{"skip":false,"skipReason":null},"line":49,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_sub_task_repository_test.dart"},"type":"testStart","time":4235}
+{"testID":42,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":4244}
+{"test":{"id":43,"name":"DriftSubTaskRepository updates only done state and refreshed updatedAt","suiteID":37,"groupIDs":[39,40],"metadata":{"skip":false,"skipReason":null},"line":60,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_sub_task_repository_test.dart"},"type":"testStart","time":4244}
+{"testID":43,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":4253}
+{"test":{"id":44,"name":"DriftSubTaskRepository deletes a subtask","suiteID":37,"groupIDs":[39,40],"metadata":{"skip":false,"skipReason":null},"line":69,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_sub_task_repository_test.dart"},"type":"testStart","time":4253}
+{"testID":44,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":4261}
+{"suite":{"id":45,"platform":"vm","path":"D:/_workspace/repos/kutodo/test/data/repositories/drift_task_repository_test.dart"},"type":"suite","time":4278}
+{"test":{"id":46,"name":"loading D:/_workspace/repos/kutodo/test/data/repositories/drift_task_repository_test.dart","suiteID":45,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":4278}
+
+[{"event":"test.startedProcess","params":{"vmServiceUri":null}}]
+{"testID":46,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":4692}
+{"group":{"id":47,"suiteID":45,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":8,"line":null,"column":null,"url":null},"type":"group","time":4692}
+{"group":{"id":48,"suiteID":45,"parentID":47,"name":"DriftTaskRepository","metadata":{"skip":false,"skipReason":null},"testCount":8,"line":45,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_task_repository_test.dart"},"type":"group","time":4692}
+{"test":{"id":49,"name":"DriftTaskRepository creates and reads a task with e-campus metadata and relations","suiteID":45,"groupIDs":[47,48],"metadata":{"skip":false,"skipReason":null},"line":46,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_task_repository_test.dart"},"type":"testStart","time":4692}
+{"testID":49,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":4778}
+{"test":{"id":50,"name":"DriftTaskRepository finds a task by e-campus sourceKey","suiteID":45,"groupIDs":[47,48],"metadata":{"skip":false,"skipReason":null},"line":69,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_task_repository_test.dart"},"type":"testStart","time":4778}
+{"testID":50,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":4788}
+{"test":{"id":51,"name":"DriftTaskRepository filters active tasks by default and can include archived tasks","suiteID":45,"groupIDs":[47,48],"metadata":{"skip":false,"skipReason":null},"line":79,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_task_repository_test.dart"},"type":"testStart","time":4788}
+{"testID":51,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":4815}
+{"test":{"id":52,"name":"DriftTaskRepository updates task fields and relations","suiteID":45,"groupIDs":[47,48],"metadata":{"skip":false,"skipReason":null},"line":106,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_task_repository_test.dart"},"type":"testStart","time":4816}
+{"testID":52,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":4827}
+{"test":{"id":53,"name":"DriftTaskRepository updates status and marks completed/deleted timestamps","suiteID":45,"groupIDs":[47,48],"metadata":{"skip":false,"skipReason":null},"line":123,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_task_repository_test.dart"},"type":"testStart","time":4828}
+{"testID":53,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":4838}
+{"test":{"id":54,"name":"DriftTaskRepository restores a task to active status","suiteID":45,"groupIDs":[47,48],"metadata":{"skip":false,"skipReason":null},"line":138,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_task_repository_test.dart"},"type":"testStart","time":4839}
+{"testID":54,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":4847}
+{"test":{"id":55,"name":"DriftTaskRepository deletes a task permanently","suiteID":45,"groupIDs":[47,48],"metadata":{"skip":false,"skipReason":null},"line":150,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_task_repository_test.dart"},"type":"testStart","time":4847}
+{"testID":55,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":4859}
+{"test":{"id":56,"name":"DriftTaskRepository creates tasks at the end and updates user order","suiteID":45,"groupIDs":[47,48],"metadata":{"skip":false,"skipReason":null},"line":166,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_task_repository_test.dart"},"type":"testStart","time":4860}
+{"testID":56,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":4874}
+{"suite":{"id":57,"platform":"vm","path":"D:/_workspace/repos/kutodo/test/data/services/calendar_task_index_test.dart"},"type":"suite","time":4891}
+{"test":{"id":58,"name":"loading D:/_workspace/repos/kutodo/test/data/services/calendar_task_index_test.dart","suiteID":57,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":4891}
+
+[{"event":"test.startedProcess","params":{"vmServiceUri":null}}]
+{"testID":58,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":5299}
+{"group":{"id":59,"suiteID":57,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":5,"line":null,"column":null,"url":null},"type":"group","time":5300}
+{"test":{"id":60,"name":"calendar date-only values preserve their displayed date","suiteID":57,"groupIDs":[59],"metadata":{"skip":false,"skipReason":null},"line":8,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/calendar_task_index_test.dart"},"type":"testStart","time":5300}
+{"testID":60,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":5312}
+{"test":{"id":61,"name":"uses app due dates for personal and imported tasks, excluding deleted and excluded","suiteID":57,"groupIDs":[59],"metadata":{"skip":false,"skipReason":null},"line":16,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/calendar_task_index_test.dart"},"type":"testStart","time":5312}
+{"testID":61,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":5315}
+{"test":{"id":62,"name":"keeps undated tasks separate and can filter source and completion","suiteID":57,"groupIDs":[59],"metadata":{"skip":false,"skipReason":null},"line":38,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/calendar_task_index_test.dart"},"type":"testStart","time":5315}
+{"testID":62,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":5317}
+{"test":{"id":63,"name":"groups UTC timestamps by their local date and preserves leap day","suiteID":57,"groupIDs":[59],"metadata":{"skip":false,"skipReason":null},"line":71,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/calendar_task_index_test.dart"},"type":"testStart","time":5317}
+{"testID":63,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":5319}
+{"test":{"id":64,"name":"reflects edits and removals without copying tasks into another store","suiteID":57,"groupIDs":[59],"metadata":{"skip":false,"skipReason":null},"line":86,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/calendar_task_index_test.dart"},"type":"testStart","time":5319}
+{"testID":64,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":5321}
+{"suite":{"id":65,"platform":"vm","path":"D:/_workspace/repos/kutodo/test/data/services/default_ecampus_sync_service_test.dart"},"type":"suite","time":5338}
+{"test":{"id":66,"name":"loading D:/_workspace/repos/kutodo/test/data/services/default_ecampus_sync_service_test.dart","suiteID":65,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":5338}
+
+[{"event":"test.startedProcess","params":{"vmServiceUri":null}}]
+{"testID":66,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":5739}
+{"group":{"id":67,"suiteID":65,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":3,"line":null,"column":null,"url":null},"type":"group","time":5739}
+{"group":{"id":68,"suiteID":65,"parentID":67,"name":"DefaultEcampusSyncService","metadata":{"skip":false,"skipReason":null},"testCount":3,"line":16,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/default_ecampus_sync_service_test.dart"},"type":"group","time":5739}
+{"test":{"id":69,"name":"DefaultEcampusSyncService fetches, parses, and classifies parsed todo tasks","suiteID":65,"groupIDs":[67,68],"metadata":{"skip":false,"skipReason":null},"line":17,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/default_ecampus_sync_service_test.dart"},"type":"testStart","time":5739}
+{"testID":69,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":5750}
+{"test":{"id":70,"name":"DefaultEcampusSyncService adds parser failures as error sync items","suiteID":65,"groupIDs":[67,68],"metadata":{"skip":false,"skipReason":null},"line":49,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/default_ecampus_sync_service_test.dart"},"type":"testStart","time":5751}
+{"testID":70,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":5753}
+{"test":{"id":71,"name":"DefaultEcampusSyncService propagates todo fetch errors","suiteID":65,"groupIDs":[67,68],"metadata":{"skip":false,"skipReason":null},"line":75,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/default_ecampus_sync_service_test.dart"},"type":"testStart","time":5753}
+{"testID":71,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":5756}
+{"suite":{"id":72,"platform":"vm","path":"D:/_workspace/repos/kutodo/test/data/services/default_ecampus_todo_service_test.dart"},"type":"suite","time":5771}
+{"test":{"id":73,"name":"loading D:/_workspace/repos/kutodo/test/data/services/default_ecampus_todo_service_test.dart","suiteID":72,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":5771}
+
+[{"event":"test.startedProcess","params":{"vmServiceUri":null}}]
+{"testID":73,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":6196}
+{"group":{"id":74,"suiteID":72,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":3,"line":null,"column":null,"url":null},"type":"group","time":6196}
+{"group":{"id":75,"suiteID":72,"parentID":74,"name":"DefaultEcampusTodoService","metadata":{"skip":false,"skipReason":null},"testCount":3,"line":13,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/default_ecampus_todo_service_test.dart"},"type":"group","time":6196}
+{"test":{"id":76,"name":"DefaultEcampusTodoService fetchTodoHtml delegates to client","suiteID":72,"groupIDs":[74,75],"metadata":{"skip":false,"skipReason":null},"line":14,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/default_ecampus_todo_service_test.dart"},"type":"testStart","time":6196}
+{"testID":76,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":6206}
+{"test":{"id":77,"name":"DefaultEcampusTodoService parseTodoHtml delegates to parser","suiteID":72,"groupIDs":[74,75],"metadata":{"skip":false,"skipReason":null},"line":28,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/default_ecampus_todo_service_test.dart"},"type":"testStart","time":6206}
+{"testID":77,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":6228}
+{"test":{"id":78,"name":"DefaultEcampusTodoService fetchAndParse fetches html and returns parse result","suiteID":72,"groupIDs":[74,75],"metadata":{"skip":false,"skipReason":null},"line":40,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/default_ecampus_todo_service_test.dart"},"type":"testStart","time":6229}
+{"testID":78,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":6231}
+{"suite":{"id":79,"platform":"vm","path":"D:/_workspace/repos/kutodo/test/data/services/ecampus_login_detector_test.dart"},"type":"suite","time":6249}
+{"test":{"id":80,"name":"loading D:/_workspace/repos/kutodo/test/data/services/ecampus_login_detector_test.dart","suiteID":79,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":6249}
+
+[{"event":"test.startedProcess","params":{"vmServiceUri":null}}]
+{"testID":80,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":6633}
+{"group":{"id":81,"suiteID":79,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":5,"line":null,"column":null,"url":null},"type":"group","time":6633}
+{"group":{"id":82,"suiteID":79,"parentID":81,"name":"EcampusLoginDetector","metadata":{"skip":false,"skipReason":null},"testCount":5,"line":7,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_login_detector_test.dart"},"type":"group","time":6634}
+{"test":{"id":83,"name":"EcampusLoginDetector does not classify login page as logged in even with JSESSIONID","suiteID":79,"groupIDs":[81,82],"metadata":{"skip":false,"skipReason":null},"line":8,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_login_detector_test.dart"},"type":"testStart","time":6634}
+{"testID":83,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":6660}
+{"test":{"id":84,"name":"EcampusLoginDetector classifies logged-in page with JSESSIONID as logged in","suiteID":79,"groupIDs":[81,82],"metadata":{"skip":false,"skipReason":null},"line":21,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_login_detector_test.dart"},"type":"testStart","time":6660}
+{"testID":84,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":6664}
+{"test":{"id":85,"name":"EcampusLoginDetector does not classify logged-in DOM without JSESSIONID as logged in","suiteID":79,"groupIDs":[81,82],"metadata":{"skip":false,"skipReason":null},"line":35,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_login_detector_test.dart"},"type":"testStart","time":6664}
+{"testID":85,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":6667}
+{"test":{"id":86,"name":"EcampusLoginDetector treats todo list as a supporting signal, not a required signal","suiteID":79,"groupIDs":[81,82],"metadata":{"skip":false,"skipReason":null},"line":48,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_login_detector_test.dart"},"type":"testStart","time":6667}
+{"testID":86,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":6669}
+{"test":{"id":87,"name":"EcampusLoginDetector classifies mobile logged-in page as logged in","suiteID":79,"groupIDs":[81,82],"metadata":{"skip":false,"skipReason":null},"line":61,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_login_detector_test.dart"},"type":"testStart","time":6669}
+{"testID":87,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":6672}
+{"suite":{"id":88,"platform":"vm","path":"D:/_workspace/repos/kutodo/test/data/services/ecampus_sync_apply_service_test.dart"},"type":"suite","time":6687}
+{"test":{"id":89,"name":"loading D:/_workspace/repos/kutodo/test/data/services/ecampus_sync_apply_service_test.dart","suiteID":88,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":6687}
+
+[{"event":"test.startedProcess","params":{"vmServiceUri":null}}]
+{"testID":89,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":7089}
+{"group":{"id":90,"suiteID":88,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":7,"line":null,"column":null,"url":null},"type":"group","time":7090}
+{"group":{"id":91,"suiteID":88,"parentID":90,"name":"DefaultEcampusSyncApplyService","metadata":{"skip":false,"skipReason":null},"testCount":7,"line":35,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_sync_apply_service_test.dart"},"type":"group","time":7090}
+{"test":{"id":92,"name":"DefaultEcampusSyncApplyService imports new sync items as active e-campus tasks","suiteID":88,"groupIDs":[90,91],"metadata":{"skip":false,"skipReason":null},"line":36,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_sync_apply_service_test.dart"},"type":"testStart","time":7090}
+{"testID":92,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":7102}
+{"test":{"id":93,"name":"DefaultEcampusSyncApplyService updates active update candidates and keeps user-owned fields","suiteID":88,"groupIDs":[90,91],"metadata":{"skip":false,"skipReason":null},"line":57,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_sync_apply_service_test.dart"},"type":"testStart","time":7102}
+{"testID":93,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":7105}
+{"test":{"id":94,"name":"DefaultEcampusSyncApplyService new imports do not force the saved automatic folder onto user tasks","suiteID":88,"groupIDs":[90,91],"metadata":{"skip":false,"skipReason":null},"line":90,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_sync_apply_service_test.dart"},"type":"testStart","time":7105}
+{"testID":94,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":7108}
+{"test":{"id":95,"name":"DefaultEcampusSyncApplyService does not update completed, deleted, excluded, or error items","suiteID":88,"groupIDs":[90,91],"metadata":{"skip":false,"skipReason":null},"line":117,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_sync_apply_service_test.dart"},"type":"testStart","time":7108}
+{"testID":95,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":7110}
+{"test":{"id":96,"name":"DefaultEcampusSyncApplyService stores excluded new items as excluded tasks","suiteID":88,"groupIDs":[90,91],"metadata":{"skip":false,"skipReason":null},"line":145,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_sync_apply_service_test.dart"},"type":"testStart","time":7110}
+{"testID":96,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":7111}
+{"test":{"id":97,"name":"DefaultEcampusSyncApplyService excluding a source update keeps the imported task and user fields","suiteID":88,"groupIDs":[90,91],"metadata":{"skip":false,"skipReason":null},"line":160,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_sync_apply_service_test.dart"},"type":"testStart","time":7111}
+{"testID":97,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":7113}
+{"test":{"id":98,"name":"DefaultEcampusSyncApplyService does not exclude completed or deleted existing tasks","suiteID":88,"groupIDs":[90,91],"metadata":{"skip":false,"skipReason":null},"line":181,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_sync_apply_service_test.dart"},"type":"testStart","time":7114}
+{"testID":98,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":7115}
+{"suite":{"id":99,"platform":"vm","path":"D:/_workspace/repos/kutodo/test/data/services/ecampus_sync_classifier_test.dart"},"type":"suite","time":7134}
+{"test":{"id":100,"name":"loading D:/_workspace/repos/kutodo/test/data/services/ecampus_sync_classifier_test.dart","suiteID":99,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":7134}
+
+[{"event":"test.startedProcess","params":{"vmServiceUri":null}}]
+{"testID":100,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":7539}
+{"group":{"id":101,"suiteID":99,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":7,"line":null,"column":null,"url":null},"type":"group","time":7539}
+{"group":{"id":102,"suiteID":99,"parentID":101,"name":"EcampusSyncClassifier","metadata":{"skip":false,"skipReason":null},"testCount":7,"line":11,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_sync_classifier_test.dart"},"type":"group","time":7539}
+{"test":{"id":103,"name":"EcampusSyncClassifier classifies a task without an existing sourceKey as newItem","suiteID":99,"groupIDs":[101,102],"metadata":{"skip":false,"skipReason":null},"line":12,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_sync_classifier_test.dart"},"type":"testStart","time":7539}
+{"testID":103,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":7550}
+{"test":{"id":104,"name":"EcampusSyncClassifier classifies completed, deleted, and excluded existing tasks","suiteID":99,"groupIDs":[101,102],"metadata":{"skip":false,"skipReason":null},"line":23,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_sync_classifier_test.dart"},"type":"testStart","time":7550}
+{"testID":104,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":7552}
+{"test":{"id":105,"name":"EcampusSyncClassifier classifies unchanged active existing task as alreadyImported","suiteID":99,"groupIDs":[101,102],"metadata":{"skip":false,"skipReason":null},"line":49,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_sync_classifier_test.dart"},"type":"testStart","time":7552}
+{"testID":105,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":7554}
+{"test":{"id":106,"name":"EcampusSyncClassifier classifies changed active existing task as updateCandidate","suiteID":99,"groupIDs":[101,102],"metadata":{"skip":false,"skipReason":null},"line":67,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_sync_classifier_test.dart"},"type":"testStart","time":7554}
+{"testID":106,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":7555}
+{"test":{"id":107,"name":"EcampusSyncClassifier classifies due date changes as updateCandidate","suiteID":99,"groupIDs":[101,102],"metadata":{"skip":false,"skipReason":null},"line":90,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_sync_classifier_test.dart"},"type":"testStart","time":7555}
+{"testID":107,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":7557}
+{"test":{"id":108,"name":"EcampusSyncClassifier keeps same due date as alreadyImported","suiteID":99,"groupIDs":[101,102],"metadata":{"skip":false,"skipReason":null},"line":110,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_sync_classifier_test.dart"},"type":"testStart","time":7557}
+{"testID":108,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":7559}
+{"test":{"id":109,"name":"EcampusSyncClassifier classifies empty sourceKey as error","suiteID":99,"groupIDs":[101,102],"metadata":{"skip":false,"skipReason":null},"line":130,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_sync_classifier_test.dart"},"type":"testStart","time":7559}
+{"testID":109,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":7561}
+{"suite":{"id":110,"platform":"vm","path":"D:/_workspace/repos/kutodo/test/data/services/ecampus_sync_flow_service_test.dart"},"type":"suite","time":7577}
+{"test":{"id":111,"name":"loading D:/_workspace/repos/kutodo/test/data/services/ecampus_sync_flow_service_test.dart","suiteID":110,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":7577}
+
+[{"event":"test.startedProcess","params":{"vmServiceUri":null}}]
+{"testID":111,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":7978}
+{"group":{"id":112,"suiteID":110,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":7,"line":null,"column":null,"url":null},"type":"group","time":7978}
+{"group":{"id":113,"suiteID":110,"parentID":112,"name":"DefaultEcampusSyncFlowService","metadata":{"skip":false,"skipReason":null},"testCount":7,"line":33,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_sync_flow_service_test.dart"},"type":"group","time":7978}
+{"test":{"id":114,"name":"DefaultEcampusSyncFlowService previews sync with all archived e-campus tasks included","suiteID":110,"groupIDs":[112,113],"metadata":{"skip":false,"skipReason":null},"line":34,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_sync_flow_service_test.dart"},"type":"testStart","time":7978}
+{"testID":114,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":7990}
+{"test":{"id":115,"name":"DefaultEcampusSyncFlowService preview keeps missing future tasks unchanged until user confirmation","suiteID":110,"groupIDs":[112,113],"metadata":{"skip":false,"skipReason":null},"line":60,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_sync_flow_service_test.dart"},"type":"testStart","time":7990}
+{"testID":115,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":7993}
+{"test":{"id":116,"name":"DefaultEcampusSyncFlowService keeps missing active e-campus tasks unchanged when due date is past or absent","suiteID":110,"groupIDs":[112,113],"metadata":{"skip":false,"skipReason":null},"line":93,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_sync_flow_service_test.dart"},"type":"testStart","time":7993}
+{"testID":116,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":7994}
+{"test":{"id":117,"name":"DefaultEcampusSyncFlowService skips missing task auto-completion when sync has errors","suiteID":110,"groupIDs":[112,113],"metadata":{"skip":false,"skipReason":null},"line":111,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_sync_flow_service_test.dart"},"type":"testStart","time":7995}
+{"testID":117,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":7996}
+{"test":{"id":118,"name":"DefaultEcampusSyncFlowService delegates selected import items to apply service","suiteID":110,"groupIDs":[112,113],"metadata":{"skip":false,"skipReason":null},"line":128,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_sync_flow_service_test.dart"},"type":"testStart","time":7996}
+{"testID":118,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":7998}
+{"test":{"id":119,"name":"DefaultEcampusSyncFlowService delegates selected exclude items to apply service","suiteID":110,"groupIDs":[112,113],"metadata":{"skip":false,"skipReason":null},"line":140,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_sync_flow_service_test.dart"},"type":"testStart","time":7998}
+{"testID":119,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":8000}
+{"test":{"id":120,"name":"DefaultEcampusSyncFlowService allows excluded e-campus tasks by deleting exclude markers","suiteID":110,"groupIDs":[112,113],"metadata":{"skip":false,"skipReason":null},"line":155,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_sync_flow_service_test.dart"},"type":"testStart","time":8000}
+{"testID":120,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":8002}
+{"suite":{"id":121,"platform":"vm","path":"D:/_workspace/repos/kutodo/test/data/services/ecampus_todo_parser_test.dart"},"type":"suite","time":8018}
+{"test":{"id":122,"name":"loading D:/_workspace/repos/kutodo/test/data/services/ecampus_todo_parser_test.dart","suiteID":121,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":8018}
+
+[{"event":"test.startedProcess","params":{"vmServiceUri":null}}]
+{"testID":122,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":8444}
+{"group":{"id":123,"suiteID":121,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":7,"line":null,"column":null,"url":null},"type":"group","time":8444}
+{"group":{"id":124,"suiteID":121,"parentID":123,"name":"EcampusTodoParser","metadata":{"skip":false,"skipReason":null},"testCount":7,"line":8,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_todo_parser_test.dart"},"type":"group","time":8444}
+{"test":{"id":125,"name":"EcampusTodoParser parses normal todo items from goLecture arguments","suiteID":121,"groupIDs":[123,124],"metadata":{"skip":false,"skipReason":null},"line":9,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_todo_parser_test.dart"},"type":"testStart","time":8444}
+{"testID":125,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":8475}
+{"test":{"id":126,"name":"EcampusTodoParser ignores no_data placeholder items","suiteID":121,"groupIDs":[123,124],"metadata":{"skip":false,"skipReason":null},"line":37,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_todo_parser_test.dart"},"type":"testStart","time":8475}
+{"testID":126,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":8477}
+{"test":{"id":127,"name":"EcampusTodoParser uses kj and gubun hidden values as source field fallback","suiteID":121,"groupIDs":[123,124],"metadata":{"skip":false,"skipReason":null},"line":46,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_todo_parser_test.dart"},"type":"testStart","time":8478}
+{"testID":127,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":8480}
+{"test":{"id":128,"name":"EcampusTodoParser uses due label time when present","suiteID":121,"groupIDs":[123,124],"metadata":{"skip":false,"skipReason":null},"line":70,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_todo_parser_test.dart"},"type":"testStart","time":8481}
+{"testID":128,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":8483}
+{"test":{"id":129,"name":"EcampusTodoParser falls back to due label date when D-Day is missing","suiteID":121,"groupIDs":[123,124],"metadata":{"skip":false,"skipReason":null},"line":88,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_todo_parser_test.dart"},"type":"testStart","time":8483}
+{"testID":129,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":8486}
+{"test":{"id":130,"name":"EcampusTodoParser generates due label fallback from D-Day when label is missing","suiteID":121,"groupIDs":[123,124],"metadata":{"skip":false,"skipReason":null},"line":105,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_todo_parser_test.dart"},"type":"testStart","time":8486}
+{"testID":130,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":8488}
+{"test":{"id":131,"name":"EcampusTodoParser records failures when required values are missing","suiteID":121,"groupIDs":[123,124],"metadata":{"skip":false,"skipReason":null},"line":122,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/ecampus_todo_parser_test.dart"},"type":"testStart","time":8488}
+{"testID":131,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":8491}
+{"suite":{"id":132,"platform":"vm","path":"D:/_workspace/repos/kutodo/test/data/services/home_task_summary_test.dart"},"type":"suite","time":8507}
+{"test":{"id":133,"name":"loading D:/_workspace/repos/kutodo/test/data/services/home_task_summary_test.dart","suiteID":132,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":8507}
+
+[{"event":"test.startedProcess","params":{"vmServiceUri":null}}]
+{"testID":133,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":8895}
+{"group":{"id":134,"suiteID":132,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":3,"line":null,"column":null,"url":null},"type":"group","time":8896}
+{"group":{"id":135,"suiteID":132,"parentID":134,"name":"HomeTaskSummary","metadata":{"skip":false,"skipReason":null},"testCount":3,"line":6,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/home_task_summary_test.dart"},"type":"group","time":8896}
+{"test":{"id":136,"name":"HomeTaskSummary classifies active tasks by overdue, today, and urgent policy","suiteID":132,"groupIDs":[134,135],"metadata":{"skip":false,"skipReason":null},"line":7,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/home_task_summary_test.dart"},"type":"testStart","time":8896}
+{"testID":136,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":8908}
+{"test":{"id":137,"name":"HomeTaskSummary updates today and overdue buckets immediately after midnight","suiteID":132,"groupIDs":[134,135],"metadata":{"skip":false,"skipReason":null},"line":41,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/home_task_summary_test.dart"},"type":"testStart","time":8908}
+{"testID":137,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":8910}
+{"test":{"id":138,"name":"HomeTaskSummary sorts home due sections by due time then user order","suiteID":132,"groupIDs":[134,135],"metadata":{"skip":false,"skipReason":null},"line":68,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/home_task_summary_test.dart"},"type":"testStart","time":8910}
+{"testID":138,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":8911}
+{"suite":{"id":139,"platform":"vm","path":"D:/_workspace/repos/kutodo/test/data/services/http_ecampus_auth_service_test.dart"},"type":"suite","time":8927}
+{"test":{"id":140,"name":"loading D:/_workspace/repos/kutodo/test/data/services/http_ecampus_auth_service_test.dart","suiteID":139,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":8927}
+
+[{"event":"test.startedProcess","params":{"vmServiceUri":null}}]
+{"testID":140,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":9320}
+{"group":{"id":141,"suiteID":139,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":5,"line":null,"column":null,"url":null},"type":"group","time":9320}
+{"group":{"id":142,"suiteID":139,"parentID":141,"name":"EcampusSession","metadata":{"skip":false,"skipReason":null},"testCount":2,"line":13,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/http_ecampus_auth_service_test.dart"},"type":"group","time":9320}
+{"test":{"id":143,"name":"EcampusSession reports session cookie state","suiteID":139,"groupIDs":[141,142],"metadata":{"skip":false,"skipReason":null},"line":14,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/http_ecampus_auth_service_test.dart"},"type":"testStart","time":9320}
+{"testID":143,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":9329}
+{"test":{"id":144,"name":"EcampusSession reports whether session is older than a duration","suiteID":139,"groupIDs":[141,142],"metadata":{"skip":false,"skipReason":null},"line":27,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/http_ecampus_auth_service_test.dart"},"type":"testStart","time":9329}
+{"testID":144,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":9331}
+{"group":{"id":145,"suiteID":139,"parentID":141,"name":"HttpEcampusAuthService","metadata":{"skip":false,"skipReason":null},"testCount":3,"line":39,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/http_ecampus_auth_service_test.dart"},"type":"group","time":9331}
+{"test":{"id":146,"name":"HttpEcampusAuthService sends logout request with session cookies and clears cookies","suiteID":139,"groupIDs":[141,145],"metadata":{"skip":false,"skipReason":null},"line":40,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/http_ecampus_auth_service_test.dart"},"type":"testStart","time":9331}
+{"testID":146,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":9339}
+{"test":{"id":147,"name":"HttpEcampusAuthService throws logout exception when response is not successful","suiteID":139,"groupIDs":[141,145],"metadata":{"skip":false,"skipReason":null},"line":69,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/http_ecampus_auth_service_test.dart"},"type":"testStart","time":9340}
+{"testID":147,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":9344}
+{"test":{"id":148,"name":"HttpEcampusAuthService clears session without logout request when session is empty","suiteID":139,"groupIDs":[141,145],"metadata":{"skip":false,"skipReason":null},"line":82,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/http_ecampus_auth_service_test.dart"},"type":"testStart","time":9344}
+{"testID":148,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":9346}
+{"suite":{"id":149,"platform":"vm","path":"D:/_workspace/repos/kutodo/test/data/services/http_ecampus_todo_client_test.dart"},"type":"suite","time":9362}
+{"test":{"id":150,"name":"loading D:/_workspace/repos/kutodo/test/data/services/http_ecampus_todo_client_test.dart","suiteID":149,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":9363}
+
+[{"event":"test.startedProcess","params":{"vmServiceUri":null}}]
+{"testID":150,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":9779}
+{"group":{"id":151,"suiteID":149,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":4,"line":null,"column":null,"url":null},"type":"group","time":9779}
+{"group":{"id":152,"suiteID":149,"parentID":151,"name":"HttpEcampusTodoClient","metadata":{"skip":false,"skipReason":null},"testCount":4,"line":17,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/http_ecampus_todo_client_test.dart"},"type":"group","time":9779}
+{"test":{"id":153,"name":"HttpEcampusTodoClient posts to todo endpoint with session cookies and STYPE","suiteID":149,"groupIDs":[151,152],"metadata":{"skip":false,"skipReason":null},"line":18,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/http_ecampus_todo_client_test.dart"},"type":"testStart","time":9779}
+{"testID":153,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":9813}
+{"test":{"id":154,"name":"HttpEcampusTodoClient returns todo html when response is successful","suiteID":149,"groupIDs":[151,152],"metadata":{"skip":false,"skipReason":null},"line":49,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/http_ecampus_todo_client_test.dart"},"type":"testStart","time":9813}
+{"testID":154,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":9815}
+{"test":{"id":155,"name":"HttpEcampusTodoClient throws fetch exception when response is not successful","suiteID":149,"groupIDs":[151,152],"metadata":{"skip":false,"skipReason":null},"line":61,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/http_ecampus_todo_client_test.dart"},"type":"testStart","time":9816}
+{"testID":155,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":9820}
+{"test":{"id":156,"name":"HttpEcampusTodoClient throws session expired exception when login page is returned","suiteID":149,"groupIDs":[151,152],"metadata":{"skip":false,"skipReason":null},"line":74,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/http_ecampus_todo_client_test.dart"},"type":"testStart","time":9820}
+{"testID":156,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":9824}
+{"suite":{"id":157,"platform":"vm","path":"D:/_workspace/repos/kutodo/test/data/services/notification_schedule_service_test.dart"},"type":"suite","time":9841}
+{"test":{"id":158,"name":"loading D:/_workspace/repos/kutodo/test/data/services/notification_schedule_service_test.dart","suiteID":157,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":9841}
+
+[{"event":"test.startedProcess","params":{"vmServiceUri":null}}]
+{"testID":158,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":10239}
+{"group":{"id":159,"suiteID":157,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":8,"line":null,"column":null,"url":null},"type":"group","time":10239}
+{"group":{"id":160,"suiteID":157,"parentID":159,"name":"NotificationScheduleService","metadata":{"skip":false,"skipReason":null},"testCount":8,"line":9,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/notification_schedule_service_test.dart"},"type":"group","time":10239}
+{"test":{"id":161,"name":"NotificationScheduleService calculates schedule from due date and minutes before","suiteID":157,"groupIDs":[159,160],"metadata":{"skip":false,"skipReason":null},"line":10,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/notification_schedule_service_test.dart"},"type":"testStart","time":10239}
+{"testID":161,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":10250}
+{"test":{"id":162,"name":"NotificationScheduleService excludes completed, deleted, and excluded tasks","suiteID":157,"groupIDs":[159,160],"metadata":{"skip":false,"skipReason":null},"line":23,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/notification_schedule_service_test.dart"},"type":"testStart","time":10250}
+{"testID":162,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":10252}
+{"test":{"id":163,"name":"NotificationScheduleService excludes tasks without due date","suiteID":157,"groupIDs":[159,160],"metadata":{"skip":false,"skipReason":null},"line":39,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/notification_schedule_service_test.dart"},"type":"testStart","time":10252}
+{"testID":163,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":10253}
+{"test":{"id":164,"name":"NotificationScheduleService excludes disabled notification settings","suiteID":157,"groupIDs":[159,160],"metadata":{"skip":false,"skipReason":null},"line":49,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/notification_schedule_service_test.dart"},"type":"testStart","time":10254}
+{"testID":164,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":10255}
+{"test":{"id":165,"name":"NotificationScheduleService excludes schedules that are already in the past","suiteID":157,"groupIDs":[159,160],"metadata":{"skip":false,"skipReason":null},"line":59,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/notification_schedule_service_test.dart"},"type":"testStart","time":10255}
+{"testID":165,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":10256}
+{"test":{"id":166,"name":"NotificationScheduleService excludes schedules that are exactly now","suiteID":157,"groupIDs":[159,160],"metadata":{"skip":false,"skipReason":null},"line":69,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/notification_schedule_service_test.dart"},"type":"testStart","time":10256}
+{"testID":166,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":10258}
+{"test":{"id":167,"name":"NotificationScheduleService excludes negative minutesBeforeDue values","suiteID":157,"groupIDs":[159,160],"metadata":{"skip":false,"skipReason":null},"line":79,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/notification_schedule_service_test.dart"},"type":"testStart","time":10258}
+{"testID":167,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":10260}
+{"test":{"id":168,"name":"NotificationScheduleService calculates schedules for tasks that have matching settings","suiteID":157,"groupIDs":[159,160],"metadata":{"skip":false,"skipReason":null},"line":89,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/notification_schedule_service_test.dart"},"type":"testStart","time":10260}
+{"testID":168,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":10262}
+{"suite":{"id":169,"platform":"vm","path":"D:/_workspace/repos/kutodo/test/data/services/sub_task_progress_test.dart"},"type":"suite","time":10277}
+{"test":{"id":170,"name":"loading D:/_workspace/repos/kutodo/test/data/services/sub_task_progress_test.dart","suiteID":169,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":10278}
+
+[{"event":"test.startedProcess","params":{"vmServiceUri":null}}]
+{"testID":170,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":10654}
+{"group":{"id":171,"suiteID":169,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":2,"line":null,"column":null,"url":null},"type":"group","time":10654}
+{"group":{"id":172,"suiteID":169,"parentID":171,"name":"calculateSubTaskProgress","metadata":{"skip":false,"skipReason":null},"testCount":2,"line":6,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/sub_task_progress_test.dart"},"type":"group","time":10654}
+{"test":{"id":173,"name":"calculateSubTaskProgress returns zero progress for empty subtasks","suiteID":169,"groupIDs":[171,172],"metadata":{"skip":false,"skipReason":null},"line":7,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/sub_task_progress_test.dart"},"type":"testStart","time":10654}
+{"testID":173,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":10664}
+{"test":{"id":174,"name":"calculateSubTaskProgress calculates done count, ratio, and percent","suiteID":169,"groupIDs":[171,172],"metadata":{"skip":false,"skipReason":null},"line":17,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/sub_task_progress_test.dart"},"type":"testStart","time":10664}
+{"testID":174,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":10667}
+{"suite":{"id":175,"platform":"vm","path":"D:/_workspace/repos/kutodo/test/data/services/widget_update_service_test.dart"},"type":"suite","time":10682}
+{"test":{"id":176,"name":"loading D:/_workspace/repos/kutodo/test/data/services/widget_update_service_test.dart","suiteID":175,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":10682}
+
+[{"event":"test.startedProcess","params":{"vmServiceUri":null}}]
+{"testID":176,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":11087}
+{"group":{"id":177,"suiteID":175,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":8,"line":null,"column":null,"url":null},"type":"group","time":11087}
+{"group":{"id":178,"suiteID":175,"parentID":177,"name":"selectWidgetTasks","metadata":{"skip":false,"skipReason":null},"testCount":2,"line":9,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/widget_update_service_test.dart"},"type":"group","time":11087}
+{"test":{"id":179,"name":"selectWidgetTasks shows only today tasks up to three items sorted by due time","suiteID":175,"groupIDs":[177,178],"metadata":{"skip":false,"skipReason":null},"line":10,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/widget_update_service_test.dart"},"type":"testStart","time":11087}
+{"testID":179,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":11099}
+{"test":{"id":180,"name":"selectWidgetTasks returns empty list when there are no today tasks","suiteID":175,"groupIDs":[177,178],"metadata":{"skip":false,"skipReason":null},"line":29,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/widget_update_service_test.dart"},"type":"testStart","time":11100}
+{"testID":180,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":11101}
+{"group":{"id":181,"suiteID":175,"parentID":177,"name":"weekWindowFor","metadata":{"skip":false,"skipReason":null},"testCount":1,"line":44,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/widget_update_service_test.dart"},"type":"group","time":11102}
+{"test":{"id":182,"name":"weekWindowFor returns Monday through Sunday for the current week","suiteID":175,"groupIDs":[177,181],"metadata":{"skip":false,"skipReason":null},"line":45,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/widget_update_service_test.dart"},"type":"testStart","time":11102}
+{"testID":182,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":11103}
+{"group":{"id":183,"suiteID":175,"parentID":177,"name":"selectWidgetWeekTasks","metadata":{"skip":false,"skipReason":null},"testCount":2,"line":54,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/widget_update_service_test.dart"},"type":"group","time":11104}
+{"test":{"id":184,"name":"selectWidgetWeekTasks shows incomplete tasks first then due date within each group","suiteID":175,"groupIDs":[177,183],"metadata":{"skip":false,"skipReason":null},"line":55,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/widget_update_service_test.dart"},"type":"testStart","time":11104}
+{"testID":184,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":11106}
+{"test":{"id":185,"name":"selectWidgetWeekTasks prefers incomplete tasks when due dates match","suiteID":175,"groupIDs":[177,183],"metadata":{"skip":false,"skipReason":null},"line":80,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/widget_update_service_test.dart"},"type":"testStart","time":11106}
+{"testID":185,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":11108}
+{"group":{"id":186,"suiteID":175,"parentID":177,"name":"weekProgressCounts","metadata":{"skip":false,"skipReason":null},"testCount":1,"line":98,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/widget_update_service_test.dart"},"type":"group","time":11108}
+{"test":{"id":187,"name":"weekProgressCounts counts all week tasks, not just displayed five","suiteID":175,"groupIDs":[177,186],"metadata":{"skip":false,"skipReason":null},"line":99,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/widget_update_service_test.dart"},"type":"testStart","time":11108}
+{"testID":187,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":11110}
+{"group":{"id":188,"suiteID":175,"parentID":177,"name":"widget format helpers","metadata":{"skip":false,"skipReason":null},"testCount":2,"line":127,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/widget_update_service_test.dart"},"type":"group","time":11110}
+{"test":{"id":189,"name":"widget format helpers formats today and weekly labels","suiteID":175,"groupIDs":[177,188],"metadata":{"skip":false,"skipReason":null},"line":128,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/widget_update_service_test.dart"},"type":"testStart","time":11110}
+{"testID":189,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":11113}
+{"test":{"id":190,"name":"widget format helpers uses first tag color for accent bar","suiteID":175,"groupIDs":[177,188],"metadata":{"skip":false,"skipReason":null},"line":146,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/services/widget_update_service_test.dart"},"type":"testStart","time":11114}
+{"testID":190,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":11116}
+{"suite":{"id":191,"platform":"vm","path":"D:/_workspace/repos/kutodo/test/presentation/screens/database_v6_ui_test.dart"},"type":"suite","time":11133}
+{"test":{"id":192,"name":"loading D:/_workspace/repos/kutodo/test/presentation/screens/database_v6_ui_test.dart","suiteID":191,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":11134}
+
+[{"event":"test.startedProcess","params":{"vmServiceUri":null}}]
+{"testID":192,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":11638}
+{"group":{"id":193,"suiteID":191,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":3,"line":null,"column":null,"url":null},"type":"group","time":11638}
+{"test":{"id":194,"name":"a failed reminder write rolls task creation back and unlocks save","suiteID":191,"groupIDs":[193],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":23,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/screens/database_v6_ui_test.dart"},"type":"testStart","time":11638}
+{"testID":194,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":12505}
+{"test":{"id":195,"name":"task creation persists one folder and independent global tag","suiteID":191,"groupIDs":[193],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":73,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/screens/database_v6_ui_test.dart"},"type":"testStart","time":12505}
+{"testID":195,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":12772}
+{"test":{"id":196,"name":"review applies only the checked source field and keeps memo","suiteID":191,"groupIDs":[193],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":144,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/screens/database_v6_ui_test.dart"},"type":"testStart","time":12772}
+{"testID":196,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":12923}
+{"suite":{"id":197,"platform":"vm","path":"D:/_workspace/repos/kutodo/test/presentation/screens/home_layout_screen_test.dart"},"type":"suite","time":12945}
+{"test":{"id":198,"name":"loading D:/_workspace/repos/kutodo/test/presentation/screens/home_layout_screen_test.dart","suiteID":197,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":12945}
+
+[{"event":"test.startedProcess","params":{"vmServiceUri":null}}]
+{"testID":198,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":13408}
+{"group":{"id":199,"suiteID":197,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":4,"line":null,"column":null,"url":null},"type":"group","time":13409}
+{"test":{"id":200,"name":"toggles and drags sections, then saves only layout fields","suiteID":197,"groupIDs":[199],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":45,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/screens/home_layout_screen_test.dart"},"type":"testStart","time":13409}
+{"testID":200,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":14080}
+{"test":{"id":201,"name":"back discards edits and restore resets order and visibility","suiteID":197,"groupIDs":[199],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":99,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/screens/home_layout_screen_test.dart"},"type":"testStart","time":14080}
+{"testID":201,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":14281}
+{"test":{"id":202,"name":"keeps edits after a failed save and permits retry","suiteID":197,"groupIDs":[199],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":131,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/screens/home_layout_screen_test.dart"},"type":"testStart","time":14281}
+{"testID":202,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":14412}
+{"test":{"id":203,"name":"locks controls during save and handles small screens and large text","suiteID":197,"groupIDs":[199],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":151,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/screens/home_layout_screen_test.dart"},"type":"testStart","time":14412}
+{"testID":203,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":14532}
+{"suite":{"id":204,"platform":"vm","path":"D:/_workspace/repos/kutodo/test/presentation/screens/main_shell_home_layout_test.dart"},"type":"suite","time":14551}
+{"test":{"id":205,"name":"loading D:/_workspace/repos/kutodo/test/presentation/screens/main_shell_home_layout_test.dart","suiteID":204,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":14551}
+
+[{"event":"test.startedProcess","params":{"vmServiceUri":null}}]
+{"testID":205,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":15147}
+{"group":{"id":206,"suiteID":204,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":6,"line":null,"column":null,"url":null},"type":"group","time":15147}
+{"test":{"id":207,"name":"(setUpAll)","suiteID":204,"groupIDs":[206],"metadata":{"skip":false,"skipReason":null},"line":25,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/presentation/screens/main_shell_home_layout_test.dart"},"type":"testStart","time":15147}
+{"testID":207,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":15163}
+{"test":{"id":208,"name":"applies weekly widget completion before reloading the calendar on resume","suiteID":204,"groupIDs":[206],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":96,"root_column":5,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/screens/main_shell_home_layout_test.dart"},"type":"testStart","time":15163}
+{"testID":208,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":16125}
+{"test":{"id":209,"name":"applies weekly widget uncompletion before reloading the calendar on resume","suiteID":204,"groupIDs":[206],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":96,"root_column":5,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/screens/main_shell_home_layout_test.dart"},"type":"testStart","time":16125}
+{"testID":209,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":16447}
+{"test":{"id":210,"name":"settings editor updates home without changing tasks or the selected tag","suiteID":204,"groupIDs":[206],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":148,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/screens/main_shell_home_layout_test.dart"},"type":"testStart","time":16448}
+{"testID":210,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":17188}
+{"test":{"id":211,"name":"creates and edits calendar tasks in the shared app repository","suiteID":204,"groupIDs":[206],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":204,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/screens/main_shell_home_layout_test.dart"},"type":"testStart","time":17189}
+{"testID":211,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":18169}
+{"test":{"id":212,"name":"a prefilled calendar date alone can be cancelled without a draft prompt","suiteID":204,"groupIDs":[206],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":251,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/screens/main_shell_home_layout_test.dart"},"type":"testStart","time":18170}
+{"testID":212,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":18656}
+{"test":{"id":213,"name":"loads saved order and supports hiding every section","suiteID":204,"groupIDs":[206],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":269,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/screens/main_shell_home_layout_test.dart"},"type":"testStart","time":18657}
+{"testID":213,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":19110}
+{"test":{"id":214,"name":"(tearDownAll)","suiteID":204,"groupIDs":[206],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":19110}
+{"testID":214,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":19114}
+{"suite":{"id":215,"platform":"vm","path":"D:/_workspace/repos/kutodo/test/presentation/widgets/home_calendar_section_test.dart"},"type":"suite","time":19149}
+{"test":{"id":216,"name":"loading D:/_workspace/repos/kutodo/test/presentation/widgets/home_calendar_section_test.dart","suiteID":215,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":19149}
+
+[{"event":"test.startedProcess","params":{"vmServiceUri":null}}]
+{"testID":216,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":20506}
+{"group":{"id":217,"suiteID":215,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":4,"line":null,"column":null,"url":null},"type":"group","time":20506}
+{"test":{"id":218,"name":"(setUpAll)","suiteID":215,"groupIDs":[217],"metadata":{"skip":false,"skipReason":null},"line":12,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/presentation/widgets/home_calendar_section_test.dart"},"type":"testStart","time":20506}
+{"testID":218,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":20521}
+{"test":{"id":219,"name":"selects a date, adds on that date, opens and completes existing tasks","suiteID":215,"groupIDs":[217],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":59,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/widgets/home_calendar_section_test.dart"},"type":"testStart","time":20521}
+{"testID":219,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":21495}
+{"test":{"id":220,"name":"navigates months and weeks, jumps to today, and reflects refreshed tasks","suiteID":215,"groupIDs":[217],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":95,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/widgets/home_calendar_section_test.dart"},"type":"testStart","time":21496}
+{"testID":220,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":22065}
+{"test":{"id":221,"name":"filters completed and source types and makes undated tasks accessible","suiteID":215,"groupIDs":[217],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":131,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/widgets/home_calendar_section_test.dart"},"type":"testStart","time":22065}
+{"testID":221,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":22405}
+{"test":{"id":222,"name":"fits a narrow screen with large text","suiteID":215,"groupIDs":[217],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":175,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/widgets/home_calendar_section_test.dart"},"type":"testStart","time":22406}
+{"testID":222,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":22513}
+{"test":{"id":223,"name":"(tearDownAll)","suiteID":215,"groupIDs":[217],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":22513}
+{"testID":223,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":22515}
+{"success":true,"type":"done","time":22543}

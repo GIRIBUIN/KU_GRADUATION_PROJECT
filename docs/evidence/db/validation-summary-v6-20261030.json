@@ -1,0 +1,100 @@
+{
+  "recorded_at_utc": "2026-10-29T15:51:23.473874+00:00",
+  "schema_version": 6,
+  "git_base": "7fabd858d7d3acee03360e8e03d5186fa80326b3",
+  "uncommitted_changes": true,
+  "tests": {
+    "command": "flutter test --no-pub --concurrency=1 --machine test/data test/presentation",
+    "passed": 125,
+    "failed": 0,
+    "raw": "docs/evidence/db/validation-v6-final-20261030.jsonl"
+  },
+  "analysis": {
+    "command": "flutter analyze --no-pub --no-fatal-infos",
+    "errors": 0,
+    "warnings": 0,
+    "existing_info": 1,
+    "raw": "docs/evidence/db/analyze-v6-20261030.txt"
+  },
+  "android_build": {
+    "command": "flutter build apk --debug --no-pub",
+    "success": true,
+    "raw": "docs/evidence/db/build-v6-final-20261030.txt",
+    "apk": "build/app/outputs/flutter-apk/app-debug.apk",
+    "apk_bytes": 167499716,
+    "apk_sha256": "e20360fe64e665ddbc439269bf25962e79a0cb35c3db1810d8fb05923bbc2f9b"
+  },
+  "performance": {
+    "before": "docs/evidence/db/task-list-2026-10-29T14-17-14-061288Z.json",
+    "after": "docs/evidence/db/task-list-2026-10-29T15-37-43-034316Z.json",
+    "command": "flutter test --no-pub --concurrency=1 --reporter expanded --dart-define=MEASUREMENT_LABEL=after-db-v6-isolated test/benchmarks/task_repository_benchmark.dart",
+    "scope": "Windows host, warm in-memory SQLite, synthetic data; not mobile/device measurements",
+    "comparison": [
+      {
+        "task_count": 100,
+        "before_median_us": 16204.0,
+        "after_median_us": 4314.5,
+        "before_select_count": 201,
+        "after_select_count": 3,
+        "median_reduction_percent": 73.374
+      },
+      {
+        "task_count": 1000,
+        "before_median_us": 96275.5,
+        "after_median_us": 20574.5,
+        "before_select_count": 2001,
+        "after_select_count": 5,
+        "median_reduction_percent": 78.63
+      }
+    ]
+  },
+  "audit_after": "docs/evidence/db/contract-audit-2026-10-29T15-36-30-841250Z.json",
+  "baseline_sources": "docs/evidence/db/baseline-harness-v5.zip",
+  "source_git_blob_hashes": {
+    "android/app/src/main/kotlin/com/example/ku_task_management/WidgetTaskCompleter.kt": "b8065d532724140744542bab869ac1b0d34b6d07",
+    "lib/app.dart": "85ba1b5b51268393323265135b08bf9db0ee0a26",
+    "lib/core/utils/entity_id.dart": "6956a75180d3727cba522d999eff1b2e4286ff47",
+    "lib/data/local/app_database.dart": "7c3b37bc74ebc17e907ac00f82835d832289f256",
+    "lib/data/local/app_database.g.dart": "3d0a9839c8aa7758dc40fbe17aa11935d1a64349",
+    "lib/data/local/mappers/metadata_mappers.dart": "8e81cc738419389bb04b0ea8cc040f2c312c06c9",
+    "lib/data/local/mappers/sub_task_mapper.dart": "df930328e93115ebbafe01b23d2bc4dd12969175",
+    "lib/data/local/mappers/task_mapper.dart": "17562eb9ca8b890d0c82f5eb74cf1bc8fc98f56d",
+    "lib/data/local/schema_v6_migration.dart": "f8b57583deb8ea061b000b56329a54cba485e190",
+    "lib/data/models/ecampus_models.dart": "dc271d31497dc8e668d5c152c960298f2be59a2b",
+    "lib/data/repositories/drift_folder_repository.dart": "2c6a601130eb8dee818da1ec8267698190a6da3f",
+    "lib/data/repositories/drift_notification_repository.dart": "abe347925074b67d32c07d5b92597978a282c4a2",
+    "lib/data/repositories/drift_settings_repository.dart": "74ca1d9a23baf83445025a358c8a0aab1c606f38",
+    "lib/data/repositories/drift_sub_task_repository.dart": "400943fa1054f6d0940809eeb149e6e0ac441669",
+    "lib/data/repositories/drift_tag_repository.dart": "c8cf2d5886d6f48696861311e6b55a179a314bb5",
+    "lib/data/repositories/drift_task_repository.dart": "7a73dbf9515015f825c6fb909068bd77d9d78834",
+    "lib/data/repositories/notification_repository.dart": "107727b6d556a31390c4431911dedadffbc40e00",
+    "lib/data/repositories/task_repository.dart": "c5ad1f504acbfb8c32cfc41a77f1b6e4c06e30df",
+    "lib/data/services/ecampus_sync_apply_service.dart": "782196c2221f5882fae2b5411ac9816b05e06283",
+    "lib/data/services/ecampus_sync_flow_service.dart": "dcbe0e21c9d2261c8f701979642fc2ca48711341",
+    "lib/data/services/ecampus_todo_parser.dart": "73fad785cb7f582c851de2600a3083814c21efff",
+    "lib/presentation/screens/main/main_shell_screen.dart": "c3d09de412d3eefd42ca7d240b9a47e48e0b15ad",
+    "lib/presentation/screens/sync/ecampus_sync_preview_screen.dart": "6b0a0b8907bc5f71124da240694658be0e17ca5e",
+    "lib/presentation/screens/task/task_create_screen.dart": "672495830874e268bea1be5f51336a86f8e125d2",
+    "lib/presentation/screens/task/task_detail_screen.dart": "1bbbbc54476f7397824606eb60fff05696b14db0",
+    "lib/presentation/services/local_notification_service.dart": "249b02cff8091bb802bb7564d6448295b1e7cf59",
+    "lib/presentation/widgets/task_metadata_picker.dart": "c03278a9ffa99b855590c1d4ba827b08f6eb73a2",
+    "test/benchmarks/db_contract_audit.dart": "bbbf64f13e6195ac6b1831d41387e09f8aaec8a5",
+    "test/benchmarks/task_repository_benchmark.dart": "beab149e3102d837aaa77f0d75b93a5b69ba0117",
+    "test/data/local/app_database_test.dart": "63fadee19f83e2e82ed61bb5d370fbf741a5c039",
+    "test/data/local/database_v6_test.dart": "5bd422bdb382737767da1a9ae8cff3d5da0c5bf2",
+    "test/data/repositories/drift_metadata_repositories_test.dart": "e50616e8ce46674ab06015679a95d5d363c07a74",
+    "test/data/repositories/drift_sub_task_repository_test.dart": "dbd27fae64a51c0bda91f50d1d489c28aff7560a",
+    "test/data/repositories/drift_task_repository_test.dart": "3c70ec8b4ada9fc362df70c30a75d21ff88e4ba9",
+    "test/data/services/ecampus_sync_apply_service_test.dart": "d7dc8ed4a9f17dd9f9d90c94d465aba8288b50d3",
+    "test/data/services/ecampus_sync_flow_service_test.dart": "c3ddcd91bfed3822422a0892ab189956a71ccb62",
+    "test/fixtures/database/schema_v5.sql": "2513a8bf318acea3fa597b3868520cc734570c97",
+    "test/presentation/screens/database_v6_ui_test.dart": "7acae43e040afc46094ad369ee2f86f49bfa17f5"
+  },
+  "not_performed": [
+    "real-device installation or database migration",
+    "real eCampus login/network flow",
+    "iOS build or execution",
+    "cross-device cloud sync",
+    "OCR"
+  ]
+}

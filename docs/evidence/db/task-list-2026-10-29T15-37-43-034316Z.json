@@ -1,0 +1,190 @@
+{
+  "format_version": 1,
+  "started_at_utc": "2026-10-29T15:37:43.034316Z",
+  "finished_at_utc": "2026-10-29T15:37:43.534678Z",
+  "label": "after-db-v6-isolated",
+  "command": "flutter test --no-pub --reporter expanded test/benchmarks/task_repository_benchmark.dart",
+  "git_commit": "7fabd858d7d3acee03360e8e03d5186fa80326b3",
+  "source_git_blob_hashes": {
+    "lib/data/local/app_database.dart": "7c3b37bc74ebc17e907ac00f82835d832289f256",
+    "lib/data/local/app_database.g.dart": "3d0a9839c8aa7758dc40fbe17aa11935d1a64349",
+    "lib/data/local/mappers/task_mapper.dart": "17562eb9ca8b890d0c82f5eb74cf1bc8fc98f56d",
+    "lib/data/repositories/drift_task_repository.dart": "7a73dbf9515015f825c6fb909068bd77d9d78834",
+    "test/benchmarks/task_repository_benchmark.dart": "beab149e3102d837aaa77f0d75b93a5b69ba0117",
+    "pubspec.lock": "46abc42e0da2fb89fc5c3f14675b3386ab2b9c2c"
+  },
+  "environment": {
+    "flutter": {
+      "version": "3.44.7",
+      "framework_revision": "84fc5cbb223bc12f83d65b647ff8a56caf779ffd",
+      "engine_revision": "69c8c61792f04cc809dfef0c910414fb9afc06cd"
+    },
+    "os": "windows",
+    "os_version": "\"Windows 11 Home\" 10.0 (Build 26200)",
+    "dart": "3.12.2 (stable) (Tue Jun 9 01:11:39 2026 -0700) on \"windows_x64\"",
+    "logical_processors": 20,
+    "database": "Drift NativeDatabase.memory / synthetic data",
+    "sqlite_version": "3.53.0",
+    "execution": "host Flutter test; not an Android/iOS device measurement"
+  },
+  "method": {
+    "operation": "DriftTaskRepository.getTasks() with default active filter",
+    "seed": "deterministic; all active personal tasks; fixed UTC timestamps",
+    "warmups_per_size": 3,
+    "measured_repetitions_per_size": 10,
+    "timer": "Stopwatch; repository call including model/relation loading",
+    "excluded": "database creation, seed inserts, warmups, result assertions",
+    "query_counter": "QueryInterceptor.runSelect during measured operation",
+    "instrumentation": "same SELECT counter included in every timed run",
+    "percentile": "nearest rank; p95 of 10 samples is the maximum"
+  },
+  "scenarios": [
+    {
+      "task_count": 100,
+      "tags_per_task": 2,
+      "folders_per_task": 1,
+      "samples": [
+        {
+          "iteration": 1,
+          "elapsed_us": 5513,
+          "select_count": 3,
+          "returned_tasks": 100
+        },
+        {
+          "iteration": 2,
+          "elapsed_us": 5243,
+          "select_count": 3,
+          "returned_tasks": 100
+        },
+        {
+          "iteration": 3,
+          "elapsed_us": 4619,
+          "select_count": 3,
+          "returned_tasks": 100
+        },
+        {
+          "iteration": 4,
+          "elapsed_us": 4010,
+          "select_count": 3,
+          "returned_tasks": 100
+        },
+        {
+          "iteration": 5,
+          "elapsed_us": 5086,
+          "select_count": 3,
+          "returned_tasks": 100
+        },
+        {
+          "iteration": 6,
+          "elapsed_us": 3584,
+          "select_count": 3,
+          "returned_tasks": 100
+        },
+        {
+          "iteration": 7,
+          "elapsed_us": 3354,
+          "select_count": 3,
+          "returned_tasks": 100
+        },
+        {
+          "iteration": 8,
+          "elapsed_us": 3195,
+          "select_count": 3,
+          "returned_tasks": 100
+        },
+        {
+          "iteration": 9,
+          "elapsed_us": 3212,
+          "select_count": 3,
+          "returned_tasks": 100
+        },
+        {
+          "iteration": 10,
+          "elapsed_us": 4942,
+          "select_count": 3,
+          "returned_tasks": 100
+        }
+      ],
+      "median_us": 4314.5,
+      "p95_us": 5513,
+      "min_us": 3195,
+      "max_us": 5513
+    },
+    {
+      "task_count": 1000,
+      "tags_per_task": 2,
+      "folders_per_task": 1,
+      "samples": [
+        {
+          "iteration": 1,
+          "elapsed_us": 21476,
+          "select_count": 5,
+          "returned_tasks": 1000
+        },
+        {
+          "iteration": 2,
+          "elapsed_us": 20629,
+          "select_count": 5,
+          "returned_tasks": 1000
+        },
+        {
+          "iteration": 3,
+          "elapsed_us": 21422,
+          "select_count": 5,
+          "returned_tasks": 1000
+        },
+        {
+          "iteration": 4,
+          "elapsed_us": 22056,
+          "select_count": 5,
+          "returned_tasks": 1000
+        },
+        {
+          "iteration": 5,
+          "elapsed_us": 21138,
+          "select_count": 5,
+          "returned_tasks": 1000
+        },
+        {
+          "iteration": 6,
+          "elapsed_us": 20155,
+          "select_count": 5,
+          "returned_tasks": 1000
+        },
+        {
+          "iteration": 7,
+          "elapsed_us": 20504,
+          "select_count": 5,
+          "returned_tasks": 1000
+        },
+        {
+          "iteration": 8,
+          "elapsed_us": 20190,
+          "select_count": 5,
+          "returned_tasks": 1000
+        },
+        {
+          "iteration": 9,
+          "elapsed_us": 20520,
+          "select_count": 5,
+          "returned_tasks": 1000
+        },
+        {
+          "iteration": 10,
+          "elapsed_us": 20272,
+          "select_count": 5,
+          "returned_tasks": 1000
+        }
+      ],
+      "median_us": 20574.5,
+      "p95_us": 22056,
+      "min_us": 20155,
+      "max_us": 22056
+    }
+  ],
+  "limitations": [
+    "Warm in-memory host measurement; no disk I/O, UI or network timing.",
+    "Not a claim about Android/iOS production or cold-start performance.",
+    "No schema modification, production data or performance threshold."
+  ]
+}

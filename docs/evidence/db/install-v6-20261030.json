@@ -1,0 +1,13 @@
+{
+  "recorded_at_utc": "2026-10-29T16:00:21.954144+00:00",
+  "device_model": "SM-S921N (Galaxy S24)",
+  "transport": "USB",
+  "package": "com.example.ku_task_management",
+  "command_template": "adb -s <connected-device> install -r build/app/outputs/flutter-apk/app-debug.apk",
+  "result": "Success",
+  "exit_code": 0,
+  "keep_existing_app_data_requested": true,
+  "apk_sha256": "e20360fe64e665ddbc439269bf25962e79a0cb35c3db1810d8fb05923bbc2f9b",
+  "app_launched_by_agent": false,
+  "device_db_migration_verified": false
+}

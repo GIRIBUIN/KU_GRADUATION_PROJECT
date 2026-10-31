@@ -66,7 +66,11 @@ void main() {
 
   Future<void> openManagement(WidgetTester tester) async {
     await screen(tester, mainScreen());
-    await tester.tap(find.text('관리').last);
+    await tester.tap(find.byTooltip('사이드 메뉴'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('drawer-settings')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('목록·태그 관리'));
     await tester.pumpAndSettle();
   }
 
@@ -273,8 +277,12 @@ void main() {
     'management creates a School folder and puts a course list under it',
     (tester) async {
       await screen(tester, mainScreen());
-      expect(find.text('홈'), findsOneWidget);
-      await tester.tap(find.text('관리').last);
+      expect(find.byKey(const ValueKey('nav-home')), findsOneWidget);
+      await tester.tap(find.byTooltip('사이드 메뉴'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('drawer-settings')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('목록·태그 관리'));
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('상위 폴더 추가'));
       await tester.pumpAndSettle();
@@ -329,7 +337,11 @@ void main() {
       );
       await tasks.updateTaskStatus('task', TaskStatus.completed);
       await screen(tester, mainScreen());
-      await tester.tap(find.text('관리').last);
+      await tester.tap(find.byTooltip('사이드 메뉴'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('drawer-settings')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('목록·태그 관리'));
       await tester.pumpAndSettle();
       final row = find.ancestor(
         of: find.text('Course 1'),

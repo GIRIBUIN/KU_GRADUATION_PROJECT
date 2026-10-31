@@ -1,0 +1,965 @@
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
+import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/list_defaults.dart';
+import '../../../data/models/home_view_options.dart';
+import '../../../data/models/task_models.dart';
+import '../../../data/repositories/settings_repository.dart';
+import '../../../data/services/home_task_summary.dart';
+import '../../widgets/task_metadata_picker.dart' show colorFromHex;
+
+enum _ScopeKind { all, list, tag, completed, trash }
+
+enum _Period { today, week, month, day }
+
+class MobileHomePage extends StatefulWidget {
+  const MobileHomePage({
+    super.key,
+    required this.tasks,
+    required this.isLoading,
+    required this.settings,
+    required this.settingsReady,
+    required this.settingsRepository,
+    required this.tags,
+    required this.lists,
+    required this.groups,
+    required this.onSettingsSaved,
+    required this.onRefresh,
+    required this.onImport,
+    required this.onSettings,
+    required this.onAddFolder,
+    required this.onAddList,
+    required this.onAddTag,
+    required this.onOpenTask,
+    required this.onToggleTask,
+    required this.onRestoreTask,
+    required this.onDeletePermanently,
+  });
+
+  final List<Task> tasks;
+  final bool isLoading;
+  final AppSettings settings;
+  final bool settingsReady;
+  final SettingsRepository settingsRepository;
+  final List<Tag> tags;
+  final List<Folder> lists;
+  final List<FolderGroup> groups;
+  final ValueChanged<AppSettings> onSettingsSaved;
+  final VoidCallback onRefresh, onSettings;
+  final Future<void> Function()? onAddFolder;
+  final Future<void> Function() onAddList, onAddTag;
+  final Future<void> Function() onImport;
+  final Future<void> Function(Task) onOpenTask,
+      onToggleTask,
+      onRestoreTask,
+      onDeletePermanently;
+
+  @override
+  State<MobileHomePage> createState() => _MobileHomePageState();
+}
+
+class _MobileHomePageState extends State<MobileHomePage> {
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
+  _ScopeKind _scope = _ScopeKind.all;
+  String? _scopeId;
+  _Period _period = _Period.today;
+  DateTime? _day;
+  HomeViewOptions _view = const HomeViewOptions();
+  bool _loadedPreferences = false;
+  bool _showHiddenMetadata = false;
+  final Set<String> _expandedFolderIds = {};
+
+  String get _scopeLabel => switch (_scope) {
+    _ScopeKind.all => '전체',
+    _ScopeKind.list =>
+      widget.lists.where((l) => l.id == _scopeId).firstOrNull?.name ??
+          inboxListName,
+    _ScopeKind.tag =>
+      '#${widget.tags.where((t) => t.id == _scopeId).firstOrNull?.name ?? '태그'}',
+    _ScopeKind.completed => '완료',
+    _ScopeKind.trash => '휴지통',
+  };
+
+  (DateTime, DateTime) _range(DateTime now) {
+    final today = DateTime(now.year, now.month, now.day);
+    return switch (_period) {
+      _Period.today => (
+        today,
+        DateTime(today.year, today.month, today.day + 1),
+      ),
+      _Period.week => (
+        DateTime(today.year, today.month, today.day - today.weekday + 1),
+        DateTime(today.year, today.month, today.day - today.weekday + 8),
+      ),
+      _Period.month => (
+        DateTime(today.year, today.month),
+        DateTime(today.year, today.month + 1),
+      ),
+      _Period.day => (_day!, DateTime(_day!.year, _day!.month, _day!.day + 1)),
+    };
+  }
+
+  String get _periodLabel => switch (_period) {
+    _Period.today => '오늘',
+    _Period.week => '이번 주',
+    _Period.month => '이번 달',
+    _Period.day => DateFormat('yyyy년 M월 d일', 'ko_KR').format(_day!),
+  };
+
+  void _selectScope(_ScopeKind scope, [String? id]) {
+    setState(() {
+      _scope = scope;
+      _scopeId = id;
+    });
+    Navigator.of(context).pop();
+  }
+
+  Widget _drawerEntry(
+    String label,
+    IconData icon,
+    _ScopeKind kind, [
+    String? id,
+    Color? color,
+  ]) {
+    return ListTile(
+      key: ValueKey('scope-${kind.name}-${id ?? ''}'),
+      selected: _scope == kind && _scopeId == id,
+      selectedTileColor: AppTheme.primaryBlue.withValues(alpha: .08),
+      leading: Icon(icon, color: color),
+      title: Text(label),
+      onTap: () => _selectScope(kind, id),
+    );
+  }
+
+  Widget _drawerHeading(String text, {List<Widget> actions = const []}) =>
+      Padding(
+        padding: const EdgeInsets.fromLTRB(20, 18, 8, 6),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                text,
+                style: const TextStyle(fontSize: 12, color: AppTheme.muted),
+              ),
+            ),
+            ...actions,
+          ],
+        ),
+      );
+
+  List<Folder> get _drawerLists => widget.lists
+      .where(
+        (list) =>
+            list.id == inboxListId ||
+            _showHiddenMetadata ||
+            !widget.settings.hiddenFolderIds.contains(list.id),
+      )
+      .toList();
+  List<Tag> get _drawerTags => widget.tags
+      .where(
+        (tag) =>
+            _showHiddenMetadata ||
+            !widget.settings.hiddenTagIds.contains(tag.id),
+      )
+      .toList();
+
+  Widget _drawer() => Drawer(
+    child: SafeArea(
+      child: Column(
+        children: [
+          const Padding(
+            padding: EdgeInsets.all(20),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'KUTODO',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+              ),
+            ),
+          ),
+          Expanded(
+            child: ClipRect(
+              child: Material(
+                type: MaterialType.transparency,
+                child: ListView(
+                  padding: EdgeInsets.zero,
+                  children: [
+                    _drawerEntry(
+                      '전체',
+                      Icons.format_list_bulleted_rounded,
+                      _ScopeKind.all,
+                    ),
+                    _drawerEntry(
+                      inboxListName,
+                      Icons.square_rounded,
+                      _ScopeKind.list,
+                      inboxListId,
+                      colorFromHex(
+                        widget.lists
+                            .where((l) => l.id == inboxListId)
+                            .firstOrNull
+                            ?.color,
+                        fallback: AppTheme.successGreen,
+                      ),
+                    ),
+                    _drawerHeading(
+                      '목록',
+                      actions: [
+                        IconButton(
+                          tooltip: _showHiddenMetadata ? '숨김 가리기' : '숨김 보기',
+                          icon: Icon(
+                            _showHiddenMetadata
+                                ? Icons.visibility_rounded
+                                : Icons.visibility_off_outlined,
+                          ),
+                          onPressed: () => setState(
+                            () => _showHiddenMetadata = !_showHiddenMetadata,
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: '폴더 추가',
+                          icon: const Icon(Icons.create_new_folder_outlined),
+                          onPressed: widget.onAddFolder,
+                        ),
+                        IconButton(
+                          tooltip: '목록 추가',
+                          icon: const Icon(Icons.add_box_outlined),
+                          onPressed: widget.onAddList,
+                        ),
+                      ],
+                    ),
+                    if (widget.groups.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 8,
+                        ),
+                        child: Text(
+                          '등록된 폴더가 없습니다.',
+                          style: TextStyle(color: AppTheme.muted),
+                        ),
+                      ),
+                    for (final group in widget.groups)
+                      ExpansionTile(
+                        key: ValueKey('drawer-folder-${group.id}'),
+                        initiallyExpanded: _expandedFolderIds.contains(
+                          group.id,
+                        ),
+                        onExpansionChanged: (expanded) => setState(() {
+                          if (expanded) {
+                            _expandedFolderIds.add(group.id);
+                          } else {
+                            _expandedFolderIds.remove(group.id);
+                          }
+                        }),
+                        leading: const Icon(Icons.folder_rounded),
+                        title: Text(group.name),
+                        shape: const Border(),
+                        collapsedShape: const Border(),
+                        childrenPadding: const EdgeInsets.only(left: 18),
+                        children: [
+                          for (final list in _drawerLists.where(
+                            (l) => l.groupId == group.id,
+                          ))
+                            _drawerEntry(
+                              list.name,
+                              Icons.square_rounded,
+                              _ScopeKind.list,
+                              list.id,
+                              colorFromHex(
+                                list.color,
+                                fallback: AppTheme.successGreen,
+                              ),
+                            ),
+                        ],
+                      ),
+                    for (final list in _drawerLists.where(
+                      (l) => l.groupId == null && l.id != inboxListId,
+                    ))
+                      _drawerEntry(
+                        list.name,
+                        Icons.square_rounded,
+                        _ScopeKind.list,
+                        list.id,
+                        colorFromHex(
+                          list.color,
+                          fallback: AppTheme.successGreen,
+                        ),
+                      ),
+                    _drawerHeading(
+                      '태그',
+                      actions: [
+                        IconButton(
+                          tooltip: '태그 추가',
+                          icon: const Icon(Icons.new_label_outlined),
+                          onPressed: widget.onAddTag,
+                        ),
+                      ],
+                    ),
+                    if (_drawerTags.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 8,
+                        ),
+                        child: Text(
+                          '등록된 태그가 없습니다.',
+                          style: TextStyle(color: AppTheme.muted),
+                        ),
+                      ),
+                    for (final tag in _drawerTags)
+                      _drawerEntry(
+                        tag.name,
+                        Icons.tag_rounded,
+                        _ScopeKind.tag,
+                        tag.id,
+                        colorFromHex(tag.color),
+                      ),
+                    _drawerHeading('기타'),
+                    _drawerEntry(
+                      '완료',
+                      Icons.check_box_outlined,
+                      _ScopeKind.completed,
+                    ),
+                    _drawerEntry(
+                      '휴지통',
+                      Icons.delete_outline_rounded,
+                      _ScopeKind.trash,
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            key: const ValueKey('drawer-settings'),
+            leading: const Icon(Icons.settings_outlined),
+            title: const Text('설정'),
+            onTap: () {
+              Navigator.of(context).pop();
+              widget.onSettings();
+            },
+          ),
+        ],
+      ),
+    ),
+  );
+
+  Future<void> _pickPeriod() async {
+    final selected = await showModalBottomSheet<_Period>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(12),
+              child: Text(
+                '날짜 / 기간 선택',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+            ),
+            for (final period in _Period.values)
+              ListTile(
+                title: Text(switch (period) {
+                  _Period.today => '오늘',
+                  _Period.week => '이번 주',
+                  _Period.month => '이번 달',
+                  _Period.day => '특정 날짜 선택',
+                }),
+                trailing: _period == period
+                    ? const Icon(Icons.check_rounded)
+                    : null,
+                onTap: () => Navigator.pop(context, period),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (selected == null || !mounted) return;
+    if (selected == _Period.day) {
+      final date = await showDatePicker(
+        context: context,
+        initialDate: _day ?? DateTime.now(),
+        firstDate: DateTime(2000),
+        lastDate: DateTime(2100, 12, 31),
+        helpText: '날짜 선택',
+        fieldLabelText: '연 / 월 / 일',
+      );
+      if (date == null || !mounted) return;
+      setState(() {
+        _day = date;
+        _period = selected;
+      });
+    } else {
+      setState(() => _period = selected);
+    }
+  }
+
+  Future<void> _adjustView() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => _ViewOptionsSheet(
+        initial: _view,
+        tags: widget.tags,
+        isTrash: _scope == _ScopeKind.trash,
+        onChanged: (value) => setState(() => _view = value),
+        onSave: (value) async {
+          final latest = await widget.settingsRepository.getSettings();
+          final saved = await widget.settingsRepository.saveSettings(
+            latest.copyWith(homeView: value),
+          );
+          if (mounted) widget.onSettingsSaved(saved);
+        },
+      ),
+    );
+  }
+
+  bool _matches(Task task) {
+    final scopeMatches = switch (_scope) {
+      _ScopeKind.all => true,
+      _ScopeKind.list => task.listId == _scopeId,
+      _ScopeKind.tag => task.tagIds.contains(_scopeId),
+      _ScopeKind.completed => task.status == TaskStatus.completed,
+      _ScopeKind.trash => task.status == TaskStatus.deleted,
+    };
+    if (!scopeMatches || task.status == TaskStatus.excluded) return false;
+    if (_scope != _ScopeKind.trash &&
+        (task.status == TaskStatus.deleted ||
+            !_view.statuses.contains(task.status))) {
+      return false;
+    }
+    return (_view.priorities.isEmpty ||
+            _view.priorities.contains(task.priority)) &&
+        (_view.tagIds.isEmpty || task.tagIds.any(_view.tagIds.contains));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_loadedPreferences && widget.settingsReady) {
+      _view = widget.settings.homeView;
+      _loadedPreferences = true;
+    }
+    final now = DateTime.now();
+    final (start, end) = _range(now);
+    bool inRange(DateTime? date) =>
+        date != null &&
+        !date.toLocal().isBefore(start) &&
+        date.toLocal().isBefore(end);
+    final matching = widget.tasks.where(_matches).toList()
+      ..sort((a, b) => _compare(a, b, _view.sort));
+    final active = matching
+        .where((t) => t.status == TaskStatus.active)
+        .toList();
+    final periodTasks = active
+        .where((t) => t.dueDate == null || inRange(t.dueDate))
+        .toList();
+    final urgent = active
+        .where(
+          (t) => isTaskUrgent(t, now: now, days: widget.settings.urgentDueDays),
+        )
+        .toList();
+    final overdue = active.where((t) => isTaskOverdue(t, now: now)).toList();
+    final completed = matching
+        .where(
+          (t) =>
+              t.status == TaskStatus.completed &&
+              inRange(t.completedAt ?? t.dueDate ?? t.updatedAt),
+        )
+        .toList();
+    final trash = matching
+        .where((t) => inRange(t.deletedAt ?? t.dueDate ?? t.updatedAt))
+        .toList();
+
+    return Scaffold(
+      key: _scaffoldKey,
+      drawer: _drawer(),
+      drawerEnableOpenDragGesture: true,
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        titleSpacing: 0,
+        leading: IconButton(
+          tooltip: '사이드 메뉴',
+          icon: const Icon(Icons.menu_rounded),
+          onPressed: () => _scaffoldKey.currentState!.openDrawer(),
+        ),
+        title: InkWell(
+          key: const ValueKey('home-period'),
+          onTap: _pickPeriod,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _scopeLabel,
+                  style: const TextStyle(fontSize: 11, color: AppTheme.muted),
+                ),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        _period == _Period.today
+                            ? '오늘 · ${DateFormat('M월 d일', 'ko_KR').format(now)}'
+                            : _periodLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const Icon(Icons.expand_more_rounded, size: 20),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'eCampus 가져오기',
+            onPressed: widget.onImport,
+            icon: const Icon(Icons.sync_rounded),
+          ),
+          IconButton(
+            tooltip: '보기 조정',
+            onPressed: widget.settingsReady ? _adjustView : null,
+            icon: Badge(
+              isLabelVisible: !_view.isDefault,
+              smallSize: 6,
+              child: const Icon(Icons.tune_rounded),
+            ),
+          ),
+          const SizedBox(width: 4),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: () async => widget.onRefresh(),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 30),
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            if (widget.isLoading)
+              const Center(child: CircularProgressIndicator())
+            else if (_scope == _ScopeKind.trash)
+              _section('휴지통', 'trash', trash)
+            else ...[
+              if (_scope != _ScopeKind.completed) ...[
+                _section(_periodLabel, 'period', periodTasks),
+                _section('마감 임박', 'urgent', urgent),
+                _section('마감 지남', 'overdue', overdue),
+              ],
+              _section('완료', 'completed', completed),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _section(String title, String id, List<Task> tasks) => Padding(
+    key: ValueKey('home-section-$id'),
+    padding: const EdgeInsets.only(bottom: 24),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(fontSize: 13, color: AppTheme.muted),
+                ),
+              ),
+              Text(
+                '${tasks.length}',
+                style: const TextStyle(fontSize: 12, color: AppTheme.muted),
+              ),
+            ],
+          ),
+        ),
+        if (tasks.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+            child: Text(
+              '표시할 할 일이 없습니다.',
+              style: TextStyle(fontSize: 13, color: AppTheme.muted),
+            ),
+          ),
+        for (final task in tasks) _taskRow(task, id),
+      ],
+    ),
+  );
+
+  Widget _taskRow(Task task, String section) {
+    final list = widget.lists.where((l) => l.id == task.listId).firstOrNull;
+    final group = widget.groups.where((g) => g.id == list?.groupId).firstOrNull;
+    final details = [
+      if (group != null) group.name,
+      if (list != null) list.name,
+      for (final tag in widget.tags.where((t) => task.tagIds.contains(t.id)))
+        '#${tag.name}',
+    ];
+    final due = task.dueDate?.toLocal();
+    final dueText = due == null
+        ? '마감 없음'
+        : DateFormat(
+            due.year == DateTime.now().year &&
+                    due.month == DateTime.now().month &&
+                    due.day == DateTime.now().day
+                ? 'HH:mm'
+                : 'M/d HH:mm',
+            'ko_KR',
+          ).format(due);
+    return ListTile(
+      key: ValueKey('home-task-$section-${task.id}'),
+      contentPadding: EdgeInsets.zero,
+      onTap: () => widget.onOpenTask(task),
+      leading: task.status == TaskStatus.deleted
+          ? const Padding(
+              padding: EdgeInsets.all(12),
+              child: Icon(Icons.delete_outline_rounded),
+            )
+          : Checkbox(
+              value: task.status == TaskStatus.completed,
+              onChanged: (_) => widget.onToggleTask(task),
+            ),
+      title: Text(
+        task.title,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontSize: 15,
+          decoration: task.status == TaskStatus.completed
+              ? TextDecoration.lineThrough
+              : null,
+        ),
+      ),
+      subtitle: details.isEmpty
+          ? null
+          : Text(
+              details.join(' · '),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12, color: AppTheme.muted),
+            ),
+      trailing: task.status == TaskStatus.deleted
+          ? PopupMenuButton<String>(
+              tooltip: '휴지통 작업 메뉴',
+              onSelected: (value) async {
+                if (value == 'restore') {
+                  await widget.onRestoreTask(task);
+                  return;
+                }
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('영구 삭제할까요?'),
+                    content: const Text('이 작업은 복구할 수 없습니다.'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('취소'),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('영구 삭제'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed == true) await widget.onDeletePermanently(task);
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'restore', child: Text('복원')),
+                PopupMenuItem(value: 'delete', child: Text('영구 삭제')),
+              ],
+            )
+          : Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  dueText,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color:
+                        task.status == TaskStatus.active &&
+                            due != null &&
+                            isDueDateOverdue(due, now: DateTime.now())
+                        ? AppTheme.dangerRed
+                        : AppTheme.muted,
+                  ),
+                ),
+                if (task.priority != null)
+                  Text(
+                    switch (task.priority!) {
+                      TaskPriority.high => '높음',
+                      TaskPriority.medium => '중간',
+                      TaskPriority.low => '낮음',
+                    },
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: task.priority == TaskPriority.high
+                          ? AppTheme.warningOrange
+                          : AppTheme.muted,
+                    ),
+                  ),
+              ],
+            ),
+    );
+  }
+}
+
+int _compare(Task a, Task b, HomeSort sort) {
+  int due(bool descending) {
+    if (a.dueDate == null) return b.dueDate == null ? 0 : 1;
+    if (b.dueDate == null) return -1;
+    return descending
+        ? b.dueDate!.compareTo(a.dueDate!)
+        : a.dueDate!.compareTo(b.dueDate!);
+  }
+
+  final compared = switch (sort) {
+    HomeSort.standard => a.sortOrder.compareTo(b.sortOrder),
+    HomeSort.dueSoon => due(false),
+    HomeSort.dueLate => due(true),
+    HomeSort.newest => b.createdAt.compareTo(a.createdAt),
+    HomeSort.priority => (a.priority?.index ?? 3).compareTo(
+      b.priority?.index ?? 3,
+    ),
+  };
+  if (compared != 0) return compared;
+  final created = a.createdAt.compareTo(b.createdAt);
+  return created == 0 ? a.id.compareTo(b.id) : created;
+}
+
+class _ViewOptionsSheet extends StatefulWidget {
+  const _ViewOptionsSheet({
+    required this.initial,
+    required this.tags,
+    required this.isTrash,
+    required this.onChanged,
+    required this.onSave,
+  });
+  final HomeViewOptions initial;
+  final List<Tag> tags;
+  final bool isTrash;
+  final ValueChanged<HomeViewOptions> onChanged;
+  final Future<void> Function(HomeViewOptions) onSave;
+  @override
+  State<_ViewOptionsSheet> createState() => _ViewOptionsSheetState();
+}
+
+class _ViewOptionsSheetState extends State<_ViewOptionsSheet> {
+  late HomeViewOptions _value = widget.initial;
+  bool _saving = false;
+  void _change(HomeViewOptions value) {
+    setState(() => _value = value);
+    widget.onChanged(value);
+  }
+
+  Set<T> _toggle<T>(Set<T> values, T value) => values.contains(value)
+      ? ({...values}..remove(value))
+      : ({...values}..add(value));
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    child: SizedBox(
+      height: MediaQuery.sizeOf(context).height * .8,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 0, 20, 12),
+            child: Text(
+              '보기 조정',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            ),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    '정렬',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      for (final sort in HomeSort.values)
+                        ChoiceChip(
+                          label: Text(sort.label),
+                          selected: _value.sort == sort,
+                          onSelected: _saving
+                              ? null
+                              : (_) => _change(_value.copyWith(sort: sort)),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    '상태',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  if (widget.isTrash)
+                    const Text(
+                      '휴지통에서는 상태 필터를 적용하지 않습니다.',
+                      style: TextStyle(fontSize: 12, color: AppTheme.muted),
+                    ),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      for (final status in [
+                        TaskStatus.active,
+                        TaskStatus.completed,
+                      ])
+                        FilterChip(
+                          label: Text(
+                            status == TaskStatus.active ? '미완료' : '완료',
+                          ),
+                          selected: _value.statuses.contains(status),
+                          onSelected: _saving || widget.isTrash
+                              ? null
+                              : (_) => _change(
+                                  _value.copyWith(
+                                    statuses: _toggle(_value.statuses, status),
+                                  ),
+                                ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    '우선순위',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const Text(
+                    '선택하지 않으면 모든 우선순위를 표시합니다.',
+                    style: TextStyle(fontSize: 12, color: AppTheme.muted),
+                  ),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      for (final priority in TaskPriority.values)
+                        FilterChip(
+                          label: Text(switch (priority) {
+                            TaskPriority.high => '높음',
+                            TaskPriority.medium => '중간',
+                            TaskPriority.low => '낮음',
+                          }),
+                          selected: _value.priorities.contains(priority),
+                          onSelected: _saving
+                              ? null
+                              : (_) => _change(
+                                  _value.copyWith(
+                                    priorities: _toggle(
+                                      _value.priorities,
+                                      priority,
+                                    ),
+                                  ),
+                                ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    '태그',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const Text(
+                    '선택한 태그 중 하나가 있는 작업을 표시합니다.',
+                    style: TextStyle(fontSize: 12, color: AppTheme.muted),
+                  ),
+                  if (widget.tags.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Text('등록된 태그가 없습니다.'),
+                    ),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      for (final tag in widget.tags)
+                        FilterChip(
+                          label: Text('#${tag.name}'),
+                          selected: _value.tagIds.contains(tag.id),
+                          avatar: Icon(
+                            Icons.circle,
+                            size: 10,
+                            color: colorFromHex(tag.color),
+                          ),
+                          onSelected: _saving
+                              ? null
+                              : (_) => _change(
+                                  _value.copyWith(
+                                    tagIds: _toggle(_value.tagIds, tag.id),
+                                  ),
+                                ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+          ),
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                TextButton(
+                  onPressed: _saving
+                      ? null
+                      : () => _change(const HomeViewOptions()),
+                  child: const Text('기본값 초기화'),
+                ),
+                const Spacer(),
+                FilledButton(
+                  onPressed: _saving
+                      ? null
+                      : () async {
+                          setState(() => _saving = true);
+                          try {
+                            await widget.onSave(_value);
+                            if (context.mounted) Navigator.pop(context);
+                          } catch (_) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    '보기 설정을 저장하지 못했습니다. 다시 시도해주세요.',
+                                  ),
+                                ),
+                              );
+                            }
+                          } finally {
+                            if (mounted) setState(() => _saving = false);
+                          }
+                        },
+                  child: Text(_saving ? '저장 중…' : '저장'),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}

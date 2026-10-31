@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:ku_task_management/core/theme/app_theme.dart';
 import 'package:ku_task_management/data/models/home_section.dart';
+import 'package:ku_task_management/data/models/home_view_options.dart';
 import 'package:ku_task_management/data/models/task_models.dart';
 import 'package:ku_task_management/data/repositories/folder_repository.dart';
 import 'package:ku_task_management/data/repositories/notification_repository.dart';
@@ -89,9 +90,6 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Finder section(HomeSection section) =>
-      find.byKey(ValueKey('home-section-${section.id}'));
-
   for (final completed in [true, false]) {
     testWidgets(
       'applies weekly widget ${completed ? 'completion' : 'uncompletion'} before reloading the calendar on resume',
@@ -125,6 +123,8 @@ void main() {
           AppLifecycleState.resumed,
         );
         await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('nav-calendar')));
+        await tester.pumpAndSettle();
 
         expect(
           repositories.tasks.single.status,
@@ -146,56 +146,26 @@ void main() {
   }
 
   testWidgets(
-    'settings editor updates home without changing tasks or the selected tag',
+    'settings changes preserve saved view and existing home preferences',
     (tester) async {
+      repositories.settings = repositories.settings.copyWith(
+        homeSelectedTagId: 'tag-1',
+        homeView: const HomeViewOptions(sort: HomeSort.newest),
+      );
       await pumpApp(tester);
-      expect(section(HomeSection.calendar), findsNothing);
-      for (final value in HomeSection.values.where(
-        (value) => value != HomeSection.calendar,
-      )) {
-        expect(section(value), findsOneWidget);
-      }
-      final tagPicker = find.byType(DropdownButtonFormField<String?>);
-      await tester.tap(tagPicker);
+      await tester.tap(find.byTooltip('사이드 메뉴'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('전공').last);
+      await tester.tap(find.byKey(const ValueKey('drawer-settings')));
       await tester.pumpAndSettle();
-      expect(repositories.settings.homeSelectedTagId, 'tag-1');
-
-      await tester.tap(find.byTooltip('설정').first);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('홈 화면 구성'));
-      await tester.pumpAndSettle();
-      for (final id in ['todayTasks', 'calendar']) {
-        await tester.tap(
-          find.descendant(
-            of: find.byKey(ValueKey(id)),
-            matching: find.byType(Switch),
-          ),
-        );
-      }
-      await tester.tap(find.text('저장'));
-      await tester.pumpAndSettle();
-      expect(repositories.settings.homeSelectedTagId, 'tag-1');
-      expect(repositories.settings.hiddenHomeSections, {
-        HomeSection.todayTasks,
-      });
-
-      // Another settings write must preserve both the tag choice and home layout.
       await tester.tap(find.byType(Switch));
       await tester.pumpAndSettle();
       expect(repositories.settings.defaultNotificationEnabled, false);
       expect(repositories.settings.homeSelectedTagId, 'tag-1');
-      expect(repositories.settings.hiddenHomeSections, {
-        HomeSection.todayTasks,
-      });
-      await tester.tap(find.text('홈'));
+      expect(repositories.settings.homeView.sort, HomeSort.newest);
+      await tester.tap(find.byKey(const ValueKey('nav-home')));
       await tester.pumpAndSettle();
-      expect(section(HomeSection.todayTasks), findsNothing);
-      expect(section(HomeSection.calendar), findsOneWidget);
-      expect(find.byType(HomeCalendarSection), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-section-period')), findsOneWidget);
       expect(repositories.tasks.single.status, TaskStatus.active);
-      expect(find.text('태그가 있는 작업'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
     },
@@ -213,6 +183,8 @@ void main() {
       },
     );
     await pumpApp(tester);
+    await tester.tap(find.byKey(const ValueKey('nav-calendar')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('선택한 날짜에 일정 추가'));
     await tester.pumpAndSettle();
     final createScreen = tester.widget<TaskCreateScreen>(
@@ -255,6 +227,8 @@ void main() {
         hiddenHomeSections: {},
       );
       await pumpApp(tester);
+      await tester.tap(find.byKey(const ValueKey('nav-calendar')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('선택한 날짜에 일정 추가'));
       await tester.pumpAndSettle();
       await tester.pageBack();
@@ -266,36 +240,31 @@ void main() {
     },
   );
 
-  testWidgets('loads saved order and supports hiding every section', (
-    tester,
-  ) async {
-    repositories.settings = repositories.settings.copyWith(
-      homeSectionOrder: HomeSection.values.reversed.toList(),
-      hiddenHomeSections: {},
-    );
-    await pumpApp(tester);
-    final positions = HomeSection.values.reversed
-        .map((value) => tester.getTopLeft(section(value)).dy)
-        .toList();
-    expect(positions, orderedEquals([...positions]..sort()));
-    await tester.pumpWidget(const SizedBox.shrink());
-
-    repositories.settings = repositories.settings.copyWith(
-      hiddenHomeSections: HomeSection.values.toSet(),
-    );
-    await pumpApp(tester);
-    for (final value in HomeSection.values) {
-      expect(section(value), findsNothing);
-    }
-    expect(find.text('표시 중인 홈 섹션이 없습니다.'), findsOneWidget);
-    await tester.tap(find.byTooltip('설정').first);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('홈 화면 구성'));
-    await tester.pumpAndSettle();
-    expect(find.byType(ReorderableListView), findsOneWidget);
-    expect(tester.takeException(), isNull);
-    await tester.pumpWidget(const SizedBox.shrink());
-  });
+  testWidgets(
+    'new home sections remain available with legacy layouts; calendar has its own tab',
+    (tester) async {
+      repositories.settings = repositories.settings.copyWith(
+        homeSectionOrder: HomeSection.values.reversed.toList(),
+        hiddenHomeSections: HomeSection.values.toSet(),
+      );
+      await pumpApp(tester);
+      for (final id in ['period', 'urgent', 'overdue', 'completed']) {
+        expect(find.byKey(ValueKey('home-section-$id')), findsOneWidget);
+      }
+      expect(find.byType(HomeCalendarSection), findsNothing);
+      expect(find.byType(FloatingActionButton), findsNothing);
+      expect(find.byType(NavigationDestination), findsNWidgets(3));
+      await tester.tap(find.byKey(const ValueKey('nav-calendar')));
+      await tester.pumpAndSettle();
+      expect(find.byType(HomeCalendarSection), findsOneWidget);
+      expect(
+        repositories.settings.hiddenHomeSections,
+        HomeSection.values.toSet(),
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
 }
 
 class _WidgetService extends Fake implements WidgetUpdateService {

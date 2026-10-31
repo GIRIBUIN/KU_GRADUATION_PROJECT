@@ -1,13 +1,12 @@
 import '../../../core/utils/entity_id.dart';
-import '../../../core/utils/list_defaults.dart';
 import 'dart:async';
+import '../../../core/utils/list_defaults.dart';
 
 import 'package:flutter/material.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/theme/app_theme.dart';
-import '../../../data/models/home_section.dart';
 import '../../../data/models/task_models.dart';
 import '../../../data/repositories/folder_repository.dart';
 import '../../../data/repositories/notification_repository.dart';
@@ -21,12 +20,14 @@ import '../../../data/services/widget_update_service.dart';
 import '../../../data/services/http_ecampus_auth_service.dart';
 import '../../services/in_app_webview_ecampus_cookie_store.dart';
 import '../../services/local_notification_service.dart';
-import '../settings/home_layout_screen.dart';
+import 'mobile_home_page.dart';
 import '../sync/ecampus_sync_progress_screen.dart';
 import '../task/task_create_screen.dart';
 import '../task/task_detail_screen.dart';
 import '../../widgets/task_metadata_picker.dart' as metadata_picker;
 import '../../widgets/home_calendar_section.dart';
+
+enum _DrawerAdd { folder, list, tag }
 
 class MainShellScreen extends StatefulWidget {
   const MainShellScreen({
@@ -57,6 +58,7 @@ class MainShellScreen extends StatefulWidget {
 class _MainShellScreenState extends State<MainShellScreen>
     with WidgetsBindingObserver {
   var _selectedIndex = 0;
+  final _metadataManagerKey = GlobalKey<_ManagementPageState>();
   EcampusSession? _ecampusSession;
   Timer? _clockRefreshTimer;
   late Future<List<Task>> _tasksFuture;
@@ -175,7 +177,12 @@ class _MainShellScreenState extends State<MainShellScreen>
 
   Future<_TaskMetadataLookup> _loadMetadata() async {
     final tags = await widget.tagRepository.getTags();
-    return _TaskMetadataLookup(tags: tags);
+    final lists = await widget.folderRepository.getFolders();
+    final repository = widget.folderRepository;
+    final groups = repository is GroupedListRepository
+        ? await (repository as GroupedListRepository).getGroups()
+        : const <FolderGroup>[];
+    return _TaskMetadataLookup(tags: tags, lists: lists, groups: groups);
   }
 
   void _refreshMetadata() {
@@ -436,6 +443,54 @@ class _MainShellScreenState extends State<MainShellScreen>
     }
   }
 
+  // Drawer actions reuse management dialogs and their repository save handlers.
+  Future<void> _addFromDrawer(_DrawerAdd kind) async {
+    final manager = _metadataManagerKey.currentState;
+    if (manager == null) return;
+    try {
+      if (kind == _DrawerAdd.folder) {
+        await manager._editGroup();
+      } else {
+        final lists = await manager._loadLists();
+        if (!mounted || !manager.mounted) return;
+        if (kind == _DrawerAdd.list) {
+          await manager._createFolder(lists);
+        } else {
+          await manager._createTag(lists);
+        }
+      }
+    } catch (_) {
+      if (mounted) _showSnackBar(context, '항목을 추가하지 못했습니다. 다시 시도해주세요.');
+    }
+  }
+
+  Future<void> _openQuickAdd() async {
+    await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      isDismissible: false,
+      enableDrag: false,
+      builder: (_) => TaskCreateScreen(
+        quickAdd: true,
+        taskRepository: widget.taskRepository,
+        subTaskRepository: widget.subTaskRepository,
+        notificationRepository: widget.notificationRepository,
+        settingsRepository: widget.settingsRepository,
+        tagRepository: widget.tagRepository,
+        folderRepository: widget.folderRepository,
+        localNotificationService: widget.localNotificationService,
+      ),
+    );
+    if (mounted) _refreshTasksAndMetadata();
+  }
+
+  void _settingsSaved(AppSettings saved) {
+    setState(() {
+      _settingsFuture = Future.value(saved);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<Task>>(
@@ -464,38 +519,79 @@ class _MainShellScreenState extends State<MainShellScreen>
                 final metadata =
                     metadataSnapshot.data ?? const _TaskMetadataLookup.empty();
                 final pages = [
-                  _HomePage(
+                  MobileHomePage(
                     tasks: tasks,
                     isLoading: isLoading,
-                    urgentDueDays: settings.urgentDueDays,
-                    selectedTagId: settings.homeSelectedTagId,
-                    visibleSections: settings.homeSectionOrder
-                        .where(
-                          (section) =>
-                              !settings.hiddenHomeSections.contains(section),
-                        )
-                        .toList(growable: false),
-                    metadata: metadata,
+                    settings: settings,
+                    settingsReady: settingsSnapshot.hasData,
+                    settingsRepository: widget.settingsRepository,
+                    tags: metadata.tags,
+                    lists: metadata.lists,
+                    groups: metadata.groups,
+                    onSettingsSaved: _settingsSaved,
                     onRefresh: _refreshTasks,
-                    onOpenSync: _openEcampusSync,
-                    onOpenSettings: () => setState(() => _selectedIndex = 3),
-                    onSelectedTagChanged: (tagId) async {
-                      final saved = await widget.settingsRepository
-                          .saveSettings(
-                            settings.copyWith(homeSelectedTagId: tagId),
-                          );
-                      if (!mounted) {
-                        return;
-                      }
-                      setState(() {
-                        _settingsFuture = Future.value(saved);
-                      });
+                    onImport: _openEcampusSync,
+                    onSettings: () => setState(() => _selectedIndex = 3),
+                    onAddFolder:
+                        widget.folderRepository is GroupedListRepository
+                        ? () => _addFromDrawer(_DrawerAdd.folder)
+                        : null,
+                    onAddList: () => _addFromDrawer(_DrawerAdd.list),
+                    onAddTag: () => _addFromDrawer(_DrawerAdd.tag),
+                    onToggleTask: _toggleTaskCompletion,
+                    onOpenTask: _openTaskDetail,
+                    onRestoreTask: _restoreTask,
+                    onDeletePermanently: _deleteTaskPermanently,
+                  ),
+                  SafeArea(
+                    child: ListView(
+                      padding: const EdgeInsets.all(16),
+                      children: [
+                        HomeCalendarSection(
+                          tasks: tasks,
+                          isLoading: isLoading,
+                          onCreateTask: (day) =>
+                              _openTaskCreate(initialDay: day),
+                          onOpenTask: _openTaskDetail,
+                          onToggleTask: _toggleTaskCompletion,
+                          onDeleteTask: _deleteTask,
+                        ),
+                      ],
+                    ),
+                  ),
+                  _ManagementPage(
+                    key: _metadataManagerKey,
+                    tasks: tasks,
+                    loadTasks: _loadTasks,
+                    settings: settings,
+                    tagRepository: widget.tagRepository,
+                    folderRepository: widget.folderRepository,
+                    subTaskRepository: widget.subTaskRepository,
+                    metadataVersion: _metadataVersion,
+                    onMetadataChanged: _refreshMetadata,
+                    onSettingsChanged: (value) async {
+                      _settingsSaved(
+                        await widget.settingsRepository.saveSettings(value),
+                      );
                     },
                     onToggleTask: _toggleTaskCompletion,
                     onDeleteTask: _deleteTask,
                     onOpenTaskDetail: _openTaskDetail,
-                    onCreateCalendarTask: (day) =>
-                        _openTaskCreate(initialDay: day),
+                    onRestoreTask: _restoreTask,
+                    onAllowExcludedTaskSync: _allowExcludedTaskSync,
+                    onDeletePermanently: _deleteTaskPermanently,
+                  ),
+                  _SettingsPage(
+                    settingsRepository: widget.settingsRepository,
+                    settingsFuture: _settingsFuture,
+                    ecampusSession: _ecampusSession,
+                    lastEcampusSyncedAt: _lastEcampusSyncedAt(tasks),
+                    onSettingsChanged: _settingsSaved,
+                    onOpenSync: _openEcampusSync,
+                    onClearEcampusSession: _clearEcampusSession,
+                    localNotificationService: widget.localNotificationService,
+                    onManageMetadata: () => setState(() => _selectedIndex = 2),
+                    onManageTasks: () => setState(() => _selectedIndex = 4),
                   ),
                   _TaskListPage(
                     tasks: tasks,
@@ -510,320 +606,68 @@ class _MainShellScreenState extends State<MainShellScreen>
                     onOpenTaskDetail: _openTaskDetail,
                     subTaskRepository: widget.subTaskRepository,
                   ),
-                  _ManagementPage(
-                    tasks: tasks,
-                    loadTasks: _loadTasks,
-                    settings: settings,
-                    tagRepository: widget.tagRepository,
-                    folderRepository: widget.folderRepository,
-                    subTaskRepository: widget.subTaskRepository,
-                    metadataVersion: _metadataVersion,
-                    onMetadataChanged: _refreshMetadata,
-                    onSettingsChanged: (updatedSettings) async {
-                      final saved = await widget.settingsRepository
-                          .saveSettings(updatedSettings);
-                      if (!mounted) {
-                        return;
-                      }
-                      setState(() {
-                        _settingsFuture = Future.value(saved);
-                      });
-                    },
-                    onToggleTask: _toggleTaskCompletion,
-                    onDeleteTask: _deleteTask,
-                    onOpenTaskDetail: _openTaskDetail,
-                    onRestoreTask: _restoreTask,
-                    onAllowExcludedTaskSync: _allowExcludedTaskSync,
-                    onDeletePermanently: _deleteTaskPermanently,
-                  ),
-                  _SettingsPage(
-                    settingsRepository: widget.settingsRepository,
-                    settingsFuture: _settingsFuture,
-                    ecampusSession: _ecampusSession,
-                    lastEcampusSyncedAt: _lastEcampusSyncedAt(tasks),
-                    onSettingsChanged: (saved) {
-                      setState(() {
-                        _settingsFuture = Future.value(saved);
-                      });
-                    },
-                    onOpenSync: _openEcampusSync,
-                    onClearEcampusSession: _clearEcampusSession,
-                    localNotificationService: widget.localNotificationService,
-                  ),
                 ];
-
-                return Scaffold(
-                  body: IndexedStack(index: _selectedIndex, children: pages),
-                  bottomNavigationBar: NavigationBar(
-                    selectedIndex: _selectedIndex,
-                    onDestinationSelected: (index) {
-                      setState(() {
-                        _selectedIndex = index;
-                      });
-                    },
-                    destinations: const [
-                      NavigationDestination(
-                        icon: Icon(Icons.home_outlined),
-                        selectedIcon: Icon(Icons.home_rounded),
-                        label: '홈',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.format_list_bulleted_rounded),
-                        selectedIcon: Icon(Icons.format_list_bulleted_rounded),
-                        label: '전체',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.folder_outlined),
-                        selectedIcon: Icon(Icons.folder_rounded),
-                        label: '관리',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.settings_outlined),
-                        selectedIcon: Icon(Icons.settings_rounded),
-                        label: '설정',
-                      ),
-                    ],
+                return PopScope(
+                  canPop: _selectedIndex < 2,
+                  onPopInvokedWithResult: (didPop, result) {
+                    if (!didPop) setState(() => _selectedIndex = 0);
+                  },
+                  child: Scaffold(
+                    appBar: _selectedIndex < 2
+                        ? null
+                        : AppBar(
+                            leading: BackButton(
+                              onPressed: () => setState(
+                                () => _selectedIndex = _selectedIndex == 3
+                                    ? 0
+                                    : 3,
+                              ),
+                            ),
+                            title: Text(switch (_selectedIndex) {
+                              2 => '목록·태그 관리',
+                              3 => '설정',
+                              _ => '전체 일정 관리',
+                            }),
+                          ),
+                    body: IndexedStack(index: _selectedIndex, children: pages),
+                    bottomNavigationBar: NavigationBar(
+                      labelBehavior:
+                          NavigationDestinationLabelBehavior.alwaysHide,
+                      selectedIndex: _selectedIndex == 1 ? 2 : 0,
+                      onDestinationSelected: (index) {
+                        if (index == 1) {
+                          _openQuickAdd();
+                          return;
+                        }
+                        setState(() => _selectedIndex = index == 2 ? 1 : 0);
+                      },
+                      destinations: const [
+                        NavigationDestination(
+                          key: ValueKey('nav-home'),
+                          icon: Icon(Icons.home_outlined),
+                          selectedIcon: Icon(Icons.home_rounded),
+                          label: '홈',
+                        ),
+                        NavigationDestination(
+                          key: ValueKey('nav-add'),
+                          icon: Icon(Icons.add_rounded),
+                          label: '빠른 추가',
+                        ),
+                        NavigationDestination(
+                          key: ValueKey('nav-calendar'),
+                          icon: Icon(Icons.calendar_month_outlined),
+                          selectedIcon: Icon(Icons.calendar_month_rounded),
+                          label: '캘린더',
+                        ),
+                      ],
+                    ),
                   ),
-                  floatingActionButton:
-                      _selectedIndex == 0 || _selectedIndex == 1
-                      ? FloatingActionButton(
-                          onPressed: _openTaskCreate,
-                          child: const Icon(Icons.add_rounded),
-                        )
-                      : null,
                 );
               },
             );
           },
         );
       },
-    );
-  }
-}
-
-class _HomePage extends StatefulWidget {
-  const _HomePage({
-    required this.tasks,
-    required this.isLoading,
-    required this.urgentDueDays,
-    required this.selectedTagId,
-    required this.visibleSections,
-    required this.metadata,
-    required this.onRefresh,
-    required this.onOpenSync,
-    required this.onOpenSettings,
-    required this.onSelectedTagChanged,
-    required this.onToggleTask,
-    required this.onDeleteTask,
-    required this.onOpenTaskDetail,
-    required this.onCreateCalendarTask,
-  });
-
-  final List<Task> tasks;
-  final bool isLoading;
-  final int urgentDueDays;
-  final String? selectedTagId;
-  final List<HomeSection> visibleSections;
-  final _TaskMetadataLookup metadata;
-  final VoidCallback onRefresh;
-  final Future<void> Function() onOpenSync;
-  final VoidCallback onOpenSettings;
-  final ValueChanged<String?> onSelectedTagChanged;
-  final ValueChanged<Task> onToggleTask;
-  final ValueChanged<Task> onDeleteTask;
-  final ValueChanged<Task> onOpenTaskDetail;
-  final ValueChanged<DateTime> onCreateCalendarTask;
-
-  @override
-  State<_HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<_HomePage> {
-  String? _selectedTagId;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedTagId = widget.selectedTagId;
-  }
-
-  @override
-  void didUpdateWidget(_HomePage oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.selectedTagId != widget.selectedTagId &&
-        _selectedTagId != widget.selectedTagId) {
-      _selectedTagId = widget.selectedTagId;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final summary = HomeTaskSummary.fromTasks(
-      tasks: widget.tasks,
-      now: now,
-      urgentDueDays: widget.urgentDueDays,
-    );
-    final selectedTag = widget.metadata.tagById(_selectedTagId);
-    final effectiveSelectedTagId = selectedTag?.id;
-    final selectedTagTasks = selectedTag == null
-        ? <Task>[]
-        : (List<Task>.of(
-            summary.activeTasks.where(
-              (task) => task.tagIds.contains(selectedTag.id),
-            ),
-          )..sort(_compareDueDate));
-
-    return SafeArea(
-      child: RefreshIndicator(
-        onRefresh: () async => widget.onRefresh(),
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 84),
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    _todayLabel(now),
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: AppTheme.ink,
-                    ),
-                  ),
-                ),
-                _IconAction(
-                  icon: Icons.sync_rounded,
-                  color: AppTheme.primaryBlue,
-                  onTap: widget.onOpenSync,
-                  tooltip: 'e-campus 동기화',
-                ),
-                const SizedBox(width: 10),
-                _IconAction(
-                  icon: Icons.settings_rounded,
-                  color: AppTheme.ink,
-                  onTap: widget.onOpenSettings,
-                  tooltip: '설정',
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            _SummaryCard(
-              items: [
-                _SummaryItem(
-                  icon: Icons.event_available_rounded,
-                  label: '오늘 할 일',
-                  value: '${summary.todayTasks.length}',
-                  color: AppTheme.successGreen,
-                ),
-                _SummaryItem(
-                  icon: Icons.schedule_rounded,
-                  label: '마감 임박',
-                  value: '${summary.urgentTasks.length}',
-                  color: AppTheme.warningOrange,
-                ),
-                _SummaryItem(
-                  icon: Icons.assignment_outlined,
-                  label: '미완료',
-                  value: '${summary.activeTasks.length}',
-                  color: AppTheme.primaryBlue,
-                ),
-                _SummaryItem(
-                  icon: Icons.warning_amber_rounded,
-                  label: '마감 지남',
-                  value: '${summary.overdueTasks.length}',
-                  color: AppTheme.dangerRed,
-                ),
-              ],
-            ),
-            const SizedBox(height: 32),
-            if (widget.visibleSections.isEmpty)
-              const _EmptyBlock(message: '표시 중인 홈 섹션이 없습니다.'),
-            for (final section in widget.visibleSections)
-              Padding(
-                key: ValueKey('home-section-${section.id}'),
-                padding: const EdgeInsets.only(bottom: 20),
-                child: _buildSection(
-                  section,
-                  summary,
-                  selectedTagTasks,
-                  effectiveSelectedTagId,
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSection(
-    HomeSection section,
-    HomeTaskSummary summary,
-    List<Task> selectedTagTasks,
-    String? selectedTagId,
-  ) {
-    return switch (section) {
-      HomeSection.todayTasks => _buildTaskSection(
-        section,
-        summary.todayTasks,
-        limit: 3,
-        emptyMessage: '오늘 마감인 일정이 없습니다.',
-      ),
-      HomeSection.urgentTasks => _buildTaskSection(
-        section,
-        summary.urgentTasks,
-        emptyMessage: '가까운 마감 일정이 없습니다.',
-      ),
-      HomeSection.overdueTasks => _buildTaskSection(
-        section,
-        summary.overdueTasks,
-        emptyMessage: '마감이 지난 일정이 없습니다.',
-      ),
-      HomeSection.selectedTagTasks => _HomeTagSection(
-        tags: widget.metadata.tags,
-        selectedTagId: selectedTagId,
-        selectedTasks: selectedTagTasks,
-        onTagChanged: (tagId) {
-          setState(() => _selectedTagId = tagId);
-          widget.onSelectedTagChanged(tagId);
-        },
-        onToggleTask: widget.onToggleTask,
-        onDeleteTask: widget.onDeleteTask,
-        onOpenTaskDetail: widget.onOpenTaskDetail,
-      ),
-      HomeSection.calendar => HomeCalendarSection(
-        tasks: widget.tasks,
-        isLoading: widget.isLoading,
-        onCreateTask: widget.onCreateCalendarTask,
-        onOpenTask: widget.onOpenTaskDetail,
-        onToggleTask: widget.onToggleTask,
-        onDeleteTask: widget.onDeleteTask,
-      ),
-    };
-  }
-
-  Widget _buildTaskSection(
-    HomeSection section,
-    List<Task> tasks, {
-    int limit = 4,
-    required String emptyMessage,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _SectionHeader(title: section.label, count: tasks.length),
-        const SizedBox(height: 12),
-        if (widget.isLoading)
-          const _LoadingBlock()
-        else if (tasks.isEmpty)
-          _EmptyBlock(message: emptyMessage)
-        else
-          _HomeTaskSectionCard(
-            tasks: tasks.take(limit).toList(growable: false),
-            onToggleTask: widget.onToggleTask,
-            onDeleteTask: widget.onDeleteTask,
-            onOpenTaskDetail: widget.onOpenTaskDetail,
-          ),
-      ],
     );
   }
 }
@@ -878,7 +722,7 @@ class _TaskListPageState extends State<_TaskListPage> {
               children: [
                 Expanded(
                   child: Text(
-                    '목록',
+                    '전체',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w900,
                     ),
@@ -1086,11 +930,20 @@ bool _isExcludedEcampusTask(Task task) {
 }
 
 class _TaskMetadataLookup {
-  const _TaskMetadataLookup({required List<Tag> tags}) : _tags = tags;
+  const _TaskMetadataLookup({
+    required List<Tag> tags,
+    this.lists = const [],
+    this.groups = const [],
+  }) : _tags = tags;
 
-  const _TaskMetadataLookup.empty() : _tags = const [];
+  const _TaskMetadataLookup.empty()
+    : _tags = const [],
+      lists = const [],
+      groups = const [];
 
   final List<Tag> _tags;
+  final List<Folder> lists;
+  final List<FolderGroup> groups;
 
   List<Tag> get tags => _tags;
 
@@ -2583,6 +2436,8 @@ class _SettingsPage extends StatefulWidget {
     required this.onOpenSync,
     required this.onClearEcampusSession,
     required this.localNotificationService,
+    required this.onManageMetadata,
+    required this.onManageTasks,
   });
 
   final SettingsRepository settingsRepository;
@@ -2592,6 +2447,7 @@ class _SettingsPage extends StatefulWidget {
   final ValueChanged<AppSettings> onSettingsChanged;
   final Future<void> Function() onOpenSync;
   final Future<void> Function() onClearEcampusSession;
+  final VoidCallback onManageMetadata, onManageTasks;
   final LocalNotificationService localNotificationService;
 
   @override
@@ -2605,20 +2461,6 @@ class _SettingsPageState extends State<_SettingsPage> {
       return;
     }
     widget.onSettingsChanged(saved);
-  }
-
-  Future<void> _openHomeLayout(AppSettings settings) async {
-    final saved = await Navigator.of(context).push<AppSettings>(
-      MaterialPageRoute(
-        builder: (_) => HomeLayoutScreen(
-          settings: settings,
-          settingsRepository: widget.settingsRepository,
-        ),
-      ),
-    );
-    if (saved != null && mounted) {
-      widget.onSettingsChanged(saved);
-    }
   }
 
   Future<void> _setDefaultNotificationEnabled(
@@ -2662,7 +2504,7 @@ class _SettingsPageState extends State<_SettingsPage> {
                 children: [
                   _SettingsActionRow(
                     icon: Icons.sync_rounded,
-                    title: 'e-campus 동기화',
+                    title: 'eCampus 가져오기',
                     subtitle: 'WebView 로그인 후 todo를 가져옵니다.',
                     onTap: () => unawaited(widget.onOpenSync()),
                   ),
@@ -2676,7 +2518,7 @@ class _SettingsPageState extends State<_SettingsPage> {
                   ),
                   _SettingsInfoRow(
                     icon: Icons.schedule_rounded,
-                    title: '마지막 동기화',
+                    title: '마지막 가져오기',
                     value: widget.lastEcampusSyncedAt == null
                         ? '없음'
                         : _dateTimeLabel(widget.lastEcampusSyncedAt!),
@@ -2726,11 +2568,17 @@ class _SettingsPageState extends State<_SettingsPage> {
               _SettingsSection(
                 title: '홈 표시',
                 children: [
-                  _SettingsInfoRow(
-                    icon: Icons.dashboard_customize_outlined,
-                    title: '홈 화면 구성',
-                    value: '편집',
-                    onTap: isLoading ? null : () => _openHomeLayout(settings),
+                  _SettingsActionRow(
+                    icon: Icons.folder_outlined,
+                    title: '목록·태그 관리',
+                    subtitle: '폴더, 목록, 태그와 보관된 목록을 관리합니다.',
+                    onTap: widget.onManageMetadata,
+                  ),
+                  _SettingsActionRow(
+                    icon: Icons.format_list_bulleted_rounded,
+                    title: '전체 일정 관리',
+                    subtitle: '날짜 제한 없이 조회하고 순서와 일괄 작업을 관리합니다.',
+                    onTap: widget.onManageTasks,
                   ),
                   _SettingsInfoRow(
                     icon: Icons.access_time_rounded,
@@ -2901,284 +2749,6 @@ class _SettingsPageState extends State<_SettingsPage> {
             ),
           );
         },
-      ),
-    );
-  }
-}
-
-class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({required this.items});
-
-  final List<_SummaryItem> items;
-
-  @override
-  Widget build(BuildContext context) {
-    final topItems = items.take(2).toList(growable: false);
-    final bottomItems = items.skip(2).take(2).toList(growable: false);
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Column(
-          children: [
-            _SummaryRow(items: topItems),
-            const Divider(height: 1, color: AppTheme.line),
-            _SummaryRow(items: bottomItems),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SummaryRow extends StatelessWidget {
-  const _SummaryRow({required this.items});
-
-  final List<_SummaryItem> items;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 58,
-      child: Row(
-        children: [
-          for (var i = 0; i < items.length; i++) ...[
-            Expanded(child: _SummaryCell(item: items[i])),
-            if (i != items.length - 1)
-              const SizedBox(
-                height: 34,
-                child: VerticalDivider(width: 1, color: AppTheme.line),
-              ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _SummaryCell extends StatelessWidget {
-  const _SummaryCell({required this.item});
-
-  final _SummaryItem item;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(item.icon, size: 16, color: item.color),
-              const SizedBox(width: 5),
-              Flexible(
-                child: Text(
-                  item.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppTheme.muted,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    height: 1.1,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          item.value,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: item.color,
-            fontSize: 22,
-            fontWeight: FontWeight.w900,
-            height: 1.05,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SummaryItem {
-  const _SummaryItem({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-}
-
-class _HomeTagSection extends StatelessWidget {
-  const _HomeTagSection({
-    required this.tags,
-    required this.selectedTagId,
-    required this.selectedTasks,
-    required this.onTagChanged,
-    required this.onToggleTask,
-    required this.onDeleteTask,
-    required this.onOpenTaskDetail,
-  });
-
-  final List<Tag> tags;
-  final String? selectedTagId;
-  final List<Task> selectedTasks;
-  final ValueChanged<String?> onTagChanged;
-  final ValueChanged<Task> onToggleTask;
-  final ValueChanged<Task> onDeleteTask;
-  final ValueChanged<Task> onOpenTaskDetail;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _SectionHeader(title: '선택 태그', count: selectedTasks.length),
-        const SizedBox(height: 10),
-        DropdownButtonFormField<String?>(
-          initialValue: selectedTagId,
-          decoration: const InputDecoration(
-            isDense: true,
-            labelText: '태그',
-            prefixIcon: Icon(Icons.sell_outlined),
-          ),
-          items: [
-            const DropdownMenuItem<String?>(
-              value: null,
-              child: Text('태그 선택 안 함'),
-            ),
-            for (final tag in tags)
-              DropdownMenuItem<String?>(
-                value: tag.id,
-                child: Text(tag.name, overflow: TextOverflow.ellipsis),
-              ),
-          ],
-          onChanged: onTagChanged,
-        ),
-        const SizedBox(height: 12),
-        if (selectedTagId == null)
-          const _EmptyBlock(message: '태그를 선택하면 관련 할 일을 볼 수 있습니다.')
-        else if (selectedTasks.isEmpty)
-          const _EmptyBlock(message: '선택한 태그의 할 일이 없습니다.')
-        else
-          _HomeTaskSectionCard(
-            tasks: selectedTasks.take(4).toList(growable: false),
-            onToggleTask: onToggleTask,
-            onDeleteTask: onDeleteTask,
-            onOpenTaskDetail: onOpenTaskDetail,
-          ),
-      ],
-    );
-  }
-}
-
-class _HomeTaskSectionCard extends StatelessWidget {
-  const _HomeTaskSectionCard({
-    required this.tasks,
-    required this.onToggleTask,
-    required this.onDeleteTask,
-    required this.onOpenTaskDetail,
-  });
-
-  final List<Task> tasks;
-  final ValueChanged<Task> onToggleTask;
-  final ValueChanged<Task> onDeleteTask;
-  final ValueChanged<Task> onOpenTaskDetail;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      shape: _taskListCardShape,
-      child: Column(
-        children: [
-          for (var i = 0; i < tasks.length; i++) ...[
-            Dismissible(
-              key: ValueKey('home_dismiss_${tasks[i].id}'),
-              direction: DismissDirection.horizontal,
-              background: const _TaskSwipeBackground(
-                action: _TaskSwipeAction.edit,
-                alignment: Alignment.centerLeft,
-              ),
-              secondaryBackground: const _TaskSwipeBackground(
-                action: _TaskSwipeAction.delete,
-                alignment: Alignment.centerRight,
-              ),
-              confirmDismiss: (direction) async {
-                if (direction == DismissDirection.startToEnd) {
-                  onOpenTaskDetail(tasks[i]);
-                  return false;
-                }
-                return true;
-              },
-              onDismissed: (_) => onDeleteTask(tasks[i]),
-              child: _HomeTaskListTile(
-                task: tasks[i],
-                onToggle: () => onToggleTask(tasks[i]),
-              ),
-            ),
-            if (i != tasks.length - 1) const Divider(height: 1),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _HomeTaskListTile extends StatelessWidget {
-  const _HomeTaskListTile({required this.task, required this.onToggle});
-
-  final Task task;
-  final VoidCallback onToggle;
-
-  @override
-  Widget build(BuildContext context) {
-    final isOverdue = task.dueDate != null && _isOverdue(task.dueDate!);
-
-    return InkWell(
-      child: Stack(
-        children: [
-          if (isOverdue)
-            Positioned.fill(
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Container(width: 3, color: AppTheme.dangerRed),
-              ),
-            ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-            child: Row(
-              children: [
-                _StatusCheckbox(task: task, onTap: onToggle),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    task.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppTheme.ink,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                      height: 1.2,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -3904,28 +3474,6 @@ const _taskListCardShape = RoundedRectangleBorder(
   side: BorderSide(color: AppTheme.line),
 );
 
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.title, required this.count});
-
-  final String title;
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Text(
-          title,
-          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
-        ),
-        const SizedBox(width: 8),
-        if (count > 0)
-          _ColoredChip(label: '$count', color: AppTheme.successGreen),
-      ],
-    );
-  }
-}
-
 class _ListSectionHeader extends StatelessWidget {
   const _ListSectionHeader({required this.title, required this.count});
 
@@ -4016,41 +3564,6 @@ class _FilterSelector extends StatelessWidget {
             child: Text(filter.label),
           ),
       ],
-    );
-  }
-}
-
-class _IconAction extends StatelessWidget {
-  const _IconAction({
-    required this.icon,
-    required this.color,
-    required this.onTap,
-    required this.tooltip,
-  });
-
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-  final String tooltip;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppTheme.line),
-          ),
-          child: Icon(icon, color: color),
-        ),
-      ),
     );
   }
 }
@@ -5214,11 +4727,6 @@ String _normalizeHex(String? value) {
 
 bool _isValidHexColor(String value) {
   return RegExp(r'^#[0-9A-F]{6}$').hasMatch(value);
-}
-
-String _todayLabel(DateTime date) {
-  const weekdays = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
-  return '${date.month}월 ${date.day}일 ${weekdays[date.weekday - 1]}';
 }
 
 DateTime? _lastEcampusSyncedAt(List<Task> tasks) {

@@ -25,6 +25,8 @@ class TaskCreateScreen extends StatefulWidget {
     required this.folderRepository,
     required this.localNotificationService,
     this.initialDueDate,
+    this.quickAdd = false,
+    this.initialDraft,
   });
 
   final TaskRepository taskRepository;
@@ -35,6 +37,8 @@ class TaskCreateScreen extends StatefulWidget {
   final FolderRepository folderRepository;
   final LocalNotificationService localNotificationService;
   final DateTime? initialDueDate;
+  final bool quickAdd;
+  final Task? initialDraft;
 
   @override
   State<TaskCreateScreen> createState() => _TaskCreateScreenState();
@@ -69,7 +73,13 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
   @override
   void initState() {
     super.initState();
-    _dueDate = widget.initialDueDate;
+    final draft = widget.initialDraft;
+    _dueDate = draft?.dueDate ?? widget.initialDueDate;
+    _titleController.text = draft?.title ?? '';
+    _memoController.text = draft?.memo ?? '';
+    _priority = draft?.priority;
+    _selectedFolderId = draft?.listId ?? inboxListId;
+    _selectedTagIds.addAll(draft?.tagIds ?? const []);
     _loadDefaults();
   }
 
@@ -93,6 +103,7 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.quickAdd) return _buildQuickAdd(context);
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
@@ -237,6 +248,152 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildQuickAdd(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (!didPop && !_didPopAfterSave && !_isSaving) await _handleBack();
+      },
+      child: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            20,
+            8,
+            20,
+            MediaQuery.viewInsetsOf(context).bottom + 16,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        '빠른 추가',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: '빠른 추가 닫기',
+                      onPressed: _isSaving ? null : _handleBack,
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _titleController,
+                  autofocus: true,
+                  decoration: const InputDecoration(labelText: '제목'),
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) {
+                    if (!_isLoadingSettings && !_isSaving) _saveTask();
+                  },
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton.icon(
+                        onPressed: _isSaving ? null : _pickDueDate,
+                        icon: const Icon(Icons.event_outlined),
+                        label: Text(
+                          _dueDate == null
+                              ? '마감 선택'
+                              : _dateTimeLabel(_dueDate!),
+                        ),
+                      ),
+                    ),
+                    if (_dueDate != null)
+                      IconButton(
+                        tooltip: '마감 지우기',
+                        onPressed: _isSaving
+                            ? null
+                            : () => setState(() => _dueDate = null),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                  ],
+                ),
+                FolderPickerSection(
+                  folders: _folders,
+                  selectedId: _selectedFolderId,
+                  onSelect: (list) => setState(
+                    () => _selectedFolderId = list?.id ?? inboxListId,
+                  ),
+                  onAdd: _createFolder,
+                ),
+                const SizedBox(height: 14),
+                TagPickerSection(
+                  tags: _tags,
+                  selectedIds: _selectedTagIds,
+                  onToggle: _toggleTag,
+                  onAdd: _createTag,
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    TextButton(
+                      onPressed: _isSaving || _isLoadingSettings
+                          ? null
+                          : _openDetailedCreate,
+                      child: const Text('상세 설정'),
+                    ),
+                    const Spacer(),
+                    FilledButton(
+                      onPressed: _isSaving || _isLoadingSettings
+                          ? null
+                          : _saveTask,
+                      child: Text(_isSaving ? '저장 중…' : '추가'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openDetailedCreate() async {
+    final now = DateTime.now();
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => TaskCreateScreen(
+          taskRepository: widget.taskRepository,
+          subTaskRepository: widget.subTaskRepository,
+          notificationRepository: widget.notificationRepository,
+          settingsRepository: widget.settingsRepository,
+          tagRepository: widget.tagRepository,
+          folderRepository: widget.folderRepository,
+          localNotificationService: widget.localNotificationService,
+          initialDraft: Task(
+            id: 'draft',
+            title: _titleController.text,
+            origin: TaskOrigin.personal,
+            status: TaskStatus.active,
+            dueDate: _dueDate,
+            folderIds: [_selectedFolderId ?? inboxListId],
+            tagIds: _selectedTagIds.toList(),
+            createdAt: now,
+            updatedAt: now,
+          ),
+        ),
+      ),
+    );
+    if (saved == true && mounted) {
+      _didPopAfterSave = true;
+      Navigator.of(context).pop(true);
+    } else if (mounted) {
+      await _loadDefaults();
+    }
   }
 
   Future<void> _handleBack() async {

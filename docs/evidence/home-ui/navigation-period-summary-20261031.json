@@ -1,0 +1,56 @@
+{
+  "recorded_at_utc": "2026-10-31T09:32:19.496987+00:00",
+  "git_base": "4d2a35f83cf2ccc6d118288dbdc315c7128787c3",
+  "uncommitted_changes": true,
+  "scope": "Persist chosen home period, separate period/all-date Drawer entries, move Inbox under Lists, remove redundant settings task-management page and page-only code",
+  "schema_version": 7,
+  "tests": {
+    "raw": "navigation-period-final-tests-20261031.jsonl",
+    "passed": 68,
+    "failed": 0,
+    "success": true,
+    "elapsed_ms": 27899
+  },
+  "capture_tests": {
+    "raw": "navigation-period-capture-tests-20261031.jsonl",
+    "passed": 1,
+    "failed": 0,
+    "success": true,
+    "elapsed_ms": 7771
+  },
+  "capture_counts_overlap": true,
+  "initial_tests": {
+    "raw": "navigation-period-tests-20261031.jsonl",
+    "passed": 65,
+    "failed": 3,
+    "success": false,
+    "elapsed_ms": 29853
+  },
+  "analysis": {
+    "raw": "navigation-period-analyze-20261031.txt",
+    "command": "C:\\flutter\\bin\\flutter.bat analyze --no-pub",
+    "errors": 0,
+    "warnings": 0,
+    "info": 0,
+    "exit_code": 0,
+    "capture_method": "Exact stdout copied from the successful direct exec; the earlier buffered shell wrapper stalled and was interrupted"
+  },
+  "persistence": "AppSettings homePeriod JSON key; no schema migration. Relative modes recompute from now; custom dates restore exactly. Scope itself remains in memory.",
+  "all_dates": "Bypasses saved period without overwriting it; existing status, priority and tag filters still apply; deleted/excluded items use existing separate management",
+  "android": {
+    "build_run": false,
+    "installed_on_device": false,
+    "real_device_verified": false
+  },
+  "full_test_suite_repeated": false,
+  "source_git_blob_hashes": {
+    "lib/data/local/mappers/metadata_mappers.dart": "a271f52873061f31192dfcabdcb551dd860c047a",
+    "lib/data/models/home_view_options.dart": "df23555ef5e66adc3945c4de3035b5f7316fcb80",
+    "lib/data/repositories/settings_repository.dart": "f0d82a0182b4b867ae39cb34bc067af447c0021c",
+    "lib/presentation/screens/main/main_shell_screen.dart": "879937d5254ed7e610109ae8e2b7ad5f10b77227",
+    "lib/presentation/screens/main/mobile_home_page.dart": "1e8d0447b7359f3873b36cdcb915eea32d46f78a",
+    "test/data/repositories/drift_metadata_repositories_test.dart": "4c1e9a39c1cbc38e393ce663530bd3140dd8ecd6",
+    "test/presentation/screens/mobile_home_test.dart": "77197f6d7437b6735fc5fc284584de0cbe4e2925",
+    "lib/data/models/home_period_preference.dart": "8abe29eef5f2a65a9a8b2155847b92691b0be2e3"
+  }
+}

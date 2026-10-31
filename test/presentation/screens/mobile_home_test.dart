@@ -250,6 +250,11 @@ void main() {
     await pumpApp(tester);
   }
 
+  Finder selectionCount(int count) => find.descendant(
+    of: find.byKey(const ValueKey('selection-toolbar')),
+    matching: find.text('$count'),
+  );
+
   Finder row(String id, [String section = 'period']) =>
       find.byKey(ValueKey('home-task-$section-$id'));
   Future<void> openDrawer(WidgetTester tester) async {
@@ -727,7 +732,7 @@ void main() {
       expect(find.byType(Card), findsNothing);
       expect(find.text('동기화 제외'), findsNothing);
       expect(find.textContaining('허용하면 즉시'), findsNothing);
-      expect(find.byType(Checkbox), findsNothing);
+      expect(find.byType(Checkbox), findsOneWidget);
       await tester.drag(row('excluded', 'excluded'), const Offset(260, 0));
       await tester.pumpAndSettle();
       expect(
@@ -739,7 +744,9 @@ void main() {
       await tester.tap(excluded);
       await tester.pumpAndSettle();
       await capture(tester, 'excluded-list');
-      await tester.tap(find.byTooltip('다시 가져오기 허용'));
+      await tester.tap(row('excluded', 'excluded'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('excluded-restore-selected')));
       await tester.pumpAndSettle();
       expect(await tasks.getTaskById('excluded'), isNull);
       expect(find.text('제외 과제'), findsNothing);
@@ -879,16 +886,18 @@ void main() {
       await tester.ensureVisible(find.byKey(const ValueKey('drawer-excluded')));
       await tester.tap(find.byKey(const ValueKey('drawer-excluded')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('다시 가져오기 허용'));
+      await tester.tap(row('excluded-retry', 'excluded'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('excluded-restore-selected')));
       await tester.pumpAndSettle();
       expect(row('excluded-retry', 'excluded'), findsOneWidget);
-      expect(find.text('제외 해제에 실패했습니다.'), findsOneWidget);
+      expect(find.textContaining('0개 처리, 1개 오류'), findsOneWidget);
       expect(
         (await tasks.getTaskById('excluded-retry'))!.status,
         TaskStatus.excluded,
       );
       failing.failDelete = false;
-      await tester.tap(find.byTooltip('다시 가져오기 허용'));
+      await tester.tap(find.byKey(const ValueKey('excluded-restore-selected')));
       await tester.pumpAndSettle();
       expect(row('excluded-retry', 'excluded'), findsNothing);
       expect(await tasks.getTaskById('excluded-retry'), isNull);
@@ -2619,10 +2628,10 @@ void main() {
       await tester.tap(checkbox);
       await tester.pumpAndSettle();
       expect(tester.widget<Checkbox>(checkbox).value, isTrue);
-      expect(find.text('1개 선택'), findsOneWidget);
+      expect(selectionCount(1), findsOneWidget);
       expect(find.byType(TaskDetailScreen), findsNothing);
       expect((await tasks.getTaskById('체크로 선택'))!.status, TaskStatus.deleted);
-      await tester.tap(find.byKey(const ValueKey('trash-selection-mode')));
+      await tester.tap(find.byKey(const ValueKey('selection-back')));
       await tester.pumpAndSettle();
       expect(tester.widget<Checkbox>(checkbox).value, isFalse);
       expect(
@@ -2630,6 +2639,240 @@ void main() {
         findsNothing,
       );
       await capture(tester, 'trash-checkboxes');
+      expect(tester.takeException(), isNull);
+      await finish(tester);
+    },
+  );
+
+  for (final excluded in [false, true]) {
+    for (final textScale in [1.0, 1.5]) {
+      testWidgets(
+        'archive checkbox header stays fixed and row taps only select: excluded=$excluded textScale=$textScale',
+        (tester) async {
+          final section = excluded ? 'excluded' : 'trash';
+          final captureSection = textScale == 1 ? section : '$section-large';
+          for (var i = 0; i < 12; i++) {
+            if (excluded) {
+              await tasks.createTask(
+                Task(
+                  id: 'archive-$i',
+                  title: '보관 항목 $i',
+                  origin: TaskOrigin.ecampus,
+                  status: TaskStatus.excluded,
+                  createdAt: now,
+                  updatedAt: now,
+                  ecampus: EcampusSyncMetadata(
+                    sourceKey: 'archive-$i',
+                    sourceCourse: '운영체제',
+                  ),
+                ),
+              );
+            } else {
+              await trashItem('archive-$i');
+            }
+          }
+          await pumpApp(tester, textScale: textScale);
+          if (excluded) {
+            await openDrawer(tester);
+            await tester.ensureVisible(
+              find.byKey(const ValueKey('drawer-excluded')),
+            );
+            await tester.tap(find.byKey(const ValueKey('drawer-excluded')));
+            await tester.pumpAndSettle();
+          } else {
+            await chooseScope(tester, 'trash');
+          }
+          final checkbox = find.byKey(ValueKey('$section-select-archive-0'));
+          expect(
+            tester.widget<ListTile>(row('archive-0', section)).leading,
+            isA<Checkbox>(),
+          );
+          expect(find.byKey(const ValueKey('selection-toolbar')), findsNothing);
+          final normalRowTop = tester.getTopLeft(row('archive-0', section)).dy;
+          await tester.tap(row('archive-0', section));
+          await tester.pumpAndSettle();
+          expect(selectionCount(1), findsOneWidget);
+          expect(
+            tester.getTopLeft(row('archive-0', section)).dy,
+            lessThanOrEqualTo(normalRowTop + 8),
+          );
+          expect(tester.widget<Checkbox>(checkbox).value, isTrue);
+          expect(find.byType(TaskDetailScreen), findsNothing);
+          expect(find.byTooltip('휴지통 작업 메뉴'), findsNothing);
+          expect(find.text('선택 취소'), findsNothing);
+          expect(find.text('전체 선택'), findsNothing);
+          expect(find.text('1개 선택'), findsNothing);
+          expect(find.byTooltip('보기 조정'), findsNothing);
+          final action = find.byKey(
+            ValueKey(
+              excluded ? 'excluded-restore-selected' : 'trash-restore-selected',
+            ),
+          );
+          expect(tester.widget<IconButton>(action).tooltip, '복원');
+          if (excluded) {
+            expect(
+              find.byKey(const ValueKey('trash-delete-selected')),
+              findsNothing,
+            );
+            expect(find.byIcon(Icons.check_rounded), findsOneWidget);
+            expect(find.byIcon(Icons.delete_outline_rounded), findsNothing);
+          } else {
+            expect(
+              find.byKey(const ValueKey('trash-delete-selected')),
+              findsOneWidget,
+            );
+          }
+          await tester.tap(checkbox);
+          await tester.pumpAndSettle();
+          expect(selectionCount(0), findsOneWidget);
+          expect(tester.widget<IconButton>(action).onPressed, isNull);
+          final selectAll = find.byKey(ValueKey('$section-select-all'));
+          expect(
+            tester
+                .widget<AppBar>(find.byKey(const ValueKey('selection-toolbar')))
+                .centerTitle,
+            isFalse,
+          );
+          expect(
+            tester
+                .getCenter(
+                  find.descendant(
+                    of: selectAll,
+                    matching: find.byType(Checkbox),
+                  ),
+                )
+                .dx,
+            tester.getCenter(checkbox).dx,
+          );
+          expect(tester.getSize(selectAll).height, 48);
+          expect(
+            tester
+                .widget<AppBar>(find.byKey(const ValueKey('selection-toolbar')))
+                .preferredSize
+                .height,
+            104,
+          );
+          await tester.tap(selectAll);
+          await tester.pumpAndSettle();
+          expect(selectionCount(12), findsOneWidget);
+          expect(find.text('모두 해제'), findsOneWidget);
+          await capture(tester, '$captureSection-selection-all');
+          await tester.tap(selectAll);
+          await tester.pumpAndSettle();
+          expect(selectionCount(0), findsOneWidget);
+          expect(find.text('모두 선택'), findsOneWidget);
+          await tester.tap(row('archive-0', section));
+          await tester.pumpAndSettle();
+          final toolbar = find.byKey(const ValueKey('selection-toolbar'));
+          final before = tester.getRect(toolbar);
+          final allBefore = tester.getRect(selectAll);
+          await capture(tester, '$captureSection-selection-header');
+          await tester.dragFrom(const Offset(180, 450), const Offset(0, -450));
+          await tester.pumpAndSettle();
+          expect(tester.getRect(toolbar), before);
+          expect(tester.getRect(selectAll), allBefore);
+          expect(selectionCount(1), findsOneWidget);
+          await capture(tester, '$captureSection-selection-scrolled');
+          await tester.tap(find.byKey(const ValueKey('selection-back')));
+          await tester.pumpAndSettle();
+          expect(toolbar, findsNothing);
+          expect(tester.widget<Checkbox>(checkbox).value, isFalse);
+          final scrollable = find
+              .ancestor(
+                of: row('archive-0', section),
+                matching: find.byType(Scrollable),
+              )
+              .first;
+          tester.state<ScrollableState>(scrollable).position.jumpTo(0);
+          await tester.pumpAndSettle();
+          expect(row('archive-0', section).hitTestable(), findsOneWidget);
+          await tester.tap(row('archive-0', section));
+          await tester.pumpAndSettle();
+          expect(selectionCount(1), findsOneWidget);
+          await tester.binding.handlePopRoute();
+          await tester.pumpAndSettle();
+          expect(toolbar, findsNothing);
+          expect(tester.widget<Checkbox>(checkbox).value, isFalse);
+          expect(
+            (await tasks.getTasks(
+              status: excluded ? TaskStatus.excluded : TaskStatus.deleted,
+            )).length,
+            12,
+          );
+          expect(tester.takeException(), isNull);
+          await finish(tester);
+        },
+      );
+    }
+  }
+
+  testWidgets(
+    'excluded checkbox bulk restore preserves unselected sources and retries failures',
+    (tester) async {
+      final failing = _FailingExcludedTasks(database: database)
+        ..failId = 'source-b';
+      tasks = failing;
+      for (final id in ['source-a', 'source-b', 'source-c']) {
+        await tasks.createTask(
+          Task(
+            id: id,
+            title: id,
+            origin: TaskOrigin.ecampus,
+            status: TaskStatus.excluded,
+            createdAt: now,
+            updatedAt: now,
+            ecampus: EcampusSyncMetadata(sourceKey: id),
+          ),
+        );
+      }
+      await pumpApp(tester);
+      await openDrawer(tester);
+      await tester.ensureVisible(find.byKey(const ValueKey('drawer-excluded')));
+      await tester.tap(find.byKey(const ValueKey('drawer-excluded')));
+      await tester.pumpAndSettle();
+      await tester.tap(row('source-a', 'excluded'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('excluded-select-source-b')));
+      await tester.pumpAndSettle();
+      expect(selectionCount(2), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('excluded-restore-selected')));
+      await tester.pumpAndSettle();
+      expect(selectionCount(1), findsOneWidget);
+      expect(row('source-a', 'excluded'), findsNothing);
+      expect(
+        tester
+            .widget<Checkbox>(
+              find.byKey(const ValueKey('excluded-select-source-b')),
+            )
+            .value,
+        isTrue,
+      );
+      expect(
+        tester
+            .widget<Checkbox>(
+              find.byKey(const ValueKey('excluded-select-source-c')),
+            )
+            .value,
+        isFalse,
+      );
+      final sources = {
+        for (final source in await database.select(database.ecampusItems).get())
+          source.id: source,
+      };
+      expect(sources['source-a']!.importState, 'unreviewed');
+      expect(sources['source-b']!.importState, 'ignored');
+      expect(sources['source-c']!.importState, 'ignored');
+      expect(await database.select(database.tasks).get(), isEmpty);
+      failing.failDelete = false;
+      await tester.tap(find.byKey(const ValueKey('excluded-restore-selected')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('selection-toolbar')), findsNothing);
+      expect(row('source-c', 'excluded'), findsOneWidget);
+      expect(
+        (await tasks.getTasks(status: TaskStatus.excluded)).single.id,
+        'source-c',
+      );
+      expect(await database.select(database.tasks).get(), isEmpty);
       expect(tester.takeException(), isNull);
       await finish(tester);
     },
@@ -2737,7 +2980,7 @@ void main() {
       await startTrashSelection(tester);
       expect(
         tester
-            .widget<OutlinedButton>(
+            .widget<IconButton>(
               find.byKey(const ValueKey('trash-restore-selected')),
             )
             .onPressed,
@@ -2745,10 +2988,10 @@ void main() {
       );
       await tester.tap(find.byKey(const ValueKey('trash-select-all')));
       await tester.pumpAndSettle();
-      expect(find.text('3개 선택'), findsOneWidget);
+      expect(selectionCount(3), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('trash-select-all')));
       await tester.pumpAndSettle();
-      expect(find.text('0개 선택'), findsOneWidget);
+      expect(selectionCount(0), findsOneWidget);
       await tester.tap(row('선택 A', 'trash'));
       await tester.pumpAndSettle();
       expect(find.byType(TaskDetailScreen), findsNothing);
@@ -2805,17 +3048,17 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('trash-delete-selected')));
       await tester.pumpAndSettle();
-      expect(find.text('선택한 2개를 영구 삭제할까요?'), findsOneWidget);
+      expect(find.text('2개를 영구 삭제할까요?'), findsOneWidget);
       await tester.tap(find.widgetWithText(TextButton, '취소'));
       await tester.pumpAndSettle();
       expect((await tasks.getTasks(status: TaskStatus.deleted)).length, 3);
-      expect(find.text('2개 선택'), findsOneWidget);
+      expect(selectionCount(2), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('trash-delete-selected')));
       await tester.pumpAndSettle();
       await tester.tap(
         find.descendant(
           of: find.byType(AlertDialog),
-          matching: find.widgetWithText(FilledButton, '선택 삭제'),
+          matching: find.widgetWithText(FilledButton, '삭제'),
         ),
       );
       await tester.pumpAndSettle();
@@ -2914,6 +3157,8 @@ void main() {
       await startTrashSelection(tester);
       await tester.tap(row('숨길 B', 'trash'));
       await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('selection-back')));
+      await tester.pumpAndSettle();
       await adjust(tester);
       final chip = find.widgetWithText(FilterChip, '#과제');
       await tester.ensureVisible(chip);
@@ -2921,13 +3166,17 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(TextButton, '닫기'));
       await tester.pumpAndSettle();
-      expect(find.text('0개 선택'), findsOneWidget);
+      await startTrashSelection(tester);
+      expect(selectionCount(0), findsOneWidget);
       expect(row('숨길 B', 'trash'), findsNothing);
       await tester.tap(find.byKey(const ValueKey('trash-select-all')));
       await tester.pumpAndSettle();
-      expect(find.text('1개 선택'), findsOneWidget);
+      expect(selectionCount(1), findsOneWidget);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
       await choosePeriod(tester, '이번 주');
-      expect(find.text('0개 선택'), findsOneWidget);
+      await startTrashSelection(tester);
+      expect(selectionCount(0), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('trash-select-all')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('trash-restore-selected')));
@@ -2967,7 +3216,7 @@ void main() {
             await tester.tap(
               find.descendant(
                 of: find.byType(AlertDialog),
-                matching: find.widgetWithText(FilledButton, '선택 삭제'),
+                matching: find.widgetWithText(FilledButton, '삭제'),
               ),
             );
             await tester.pumpAndSettle();
@@ -2992,7 +3241,7 @@ void main() {
               .value,
           isFalse,
         );
-        expect(find.text('1개 선택'), findsOneWidget);
+        expect(selectionCount(1), findsOneWidget);
         expect(find.textContaining('1개 처리, 1개 오류'), findsWidgets);
         failing.failB = false;
         await apply();
@@ -3027,9 +3276,9 @@ void main() {
       expect((await tasks.getTaskById('완료 항목'))!.status, TaskStatus.active);
       await chooseScope(tester, 'trash');
       expect(row('삭제 항목', 'trash'), findsOneWidget);
-      await tester.tap(find.byTooltip('휴지통 작업 메뉴'));
+      await tester.tap(row('삭제 항목', 'trash'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('복원'));
+      await tester.tap(find.byKey(const ValueKey('trash-restore-selected')));
       await tester.pumpAndSettle();
       expect((await tasks.getTaskById('삭제 항목'))!.listId, 'course');
       expect((await tasks.getTaskById('삭제 항목'))!.status, TaskStatus.active);
@@ -3107,9 +3356,12 @@ class _FailingSwipeTasks extends DriftTaskRepository {
 class _FailingExcludedTasks extends DriftTaskRepository {
   _FailingExcludedTasks({required super.database});
   bool failDelete = true;
+  String? failId;
   @override
   Future<void> deletePermanently(String id) {
-    if (failDelete) throw StateError('test excluded allow failure');
+    if (failDelete && (failId == null || id == failId)) {
+      throw StateError('test excluded allow failure');
+    }
     return super.deletePermanently(id);
   }
 }

@@ -91,10 +91,9 @@ class _MobileHomePageState extends State<MobileHomePage> {
   HomeViewOptions _view = const HomeViewOptions();
   HomeViewOptions _trashView = const HomeViewOptions();
   HomeViewOptions _excludedView = const HomeViewOptions();
-  final Set<String> _allowingExcludedIds = {};
-  bool _trashSelectionMode = false;
-  bool _trashBulkBusy = false;
-  final Set<String> _selectedTrashIds = {};
+  bool _selectionMode = false;
+  bool _bulkBusy = false;
+  final Set<String> _selectedIds = {};
   bool _loadedPreferences = false;
   bool _savingPeriod = false;
   HomePeriod _trashPeriod = HomePeriod.all;
@@ -116,8 +115,8 @@ class _MobileHomePageState extends State<MobileHomePage> {
     _trashView = const HomeViewOptions();
     _trashPeriod = HomePeriod.all;
     _trashCustomRange = null;
-    _trashSelectionMode = false;
-    _selectedTrashIds.clear();
+    _selectionMode = false;
+    _selectedIds.clear();
   }
 
   @override
@@ -127,9 +126,13 @@ class _MobileHomePageState extends State<MobileHomePage> {
       _resetTrashSession();
       _excludedView = const HomeViewOptions();
     }
-    _selectedTrashIds.retainAll(
+    _selectedIds.retainAll(
       widget.tasks
-          .where((t) => t.status == TaskStatus.deleted)
+          .where(
+            (t) => _scope == _ScopeKind.excluded
+                ? t.status == TaskStatus.excluded
+                : t.status == TaskStatus.deleted,
+          )
           .map((t) => t.id),
     );
   }
@@ -206,7 +209,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
   }
 
   void _selectScope(_ScopeKind scope, [String? id]) {
-    if (_trashBulkBusy || _metadataBusy) return;
+    if (_bulkBusy || _metadataBusy) return;
     _dismissMenus.value++;
     setState(() {
       if (_scope != scope || _scopeId != id || scope == _ScopeKind.trash) {
@@ -874,7 +877,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
       setState(() {
         _trashPeriod = selected;
         _trashCustomRange = range;
-        _selectedTrashIds.clear();
+        _selectedIds.clear();
       });
       return;
     }
@@ -886,7 +889,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
     setState(() {
       _period = selected;
       if (range != null) _customRange = range;
-      _selectedTrashIds.clear();
+      _selectedIds.clear();
       _savingPeriod = true;
     });
     try {
@@ -945,9 +948,10 @@ class _MobileHomePageState extends State<MobileHomePage> {
         onChanged: (value) => setState(() {
           if (isTrash) {
             _trashView = value;
-            _selectedTrashIds.clear();
+            _selectedIds.clear();
           } else if (isExcluded) {
             _excludedView = value;
+            _selectedIds.clear();
           } else {
             _view = value;
           }
@@ -1041,17 +1045,18 @@ class _MobileHomePageState extends State<MobileHomePage> {
     final trash = matching
         .where((t) => inRange(t.deletedAt ?? t.dueDate ?? t.updatedAt))
         .toList();
+    final selectionVisible = _scope == _ScopeKind.excluded ? matching : trash;
 
     return PopScope(
-      canPop: !_trashSelectionMode && !_trashBulkBusy,
+      canPop: !_selectionMode && !_bulkBusy,
       onPopInvokedWithResult: (didPop, result) {
-        if (didPop || _trashBulkBusy) return;
+        if (didPop || _bulkBusy) return;
         if (_scaffoldKey.currentState?.isDrawerOpen == true) {
           _scaffoldKey.currentState?.closeDrawer();
-        } else if (_trashSelectionMode) {
+        } else if (_selectionMode) {
           setState(() {
-            _trashSelectionMode = false;
-            _selectedTrashIds.clear();
+            _selectionMode = false;
+            _selectedIds.clear();
           });
         }
       },
@@ -1061,83 +1066,88 @@ class _MobileHomePageState extends State<MobileHomePage> {
         onDrawerChanged: (open) {
           if (!open) _dismissMenus.value++;
         },
-        drawerEnableOpenDragGesture: !_trashBulkBusy,
-        appBar: AppBar(
-          automaticallyImplyLeading: false,
-          titleSpacing: 0,
-          leading: IconButton(
-            tooltip: '사이드 메뉴',
-            icon: const Icon(Icons.menu_rounded),
-            onPressed: _trashBulkBusy
-                ? null
-                : () => _scaffoldKey.currentState!.openDrawer(),
-          ),
-          title: InkWell(
-            key: const ValueKey('home-period'),
-            onTap:
-                _trashBulkBusy ||
-                    _savingPeriod ||
-                    !widget.settingsReady ||
-                    isAll
-                ? null
-                : _pickPeriod,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _scopeLabel,
-                    style: const TextStyle(fontSize: 11, color: AppTheme.muted),
-                  ),
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
+        drawerEnableOpenDragGesture: !_bulkBusy,
+        appBar: _selectionMode
+            ? _selectionAppBar(selectionVisible)
+            : AppBar(
+                automaticallyImplyLeading: false,
+                titleSpacing: 0,
+                leading: IconButton(
+                  tooltip: '사이드 메뉴',
+                  icon: const Icon(Icons.menu_rounded),
+                  onPressed: _bulkBusy
+                      ? null
+                      : () => _scaffoldKey.currentState!.openDrawer(),
+                ),
+                title: InkWell(
+                  key: const ValueKey('home-period'),
+                  onTap:
+                      _bulkBusy ||
+                          _savingPeriod ||
+                          !widget.settingsReady ||
                           isAll
-                              ? '전체'
-                              : (_scope == _ScopeKind.trash
-                                        ? _trashPeriod
-                                        : _period) ==
-                                    HomePeriod.today
-                              ? '오늘 · ${DateFormat('M월 d일', 'ko_KR').format(now)}'
-                              : _periodLabel,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                      ? null
+                      : _pickPeriod,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _scopeLabel,
                           style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 11,
+                            color: AppTheme.muted,
                           ),
                         ),
-                      ),
-                      if (!isAll)
-                        const Icon(Icons.expand_more_rounded, size: 20),
-                    ],
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                isAll
+                                    ? '전체'
+                                    : (_scope == _ScopeKind.trash
+                                              ? _trashPeriod
+                                              : _period) ==
+                                          HomePeriod.today
+                                    ? '오늘 · ${DateFormat('M월 d일', 'ko_KR').format(now)}'
+                                    : _periodLabel,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            if (!isAll)
+                              const Icon(Icons.expand_more_rounded, size: 20),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
+                ),
+                actions: [
+                  IconButton(
+                    tooltip: 'eCampus 가져오기',
+                    onPressed: _bulkBusy ? null : widget.onImport,
+                    icon: const Icon(Icons.sync_rounded),
+                  ),
+                  IconButton(
+                    tooltip: '보기 조정',
+                    onPressed: widget.settingsReady && !_bulkBusy
+                        ? _adjustView
+                        : null,
+                    icon: Badge(
+                      isLabelVisible: !_currentView.isDefault,
+                      smallSize: 6,
+                      child: const Icon(Icons.tune_rounded),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
                 ],
               ),
-            ),
-          ),
-          actions: [
-            IconButton(
-              tooltip: 'eCampus 가져오기',
-              onPressed: _trashBulkBusy ? null : widget.onImport,
-              icon: const Icon(Icons.sync_rounded),
-            ),
-            IconButton(
-              tooltip: '보기 조정',
-              onPressed: widget.settingsReady && !_trashBulkBusy
-                  ? _adjustView
-                  : null,
-              icon: Badge(
-                isLabelVisible: !_currentView.isDefault,
-                smallSize: 6,
-                child: const Icon(Icons.tune_rounded),
-              ),
-            ),
-            const SizedBox(width: 4),
-          ],
-        ),
         body: GestureDetector(
           // Child row gestures win on Tasks; blank space still opens the Drawer.
           onHorizontalDragStart: (_) => _drawerDragDistance = 0,
@@ -1145,8 +1155,8 @@ class _MobileHomePageState extends State<MobileHomePage> {
               _drawerDragDistance += details.primaryDelta!,
           onHorizontalDragCancel: () => _drawerDragDistance = 0,
           onHorizontalDragEnd: (details) {
-            if (!_trashBulkBusy &&
-                !_trashSelectionMode &&
+            if (!_bulkBusy &&
+                !_selectionMode &&
                 (_drawerDragDistance > 80 ||
                     (_drawerDragDistance > 20 &&
                         (details.primaryVelocity ?? 0) > 500))) {
@@ -1157,7 +1167,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
           child: RefreshIndicator(
             onRefresh: () async => widget.onRefresh(),
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 30),
+              padding: EdgeInsets.fromLTRB(16, _selectionMode ? 0 : 12, 16, 30),
               physics: const AlwaysScrollableScrollPhysics(),
               children: [
                 if (widget.isLoading)
@@ -1165,7 +1175,6 @@ class _MobileHomePageState extends State<MobileHomePage> {
                 else if (_scope == _ScopeKind.excluded)
                   _section('제외된 eCampus 항목', 'excluded', matching)
                 else if (_scope == _ScopeKind.trash) ...[
-                  _trashControls(trash),
                   _section('휴지통', 'trash', trash),
                 ] else ...[
                   if (_scope != _ScopeKind.completed) ...[
@@ -1187,104 +1196,113 @@ class _MobileHomePageState extends State<MobileHomePage> {
     );
   }
 
-  void _toggleTrashSelection(String id) {
+  void _toggleSelection(String id) {
     setState(() {
-      _trashSelectionMode = true;
-      if (!_selectedTrashIds.add(id)) _selectedTrashIds.remove(id);
+      _selectionMode = true;
+      if (!_selectedIds.add(id)) _selectedIds.remove(id);
     });
   }
 
-  Widget _trashControls(List<Task> visible) {
-    if (!_trashSelectionMode) return const SizedBox.shrink();
-    final selected = visible
-        .where((t) => _selectedTrashIds.contains(t.id))
-        .toList();
+  void _exitSelection() {
+    if (_bulkBusy) return;
+    setState(() {
+      _selectionMode = false;
+      _selectedIds.clear();
+    });
+  }
+
+  AppBar _selectionAppBar(List<Task> visible) {
+    final excluded = _scope == _ScopeKind.excluded;
+    final selected = visible.where((t) => _selectedIds.contains(t.id)).toList();
     final allSelected = visible.isNotEmpty && selected.length == visible.length;
-    final canApply = selected.isNotEmpty && !_trashBulkBusy;
-    return Padding(
-      key: const ValueKey('trash-controls'),
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              TextButton(
-                key: const ValueKey('trash-selection-mode'),
-                onPressed: _trashBulkBusy
-                    ? null
-                    : () => setState(() {
-                        _trashSelectionMode = !_trashSelectionMode;
-                        _selectedTrashIds.clear();
-                      }),
-                child: const Text('선택 취소'),
-              ),
-              if (_trashSelectionMode) ...[
-                Text(_trashBulkBusy ? '처리 중…' : '${selected.length}개 선택'),
-                TextButton(
-                  key: const ValueKey('trash-select-all'),
-                  onPressed: _trashBulkBusy || visible.isEmpty
-                      ? null
-                      : () => setState(() {
-                          if (allSelected) {
-                            _selectedTrashIds.clear();
-                          } else {
-                            _selectedTrashIds.addAll(visible.map((t) => t.id));
-                          }
-                        }),
-                  child: Text(allSelected ? '전체 해제' : '전체 선택'),
-                ),
-              ],
-            ],
+    final canApply = selected.isNotEmpty && !_bulkBusy;
+    final toggleAll = _bulkBusy || visible.isEmpty
+        ? null
+        : () => setState(() {
+            if (allSelected) {
+              _selectedIds.clear();
+            } else {
+              _selectedIds.addAll(visible.map((t) => t.id));
+            }
+          });
+    return AppBar(
+      key: const ValueKey('selection-toolbar'),
+      centerTitle: false,
+      leading: IconButton(
+        key: const ValueKey('selection-back'),
+        tooltip: '뒤로',
+        onPressed: _bulkBusy ? null : _exitSelection,
+        icon: const Icon(Icons.arrow_back_rounded),
+      ),
+      title: Text(
+        '${selected.length}',
+        key: const ValueKey('selection-count'),
+        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+      ),
+      actions: [
+        if (!excluded)
+          IconButton(
+            key: const ValueKey('trash-restore-selected'),
+            tooltip: '복원',
+            onPressed: canApply
+                ? () => _applySelection(selected, restore: true)
+                : null,
+            icon: const Icon(Icons.restore_rounded),
           ),
-          if (_trashSelectionMode)
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    key: const ValueKey('trash-restore-selected'),
-                    onPressed: canApply
-                        ? () => _applyTrashSelection(selected, restore: true)
-                        : null,
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                    ),
-                    icon: const Icon(Icons.restore_rounded),
-                    label: const Text('선택 복원'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton.icon(
-                    key: const ValueKey('trash-delete-selected'),
-                    onPressed: canApply
-                        ? () => _applyTrashSelection(selected, restore: false)
-                        : null,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppTheme.dangerRed,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                    ),
-                    icon: const Icon(Icons.delete_forever_rounded),
-                    label: const Text('선택 삭제'),
-                  ),
-                ),
-              ],
+        IconButton(
+          key: ValueKey(
+            excluded ? 'excluded-restore-selected' : 'trash-delete-selected',
+          ),
+          tooltip: excluded ? '복원' : '삭제',
+          onPressed: canApply
+              ? () => _applySelection(selected, restore: excluded)
+              : null,
+          icon: Icon(
+            excluded ? Icons.check_rounded : Icons.delete_outline_rounded,
+          ),
+        ),
+        const SizedBox(width: 4),
+      ],
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(48),
+        child: SizedBox(
+          height: 48,
+          child: ListTile(
+            key: ValueKey(
+              excluded ? 'excluded-select-all' : 'trash-select-all',
             ),
-        ],
+            minTileHeight: 48,
+            minVerticalPadding: 0,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+            title: Text(
+              allSelected ? '모두 해제' : '모두 선택',
+              style: const TextStyle(fontSize: 13),
+            ),
+            leading: Checkbox(
+              tristate: true,
+              value: selected.isEmpty
+                  ? false
+                  : allSelected
+                  ? true
+                  : null,
+              onChanged: toggleAll == null ? null : (_) => toggleAll(),
+            ),
+            onTap: toggleAll,
+          ),
+        ),
       ),
     );
   }
 
-  Future<void> _applyTrashSelection(
+  Future<void> _applySelection(
     List<Task> selected, {
     required bool restore,
   }) async {
-    if (_trashBulkBusy || selected.isEmpty) return;
+    if (_bulkBusy || selected.isEmpty) return;
     final targets = List<Task>.of(selected);
+    final excluded = _scope == _ScopeKind.excluded;
     if (targets.any((t) => _swipingTaskIds.contains(t.id))) return;
-    setState(() => _trashBulkBusy = true);
+    setState(() => _bulkBusy = true);
     var started = false;
     var succeeded = 0;
     var failed = 0;
@@ -1297,13 +1315,15 @@ class _MobileHomePageState extends State<MobileHomePage> {
       started = true;
       for (final task in targets) {
         try {
-          if (restore) {
+          if (excluded) {
+            await widget.onAllowExcludedTaskSync(task);
+          } else if (restore) {
             await widget.onRestoreTask(task);
           } else {
             await widget.onDeletePermanently(task);
           }
           succeeded++;
-          if (mounted) setState(() => _selectedTrashIds.remove(task.id));
+          if (mounted) setState(() => _selectedIds.remove(task.id));
         } catch (_) {
           failed++;
         }
@@ -1312,12 +1332,14 @@ class _MobileHomePageState extends State<MobileHomePage> {
       if (mounted) {
         if (started) widget.onRefresh();
         setState(() {
-          _trashBulkBusy = false;
-          if (started && _selectedTrashIds.isEmpty) _trashSelectionMode = false;
+          _bulkBusy = false;
+          if (started && _selectedIds.isEmpty) _selectionMode = false;
         });
         if (started) {
           final message = failed > 0
               ? '$succeeded개 처리, $failed개 오류. 새로고침한 목록을 확인해주세요.'
+              : excluded
+              ? '$succeeded개의 제외를 해제했습니다.'
               : restore
               ? '$succeeded개를 복원했습니다.'
               : '$succeeded개를 영구 삭제했습니다.';
@@ -1335,23 +1357,24 @@ class _MobileHomePageState extends State<MobileHomePage> {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(fontSize: 13, color: AppTheme.muted),
+        if (!_selectionMode)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(fontSize: 13, color: AppTheme.muted),
+                  ),
                 ),
-              ),
-              Text(
-                '${tasks.length}',
-                style: const TextStyle(fontSize: 12, color: AppTheme.muted),
-              ),
-            ],
+                Text(
+                  '${tasks.length}',
+                  style: const TextStyle(fontSize: 12, color: AppTheme.muted),
+                ),
+              ],
+            ),
           ),
-        ),
         if (tasks.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 8, vertical: 14),
@@ -1398,8 +1421,8 @@ class _MobileHomePageState extends State<MobileHomePage> {
       direction:
           widget.settingsReady &&
               !isExcluded &&
-              !_trashBulkBusy &&
-              !(task.status == TaskStatus.deleted && _trashSelectionMode)
+              !_bulkBusy &&
+              !(task.status == TaskStatus.deleted && _selectionMode)
           ? DismissDirection.horizontal
           : DismissDirection.none,
       background: _swipeBackground(
@@ -1429,32 +1452,18 @@ class _MobileHomePageState extends State<MobileHomePage> {
       child: ListTile(
         key: ValueKey('home-task-$section-${task.id}'),
         contentPadding: EdgeInsets.zero,
-        onTap: _trashBulkBusy || isExcluded
+        onTap: _bulkBusy
             ? null
-            : task.status == TaskStatus.deleted && _trashSelectionMode
-            ? () => _toggleTrashSelection(task.id)
+            : task.status == TaskStatus.deleted || isExcluded
+            ? () => _toggleSelection(task.id)
             : () => widget.onOpenTask(task),
-        leading: isExcluded
-            ? IconButton(
-                key: ValueKey('allow-excluded-${task.id}'),
-                tooltip: '다시 가져오기 허용',
-                onPressed: _allowingExcludedIds.contains(task.id)
-                    ? null
-                    : () => _allowExcluded(task),
-                icon: _allowingExcludedIds.contains(task.id)
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.refresh_rounded),
-              )
-            : task.status == TaskStatus.deleted
+        leading: isExcluded || task.status == TaskStatus.deleted
             ? Checkbox(
-                key: ValueKey('trash-select-${task.id}'),
-                value: _selectedTrashIds.contains(task.id),
-                onChanged: _trashBulkBusy
-                    ? null
-                    : (_) => _toggleTrashSelection(task.id),
+                key: ValueKey(
+                  '${isExcluded ? 'excluded' : 'trash'}-select-${task.id}',
+                ),
+                value: _selectedIds.contains(task.id),
+                onChanged: _bulkBusy ? null : (_) => _toggleSelection(task.id),
               )
             : Checkbox(
                 value: task.status == TaskStatus.completed,
@@ -1477,76 +1486,40 @@ class _MobileHomePageState extends State<MobileHomePage> {
                 softWrap: true,
                 style: const TextStyle(fontSize: 12, color: AppTheme.muted),
               ),
-        trailing:
-            task.status == TaskStatus.deleted &&
-                (_trashSelectionMode || _trashBulkBusy)
-            ? null
-            : task.status == TaskStatus.deleted
-            ? PopupMenuButton<String>(
-                tooltip: '휴지통 작업 메뉴',
-                onSelected: (value) async {
-                  if (value == 'restore') {
-                    await widget.onRestoreTask(task);
-                    return;
-                  }
-                  await _confirmPermanentDelete(task);
-                },
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'restore', child: Text('복원')),
-                  PopupMenuItem(value: 'delete', child: Text('영구 삭제')),
-                ],
-              )
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    dueText,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color:
-                          task.status == TaskStatus.active &&
-                              due != null &&
-                              isDueDateOverdue(due, now: DateTime.now())
-                          ? AppTheme.dangerRed
-                          : AppTheme.muted,
-                    ),
-                  ),
-                  if (task.priority != null)
-                    Text(
-                      switch (task.priority!) {
-                        TaskPriority.high => '높음',
-                        TaskPriority.medium => '중간',
-                        TaskPriority.low => '낮음',
-                      },
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: task.priority == TaskPriority.high
-                            ? AppTheme.warningOrange
-                            : AppTheme.muted,
-                      ),
-                    ),
-                ],
+        trailing: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              dueText,
+              style: TextStyle(
+                fontSize: 12,
+                color:
+                    task.status == TaskStatus.active &&
+                        due != null &&
+                        isDueDateOverdue(due, now: DateTime.now())
+                    ? AppTheme.dangerRed
+                    : AppTheme.muted,
               ),
+            ),
+            if (task.priority != null)
+              Text(
+                switch (task.priority!) {
+                  TaskPriority.high => '높음',
+                  TaskPriority.medium => '중간',
+                  TaskPriority.low => '낮음',
+                },
+                style: TextStyle(
+                  fontSize: 10,
+                  color: task.priority == TaskPriority.high
+                      ? AppTheme.warningOrange
+                      : AppTheme.muted,
+                ),
+              ),
+          ],
+        ),
       ),
     );
-  }
-
-  Future<void> _allowExcluded(Task task) async {
-    if (!_allowingExcludedIds.add(task.id)) return;
-    setState(() {});
-    try {
-      await widget.onAllowExcludedTaskSync(task);
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('제외 해제에 실패했습니다.')));
-      }
-    } finally {
-      _allowingExcludedIds.remove(task.id);
-      if (mounted) setState(() {});
-    }
   }
 
   Widget _swipeBackground(Task task, {required bool toRight}) {
@@ -1585,7 +1558,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
   }
 
   Future<void> _applySwipe(Task task, TaskSwipeAction action) async {
-    if (_trashBulkBusy) return;
+    if (_bulkBusy) return;
     if (!_swipingTaskIds.add(task.id)) return;
     try {
       switch (action) {
@@ -1625,9 +1598,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(
-          selectedCount == null
-              ? '영구 삭제할까요?'
-              : '선택한 $selectedCount개를 영구 삭제할까요?',
+          selectedCount == null ? '영구 삭제할까요?' : '$selectedCount개를 영구 삭제할까요?',
         ),
         content: const Text('이 작업은 복구할 수 없습니다.'),
         actions: [
@@ -1637,7 +1608,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text(selectedCount == null ? '영구 삭제' : '선택 삭제'),
+            child: Text(selectedCount == null ? '영구 삭제' : '삭제'),
           ),
         ],
       ),

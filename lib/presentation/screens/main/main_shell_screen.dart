@@ -401,9 +401,17 @@ class _MainShellScreenState extends State<MainShellScreen>
   }
 
   Future<void> _openTaskDetail(Task task) async {
-    await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => TaskDetailScreen(
+    await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      isDismissible: false,
+      enableDrag: false,
+      showDragHandle: false,
+      clipBehavior: Clip.antiAlias,
+      builder: (_) => FractionallySizedBox(
+        heightFactor: .9,
+        child: TaskDetailScreen(
           taskId: task.id,
           taskRepository: widget.taskRepository,
           subTaskRepository: widget.subTaskRepository,

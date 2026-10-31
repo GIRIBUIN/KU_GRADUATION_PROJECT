@@ -1173,6 +1173,154 @@ void main() {
   );
 
   testWidgets(
+    'detail sheet edits fields with keyboard and saves through existing reminder flow',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await add('상세 테스트', due: today);
+      final reminders = DriftNotificationRepository(database: database);
+      await reminders.save(
+        const NotificationSetting(
+          id: 'detail-reminder',
+          taskId: '상세 테스트',
+          enabled: true,
+          daysBeforeDue: 60,
+          notifyTime: 'relative',
+        ),
+      );
+      await pumpApp(tester);
+      await tester.tap(row('상세 테스트'));
+      await tester.pumpAndSettle();
+      final detail = find.byType(TaskDetailScreen);
+      expect(
+        find.ancestor(of: detail, matching: find.byType(BottomSheet)),
+        findsOneWidget,
+      );
+      expect(tester.getTopLeft(detail).dy, greaterThan(0));
+      expect(row('상세 테스트'), findsOneWidget);
+      await capture(tester, 'detail-sheet');
+      Finder field(String label) => find.descendant(
+        of: detail,
+        matching: find.byWidgetPredicate(
+          (w) => w is TextField && w.decoration?.labelText == label,
+        ),
+      );
+      final scrollable = find
+          .descendant(of: detail, matching: find.byType(Scrollable))
+          .first;
+      Future<void> reveal(Finder target) async {
+        await tester.scrollUntilVisible(target, 180, scrollable: scrollable);
+        await tester.ensureVisible(target);
+        await tester.pumpAndSettle();
+      }
+
+      await tester.enterText(field('제목'), '하단에서 수정');
+      await tester.tap(find.text('마감일'));
+      await tester.pumpAndSettle();
+      final dateDialog = find.byType(DatePickerDialog);
+      await tester.tap(
+        find.descendant(
+          of: dateDialog,
+          matching: find.byIcon(Icons.edit_outlined),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final tomorrow = DateTime(now.year, now.month, now.day + 1, 23, 59);
+      await tester.enterText(
+        find.descendant(of: dateDialog, matching: find.byType(TextField)),
+        '${tomorrow.year}. ${tomorrow.month}. ${tomorrow.day}.',
+      );
+      await tester.tap(
+        find.descendant(of: dateDialog, matching: find.text('확인')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: find.byType(TimePickerDialog),
+          matching: find.text('취소'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ChoiceChip, '높음'));
+      final course = find.widgetWithText(FilterChip, '운영체제');
+      await reveal(course);
+      await tester.tap(course);
+      final tag = find.widgetWithText(FilterChip, '과제');
+      await reveal(tag);
+      await tester.tap(tag);
+      await reveal(field('메모'));
+      tester.view.viewInsets = const FakeViewPadding(bottom: 260);
+      addTearDown(tester.view.resetViewInsets);
+      await tester.pumpAndSettle();
+      await reveal(field('메모'));
+      await tester.enterText(field('메모'), '키보드가 열린 상태에서 저장');
+      await tester.pumpAndSettle();
+      expect(
+        tester.getBottomLeft(field('메모')).dy,
+        lessThanOrEqualTo(tester.getBottomLeft(detail).dy - 260 + 1),
+      );
+      expect(notifications.scheduled, isEmpty);
+      await tester.tap(find.byTooltip('작업 상세 닫기'));
+      await tester.pumpAndSettle();
+      final saved = (await tasks.getTaskById('상세 테스트'))!;
+      expect(saved.title, '하단에서 수정');
+      expect(saved.dueDate, tomorrow);
+      expect(saved.priority, TaskPriority.high);
+      expect(saved.listId, 'course');
+      expect(saved.tagIds, ['tag-a']);
+      expect(saved.memo, '키보드가 열린 상태에서 저장');
+      expect(saved.status, TaskStatus.active);
+      expect((await reminders.getByTaskId(saved.id))!.enabled, isTrue);
+      expect(notifications.scheduled.single.$1.dueDate, tomorrow);
+      expect(notifications.scheduled.single.$2.enabled, isTrue);
+      expect(find.byType(TaskDetailScreen), findsNothing);
+      expect(tester.takeException(), isNull);
+      await finish(tester);
+    },
+  );
+
+  testWidgets(
+    'detail sheet prevents accidental dismissal and stays open on failed atomic save',
+    (tester) async {
+      await add('실패 확인', due: today);
+      final reminders = _FailingDetailReminders(database: database);
+      await pumpApp(tester, reminders: reminders);
+      await tester.tap(row('실패 확인'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).first, '재시도 수정');
+      await tester.tapAt(const Offset(10, 20));
+      await tester.pumpAndSettle();
+      expect(find.byType(TaskDetailScreen), findsOneWidget);
+      final header = find.descendant(
+        of: find.byType(TaskDetailScreen),
+        matching: find.byType(AppBar),
+      );
+      await tester.dragFrom(tester.getCenter(header), const Offset(0, 250));
+      await tester.pumpAndSettle();
+      expect(find.byType(TaskDetailScreen), findsOneWidget);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byType(TaskDetailScreen), findsOneWidget);
+      expect((await tasks.getTaskById('실패 확인'))!.title, '실패 확인');
+      expect(await reminders.getByTaskId('실패 확인'), isNull);
+      expect(notifications.scheduled, isEmpty);
+      expect(find.textContaining('저장하지 못했습니다:'), findsWidgets);
+      // The same back action retries the existing save and then closes.
+      reminders.failSave = false;
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byType(TaskDetailScreen), findsNothing);
+      expect((await tasks.getTaskById('실패 확인'))!.title, '재시도 수정');
+      expect(row('실패 확인'), findsOneWidget);
+      expect(notifications.scheduled, hasLength(1));
+      expect(tester.takeException(), isNull);
+      await finish(tester);
+    },
+  );
+
+  testWidgets(
     'quick add shares create persistence and supports title only or detailed handoff',
     (tester) async {
       await pumpApp(tester);
@@ -1309,6 +1457,17 @@ class _Notifications extends LocalNotificationService {
   @override
   Future<void> cancelTaskNotification(String taskId) async {
     cancelled.add(taskId);
+  }
+}
+
+class _FailingDetailReminders extends DriftNotificationRepository {
+  _FailingDetailReminders({required super.database});
+  bool failSave = true;
+
+  @override
+  Future<NotificationSetting> save(NotificationSetting setting) {
+    if (failSave) throw StateError('test reminder save failure');
+    return super.save(setting);
   }
 }
 

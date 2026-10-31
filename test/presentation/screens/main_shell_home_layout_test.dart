@@ -205,6 +205,13 @@ void main() {
     await tester.tap(find.byKey(ValueKey('calendar-task-${created.id}')));
     await tester.pumpAndSettle();
     expect(find.byType(TaskDetailScreen), findsOneWidget);
+    expect(
+      find.ancestor(
+        of: find.byType(TaskDetailScreen),
+        matching: find.byType(BottomSheet),
+      ),
+      findsOneWidget,
+    );
     await tester.enterText(find.byType(TextField).first, '수정한 일정');
     await tester.tap(find.text('저장'));
     await tester.pumpAndSettle();

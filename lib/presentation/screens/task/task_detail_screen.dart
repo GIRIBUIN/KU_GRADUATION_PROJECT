@@ -125,6 +125,13 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
+          leading: IconButton(
+            tooltip: '작업 상세 닫기',
+            icon: const Icon(Icons.close_rounded),
+            onPressed: _isSaving
+                ? null
+                : () => _saveTask(popAfterSave: true, showMessage: false),
+          ),
           title: const Text('작업 상세'),
           actions: [
             TextButton(

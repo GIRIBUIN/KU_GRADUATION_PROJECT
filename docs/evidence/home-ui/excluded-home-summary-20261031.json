@@ -1,0 +1,69 @@
+{
+  "recorded_at_utc": "2026-10-31T11:18:03.969951+00:00",
+  "git_base": "ebdd5dbb3c1271a41d51a82b4fa58da372f73e01",
+  "uncommitted_changes": true,
+  "scope": "Show excluded eCampus sources within the existing home scope and shared Task row layout, remove their separate legacy page, preserve existing allow-import callback.",
+  "related_tests": {
+    "raw": "excluded-home-final-tests-20261031.jsonl",
+    "passed": 85,
+    "failed": 0,
+    "success": true,
+    "elapsed_ms": 30899
+  },
+  "final_capture_tests": {
+    "raw": "excluded-home-capture-tests-20261031.jsonl",
+    "passed": 3,
+    "failed": 0,
+    "success": true,
+    "elapsed_ms": 3850
+  },
+  "counts_overlap": true,
+  "coverage_note": "85 related tests passed (home 51, shell/calendar/widget 6, lists 6, eCampus 22). After final excluded-row layout polish, the affected 3 tests passed again with captures and stronger source-date sorting assertions. Counts overlap.",
+  "initial_tests": {
+    "raw": "excluded-home-first-tests-20261031.jsonl",
+    "passed": 2,
+    "failed": 1,
+    "success": false,
+    "elapsed_ms": 4321
+  },
+  "initial_failure_note": "The added assertion incorrectly expected allow-import to delete the source row. Existing repository behavior preserves it as unreviewed with taskId=null. The test was corrected; the repository was not changed.",
+  "analysis": {
+    "raw": "excluded-home-analyze-20261031.txt",
+    "exit_code": 0,
+    "errors": 0,
+    "warnings": 0,
+    "info": 0,
+    "capture_method": "Exact stdout copied from direct flutter analyze --no-pub output"
+  },
+  "behavior": {
+    "navigation": "Drawer selects the excluded home scope; selected highlighting and existing bottom navigation remain; no extra route or back button.",
+    "layout": "Reuse home section and row title/due styling, fully wrapped title, source course subtitle, leading allow-import icon. Remove legacy card, explanatory header, badges and text button.",
+    "dates_filters": "All dates; independent of the saved home period/status/priority/tag filters so excluded sources remain visible. Period selection disabled for this scope.",
+    "sort": "Reuse five existing choices, temporary for excluded sources only; reset on leaving scope or home tab; no saved setting overwrite. No unsupported Task filters or new instructions.",
+    "action": "Reuse _allowExcludedTaskSync. Removes ignored state by existing repository policy (unreviewed source, no Task creation); next import may review it. No completion/edit/delete/swipe handlers for unimported sources.",
+    "failure": "Keep source visible and allow retry; prevent duplicate in-flight clicks; retain existing error notification."
+  },
+  "protected_paths_unchanged": [
+    "lib/data",
+    "lib/presentation/services",
+    "lib/presentation/screens/sync",
+    "lib/presentation/screens/login"
+  ],
+  "limits": "In-memory Drift/widget tests and mock eCampus flows; no real school login or Android installation.",
+  "full_suite_run": false,
+  "android_build_run": false,
+  "installed_on_device": false,
+  "commit_created": false,
+  "push_run": false,
+  "source_git_blob_hashes": {
+    "lib/presentation/screens/main/main_shell_screen.dart": "e2f47173bd691727a88577e2ab8d69201f6c9153",
+    "lib/presentation/screens/main/mobile_home_page.dart": "3172f0547764c3321ec98ef961f26c472e8f37be",
+    "test/presentation/screens/mobile_home_test.dart": "18812146d4062ca32d737fcbd40c4fc4caebc86f"
+  },
+  "widget_captures": [
+    "excluded-home-excluded-list.png",
+    "excluded-home-excluded-empty.png",
+    "excluded-home-excluded-sort.png",
+    "excluded-home-excluded-large.png"
+  ]
+}

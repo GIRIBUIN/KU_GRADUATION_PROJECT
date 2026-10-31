@@ -1,5 +1,7 @@
 # 모바일 홈 UI 개편 — 2026-10-30
 
+최신 UI-021: 제외된 eCampus 항목을 별도 화면 대신 홈 공통 레이아웃으로 통합했다. 검증은 문서 하단 ‘제외된 eCampus 항목 홈 레이아웃 통일’을 본다. UI-020은 `baa73a9`/`ebdd5db`로 커밋됐으며 아래 미커밋 표시는 당시 기록이다. 이번 UI-021은 커밋·push하지 않았다.
+
 최신 UI-020: 설정 화면을 컨텍스트 메뉴와 즉시 저장 하단창으로 교체했다. 최신 검증은 문서 하단 ‘설정 컨텍스트 메뉴·즉시 저장’를 본다. UI-017~019는 `b8cd8e9`~`12ed816`으로 커밋되어 원격에 반영됐고, 아래의 미커밋 표시는 각 작업 당시 기록이다. 이번 UI-020은 커밋·push하지 않았다.
 
 최신 UI-019: 보관/복원 기능은 제거했고 데이터 전환도 하지 않는다. 목록/태그 숨김은 각각 작은 이름·눈 아이콘 팝업으로 바뀌었다. 아래 UI-018의 보관 복원 설명은 해당 시점 기록이며 최신 동작은 문서 하단 UI-019를 기준으로 한다. 아직 커밋하지 않았다.
@@ -271,3 +273,14 @@ C:\flutter\bin\flutter.bat build apk --debug --no-pub
 - 중간 실패 원본(first/new-verified/controls)은 보존한다. 중복 라벨 finder, 오류 안내 위치/누적, 오류 문구로 높이가 바뀐 뒤 테스트가 옛 slider 좌표를 사용하던 문제를 수정했다. 통과 여부는 final/capture/shell 로그를 기준으로 한다.
 - widget 렌더: [메뉴](settings-popup-settings-menu.png) · [큰 글씨 메뉴](settings-popup-settings-large-menu.png) · [스와이프](settings-popup-swipe-settings.png) · [큰 글씨 스와이프](settings-popup-swipe-large.png) · [알림 시점](settings-popup-notification-time.png) · [마감 임박](settings-popup-urgent-days.png). 실제 Android 캡처가 아니며 eCampus 테스트도 모의 로그인/응답이다.
 - Android 직접 확인: 설정 탭이 화면 전환 없이 메뉴 열기 → 알림 켬/끔과 알림 시점 항목 표시 → 네 방향 변경 후 저장 버튼 없이 실제 Task/휴지통 스와이프 → 슬라이더 놓기/닫기/재실행 후 값 유지 → 기존 기간·보기·숨김 유지 → 큰 글씨/작은 화면 → 홈 가져오기 후 재로그인/취소/세션 정리 확인. 전체 테스트·APK 빌드·실기기 설치·커밋·push는 하지 않았다.
+
+## 제외된 eCampus 항목 홈 레이아웃 통일 — 2026-10-31
+
+- UI-021. Drawer의 제외된 eCampus 항목을 별도 route 대신 홈 scope로 선택한다. 완료/휴지통과 같은 상단·하단 navigation·선택 강조·작은 섹션 제목·공통 Task row를 재사용한다. 이전 전용 페이지·카드·안내 문구·상태 chip·텍스트 버튼은 삭제했다.
+- 원본 제목은 같은 크기와 줄바꿈 규칙으로 표시하고 마감/과목을 보여준다. 아직 Task로 가져오지 않은 원본이므로 미지정 목록으로 잘못 표시하지 않으며 완료/편집/Task 스와이프도 연결하지 않는다. 행 앞의 다시 가져오기 허용 아이콘만 기존 `_allowExcludedTaskSync`를 호출한다.
+- 전체 기간에서 제외 원본만 보여준다. 일반 홈의 날짜/상태/우선순위/태그 때문에 가려지지 않는다. 보기 조정은 기존 정렬 5개를 재사용하고 이 범위를 벗어나면 초기화한다. 일반 홈의 저장 기간/보기는 변경하지 않는다. 설명 문구는 추가하지 않았다.
+- 제외 해제 의미는 기존 그대로다. source row를 없애거나 Task를 즉시 복원하지 않고 `ignored → unreviewed`, `taskId=null`을 유지해 다음 가져오기에서 검토할 수 있게 한다. 처리 중 중복 클릭을 막고 실패 시 항목을 유지해 재시도한다. DB/repository/import service/session/notification 로직은 변경하지 않았다.
+- 앱 코드 2개(`main_shell_screen.dart`, `mobile_home_page.dart`)와 홈 테스트 1개를 변경했다. [관련 85건 통과](excluded-home-final-tests-20261031.jsonl): 홈 51 + shell/캘린더/위젯 6 + 목록 6 + eCampus 22. 마지막 행 레이아웃 보완 뒤 [영향 UI 3건 재확인·캡처](excluded-home-capture-tests-20261031.jsonl)도 통과했다. 중복이므로 합산하지 않는다. [분석](excluded-home-analyze-20261031.txt) 문제 없음. [요약·소스 해시](excluded-home-summary-20261031.json).
+- [첫 실행 원본](excluded-home-first-tests-20261031.jsonl)은 새 테스트가 기존 정책을 source 삭제로 잘못 가정해 2건 통과/1건 실패한 결과다. 실제 repository의 unreviewed 보존을 확인해 기대값만 수정했다. 최종 정렬 검증은 원본 sourceDueDate를 넣어 빠른 순/늦은 순 양쪽 순서 변화를 확인했다.
+- widget 렌더: [일반 목록](excluded-home-excluded-list.png) · [빈 목록](excluded-home-excluded-empty.png) · [정렬](excluded-home-excluded-sort.png) · [큰 글씨·긴 제목·과목·마감](excluded-home-excluded-large.png). 실제 Android 캡처가 아니다.
+- Android 확인: Drawer 항목 선택 후 같은 홈과 하단바 유지 → 기존 안내/카드 없음 → 기간/홈 필터와 무관하게 제외 원본 표시 → 정렬 변경/이탈 후 초기화 → 제외 해제 아이콘/중복 탭 → 다음 가져오기에서 다시 검토 → 완료·휴지통/일반 Task 동작 유지. 전체 테스트·APK 빌드·설치·커밋·push는 하지 않았다.

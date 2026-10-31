@@ -1,3 +1,5 @@
+import '../../core/utils/list_defaults.dart';
+
 enum TaskOrigin { personal, ecampus }
 
 enum TaskPriority { high, medium, low }
@@ -36,6 +38,8 @@ class Task {
   final String? parentTaskId;
   final List<String> tagIds;
   final List<String> folderIds;
+  // folderIds is retained as the existing screen adapter; storage has one list.
+  String get listId => folderIds.isEmpty ? inboxListId : folderIds.single;
   final EcampusSyncMetadata? ecampus;
   final int sortOrder;
   final DateTime createdAt;
@@ -94,6 +98,8 @@ class Folder {
     this.color,
     this.icon,
     this.parentFolderId,
+    this.groupId,
+    this.archivedAt,
     this.sortOrder = 0,
   });
 
@@ -102,6 +108,23 @@ class Folder {
   final String? color;
   final String? icon;
   final String? parentFolderId;
+  final String? groupId;
+  final DateTime? archivedAt;
+  final int sortOrder;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+}
+
+class FolderGroup {
+  const FolderGroup({
+    required this.id,
+    required this.name,
+    required this.createdAt,
+    required this.updatedAt,
+    this.sortOrder = 0,
+  });
+  final String id;
+  final String name;
   final int sortOrder;
   final DateTime createdAt;
   final DateTime updatedAt;

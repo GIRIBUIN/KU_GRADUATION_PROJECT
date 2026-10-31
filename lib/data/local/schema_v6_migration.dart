@@ -20,6 +20,7 @@ extension _V6Migration on AppDatabase {
       );
     }
     await migrator.createAll();
+    await _ensureInbox();
     Future<List<Map<String, Object?>>> read(String table) async =>
         (await customSelect(
           'SELECT * FROM legacy_v5_$table',
@@ -57,7 +58,7 @@ extension _V6Migration on AppDatabase {
         names.insert(0, ancestor['name'] as String);
         parent = ancestor['parent_folder_id'] as String?;
       }
-      await _insertRaw('folders', {
+      await _insertRaw('task_lists', {
         for (final key in [
           'id',
           'color',
@@ -124,7 +125,7 @@ extension _V6Migration on AppDatabase {
           'priority': ['high', 'medium', 'low'].contains(priority)
               ? priority
               : null,
-          'folder_id': folderId,
+          'list_id': folderId ?? inboxListId,
           'completed_at': status == 'active'
               ? null
               : status == 'completed'

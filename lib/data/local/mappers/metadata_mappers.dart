@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
+import '../../../core/utils/list_defaults.dart';
 
 import '../../models/home_section.dart';
 import '../../models/home_view_options.dart';
@@ -53,10 +54,11 @@ class FolderMapper {
   models.Folder fromRow(db.Folder row) {
     return models.Folder(
       id: row.id,
-      name: row.name,
+      name: row.id == inboxListId ? inboxListName : row.name,
       color: row.color,
       icon: row.icon,
-
+      groupId: row.groupId,
+      archivedAt: row.deletedAt,
       sortOrder: row.sortOrder,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
@@ -69,6 +71,7 @@ class FolderMapper {
       name: Value(folder.name),
       color: Value(folder.color),
       icon: Value(folder.icon),
+      groupId: Value(folder.groupId),
       sortOrder: Value(folder.sortOrder),
       createdAt: Value(folder.createdAt),
       updatedAt: Value(folder.updatedAt),

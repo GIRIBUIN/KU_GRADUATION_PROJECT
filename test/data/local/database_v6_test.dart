@@ -87,7 +87,7 @@ void main() {
         database: database,
       ).getTaskById('task'))!;
       expect(task.title, 'Keep');
-      expect(task.folderIds, isEmpty);
+      expect(task.folderIds, ['kutodo:inbox']);
       expect(task.ecampus!.sourceKey, 'unresolved-key');
       final reasons = (await database.select(database.migrationIssues).get())
           .map((r) => r.reason);
@@ -148,7 +148,7 @@ void main() {
     () async {
       final database = db.AppDatabase(NativeDatabase.memory());
       addTearDown(database.close);
-      expect(database.schemaVersion, 6);
+      expect(database.schemaVersion, 7);
       expect(
         (await database.customSelect('PRAGMA foreign_keys').getSingle())
             .data
@@ -160,7 +160,7 @@ void main() {
           (await database.customSelect('PRAGMA table_info(tasks)').get())
               .map((r) => r.read<String>('name'))
               .toSet();
-      expect(columns, containsAll(['folder_id', 'completed_at', 'deleted_at']));
+      expect(columns, containsAll(['list_id', 'completed_at', 'deleted_at']));
       expect(
         columns.intersection({
           'origin',
@@ -216,7 +216,7 @@ void main() {
       await repo.markDeleted('a-task');
       expect((await repo.restoreTask('a-task')).status, TaskStatus.completed);
       await folders.deleteFolder('a');
-      expect((await repo.getTaskById('a-task'))!.folderIds, isEmpty);
+      expect((await repo.getTaskById('a-task'))!.folderIds, ['a']);
       expect((await repo.getTaskById('b-task'))!.tagIds, ['tag']);
       expect(await tags.getTags(), hasLength(1));
       await tags.deleteTag('tag');

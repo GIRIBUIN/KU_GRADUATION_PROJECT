@@ -31,3 +31,8 @@ abstract interface class TransactionalTaskRepository {
   Future<T> atomic<T>(Future<T> Function() action);
   Future<void> recordImport(String id, int count, DateTime at);
 }
+
+/// Optional local maintenance of explicitly reviewed, unassigned imports.
+abstract interface class EcampusListOrganizer {
+  Future<List<Task>> organizeUnassignedEcampusTasks(Iterable<String> taskIds);
+}

@@ -3,6 +3,413 @@
 part of 'app_database.dart';
 
 // ignore_for_file: type=lint
+class $FolderGroupsTable extends FolderGroups
+    with TableInfo<$FolderGroupsTable, FolderGroup> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FolderGroupsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    sortOrder,
+    deletedAt,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'folder_groups';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<FolderGroup> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  FolderGroup map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return FolderGroup(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $FolderGroupsTable createAlias(String alias) {
+    return $FolderGroupsTable(attachedDatabase, alias);
+  }
+}
+
+class FolderGroup extends DataClass implements Insertable<FolderGroup> {
+  final String id;
+  final String name;
+  final int sortOrder;
+  final DateTime? deletedAt;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const FolderGroup({
+    required this.id,
+    required this.name,
+    required this.sortOrder,
+    this.deletedAt,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['sort_order'] = Variable<int>(sortOrder);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  FolderGroupsCompanion toCompanion(bool nullToAbsent) {
+    return FolderGroupsCompanion(
+      id: Value(id),
+      name: Value(name),
+      sortOrder: Value(sortOrder),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory FolderGroup.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return FolderGroup(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  FolderGroup copyWith({
+    String? id,
+    String? name,
+    int? sortOrder,
+    Value<DateTime?> deletedAt = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => FolderGroup(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    sortOrder: sortOrder ?? this.sortOrder,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  FolderGroup copyWithCompanion(FolderGroupsCompanion data) {
+    return FolderGroup(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FolderGroup(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, name, sortOrder, deletedAt, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FolderGroup &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.sortOrder == this.sortOrder &&
+          other.deletedAt == this.deletedAt &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class FolderGroupsCompanion extends UpdateCompanion<FolderGroup> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<int> sortOrder;
+  final Value<DateTime?> deletedAt;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const FolderGroupsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  FolderGroupsCompanion.insert({
+    required String id,
+    required String name,
+    this.sortOrder = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<FolderGroup> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<int>? sortOrder,
+    Expression<DateTime>? deletedAt,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (sortOrder != null) 'sort_order': sortOrder,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  FolderGroupsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<int>? sortOrder,
+    Value<DateTime?>? deletedAt,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return FolderGroupsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      sortOrder: sortOrder ?? this.sortOrder,
+      deletedAt: deletedAt ?? this.deletedAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FolderGroupsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $FoldersTable extends Folders with TableInfo<$FoldersTable, Folder> {
   @override
   final GeneratedDatabase attachedDatabase;
@@ -43,6 +450,20 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, Folder> {
     true,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
+  );
+  static const VerificationMeta _groupIdMeta = const VerificationMeta(
+    'groupId',
+  );
+  @override
+  late final GeneratedColumn<String> groupId = GeneratedColumn<String>(
+    'folder_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES folder_groups (id)',
+    ),
   );
   static const VerificationMeta _sortOrderMeta = const VerificationMeta(
     'sortOrder',
@@ -95,6 +516,7 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, Folder> {
     name,
     color,
     icon,
+    groupId,
     sortOrder,
     deletedAt,
     createdAt,
@@ -104,7 +526,7 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, Folder> {
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
-  static const String $name = 'folders';
+  static const String $name = 'task_lists';
   @override
   VerificationContext validateIntegrity(
     Insertable<Folder> instance, {
@@ -135,6 +557,12 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, Folder> {
       context.handle(
         _iconMeta,
         icon.isAcceptableOrUnknown(data['icon']!, _iconMeta),
+      );
+    }
+    if (data.containsKey('folder_id')) {
+      context.handle(
+        _groupIdMeta,
+        groupId.isAcceptableOrUnknown(data['folder_id']!, _groupIdMeta),
       );
     }
     if (data.containsKey('sort_order')) {
@@ -190,6 +618,10 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, Folder> {
         DriftSqlType.string,
         data['${effectivePrefix}icon'],
       ),
+      groupId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}folder_id'],
+      ),
       sortOrder: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}sort_order'],
@@ -220,6 +652,7 @@ class Folder extends DataClass implements Insertable<Folder> {
   final String name;
   final String? color;
   final String? icon;
+  final String? groupId;
   final int sortOrder;
   final DateTime? deletedAt;
   final DateTime createdAt;
@@ -229,6 +662,7 @@ class Folder extends DataClass implements Insertable<Folder> {
     required this.name,
     this.color,
     this.icon,
+    this.groupId,
     required this.sortOrder,
     this.deletedAt,
     required this.createdAt,
@@ -244,6 +678,9 @@ class Folder extends DataClass implements Insertable<Folder> {
     }
     if (!nullToAbsent || icon != null) {
       map['icon'] = Variable<String>(icon);
+    }
+    if (!nullToAbsent || groupId != null) {
+      map['folder_id'] = Variable<String>(groupId);
     }
     map['sort_order'] = Variable<int>(sortOrder);
     if (!nullToAbsent || deletedAt != null) {
@@ -262,6 +699,9 @@ class Folder extends DataClass implements Insertable<Folder> {
           ? const Value.absent()
           : Value(color),
       icon: icon == null && nullToAbsent ? const Value.absent() : Value(icon),
+      groupId: groupId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(groupId),
       sortOrder: Value(sortOrder),
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
@@ -281,6 +721,7 @@ class Folder extends DataClass implements Insertable<Folder> {
       name: serializer.fromJson<String>(json['name']),
       color: serializer.fromJson<String?>(json['color']),
       icon: serializer.fromJson<String?>(json['icon']),
+      groupId: serializer.fromJson<String?>(json['groupId']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -295,6 +736,7 @@ class Folder extends DataClass implements Insertable<Folder> {
       'name': serializer.toJson<String>(name),
       'color': serializer.toJson<String?>(color),
       'icon': serializer.toJson<String?>(icon),
+      'groupId': serializer.toJson<String?>(groupId),
       'sortOrder': serializer.toJson<int>(sortOrder),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -307,6 +749,7 @@ class Folder extends DataClass implements Insertable<Folder> {
     String? name,
     Value<String?> color = const Value.absent(),
     Value<String?> icon = const Value.absent(),
+    Value<String?> groupId = const Value.absent(),
     int? sortOrder,
     Value<DateTime?> deletedAt = const Value.absent(),
     DateTime? createdAt,
@@ -316,6 +759,7 @@ class Folder extends DataClass implements Insertable<Folder> {
     name: name ?? this.name,
     color: color.present ? color.value : this.color,
     icon: icon.present ? icon.value : this.icon,
+    groupId: groupId.present ? groupId.value : this.groupId,
     sortOrder: sortOrder ?? this.sortOrder,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
     createdAt: createdAt ?? this.createdAt,
@@ -327,6 +771,7 @@ class Folder extends DataClass implements Insertable<Folder> {
       name: data.name.present ? data.name.value : this.name,
       color: data.color.present ? data.color.value : this.color,
       icon: data.icon.present ? data.icon.value : this.icon,
+      groupId: data.groupId.present ? data.groupId.value : this.groupId,
       sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
@@ -341,6 +786,7 @@ class Folder extends DataClass implements Insertable<Folder> {
           ..write('name: $name, ')
           ..write('color: $color, ')
           ..write('icon: $icon, ')
+          ..write('groupId: $groupId, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('createdAt: $createdAt, ')
@@ -355,6 +801,7 @@ class Folder extends DataClass implements Insertable<Folder> {
     name,
     color,
     icon,
+    groupId,
     sortOrder,
     deletedAt,
     createdAt,
@@ -368,6 +815,7 @@ class Folder extends DataClass implements Insertable<Folder> {
           other.name == this.name &&
           other.color == this.color &&
           other.icon == this.icon &&
+          other.groupId == this.groupId &&
           other.sortOrder == this.sortOrder &&
           other.deletedAt == this.deletedAt &&
           other.createdAt == this.createdAt &&
@@ -379,6 +827,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
   final Value<String> name;
   final Value<String?> color;
   final Value<String?> icon;
+  final Value<String?> groupId;
   final Value<int> sortOrder;
   final Value<DateTime?> deletedAt;
   final Value<DateTime> createdAt;
@@ -389,6 +838,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
     this.name = const Value.absent(),
     this.color = const Value.absent(),
     this.icon = const Value.absent(),
+    this.groupId = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -400,6 +850,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
     required String name,
     this.color = const Value.absent(),
     this.icon = const Value.absent(),
+    this.groupId = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.deletedAt = const Value.absent(),
     required DateTime createdAt,
@@ -414,6 +865,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
     Expression<String>? name,
     Expression<String>? color,
     Expression<String>? icon,
+    Expression<String>? groupId,
     Expression<int>? sortOrder,
     Expression<DateTime>? deletedAt,
     Expression<DateTime>? createdAt,
@@ -425,6 +877,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
       if (name != null) 'name': name,
       if (color != null) 'color': color,
       if (icon != null) 'icon': icon,
+      if (groupId != null) 'folder_id': groupId,
       if (sortOrder != null) 'sort_order': sortOrder,
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (createdAt != null) 'created_at': createdAt,
@@ -438,6 +891,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
     Value<String>? name,
     Value<String?>? color,
     Value<String?>? icon,
+    Value<String?>? groupId,
     Value<int>? sortOrder,
     Value<DateTime?>? deletedAt,
     Value<DateTime>? createdAt,
@@ -449,6 +903,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
       name: name ?? this.name,
       color: color ?? this.color,
       icon: icon ?? this.icon,
+      groupId: groupId ?? this.groupId,
       sortOrder: sortOrder ?? this.sortOrder,
       deletedAt: deletedAt ?? this.deletedAt,
       createdAt: createdAt ?? this.createdAt,
@@ -471,6 +926,9 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
     }
     if (icon.present) {
       map['icon'] = Variable<String>(icon.value);
+    }
+    if (groupId.present) {
+      map['folder_id'] = Variable<String>(groupId.value);
     }
     if (sortOrder.present) {
       map['sort_order'] = Variable<int>(sortOrder.value);
@@ -497,6 +955,7 @@ class FoldersCompanion extends UpdateCompanion<Folder> {
           ..write('name: $name, ')
           ..write('color: $color, ')
           ..write('icon: $icon, ')
+          ..write('groupId: $groupId, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('createdAt: $createdAt, ')
@@ -566,14 +1025,15 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
   );
   @override
   late final GeneratedColumn<String> folderId = GeneratedColumn<String>(
-    'folder_id',
+    'list_id',
     aliasedName,
-    true,
+    false,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES folders (id)',
+      'REFERENCES task_lists (id)',
     ),
+    defaultValue: const Constant(inboxListId),
   );
   static const VerificationMeta _sortOrderMeta = const VerificationMeta(
     'sortOrder',
@@ -688,10 +1148,10 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         memo.isAcceptableOrUnknown(data['memo']!, _memoMeta),
       );
     }
-    if (data.containsKey('folder_id')) {
+    if (data.containsKey('list_id')) {
       context.handle(
         _folderIdMeta,
-        folderId.isAcceptableOrUnknown(data['folder_id']!, _folderIdMeta),
+        folderId.isAcceptableOrUnknown(data['list_id']!, _folderIdMeta),
       );
     }
     if (data.containsKey('sort_order')) {
@@ -762,8 +1222,8 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
       ),
       folderId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}folder_id'],
-      ),
+        data['${effectivePrefix}list_id'],
+      )!,
       sortOrder: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}sort_order'],
@@ -799,7 +1259,7 @@ class Task extends DataClass implements Insertable<Task> {
   final DateTime? dueDate;
   final String? priority;
   final String? memo;
-  final String? folderId;
+  final String folderId;
   final int sortOrder;
   final DateTime? completedAt;
   final DateTime? deletedAt;
@@ -811,7 +1271,7 @@ class Task extends DataClass implements Insertable<Task> {
     this.dueDate,
     this.priority,
     this.memo,
-    this.folderId,
+    required this.folderId,
     required this.sortOrder,
     this.completedAt,
     this.deletedAt,
@@ -832,9 +1292,7 @@ class Task extends DataClass implements Insertable<Task> {
     if (!nullToAbsent || memo != null) {
       map['memo'] = Variable<String>(memo);
     }
-    if (!nullToAbsent || folderId != null) {
-      map['folder_id'] = Variable<String>(folderId);
-    }
+    map['list_id'] = Variable<String>(folderId);
     map['sort_order'] = Variable<int>(sortOrder);
     if (!nullToAbsent || completedAt != null) {
       map['completed_at'] = Variable<DateTime>(completedAt);
@@ -858,9 +1316,7 @@ class Task extends DataClass implements Insertable<Task> {
           ? const Value.absent()
           : Value(priority),
       memo: memo == null && nullToAbsent ? const Value.absent() : Value(memo),
-      folderId: folderId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(folderId),
+      folderId: Value(folderId),
       sortOrder: Value(sortOrder),
       completedAt: completedAt == null && nullToAbsent
           ? const Value.absent()
@@ -884,7 +1340,7 @@ class Task extends DataClass implements Insertable<Task> {
       dueDate: serializer.fromJson<DateTime?>(json['dueDate']),
       priority: serializer.fromJson<String?>(json['priority']),
       memo: serializer.fromJson<String?>(json['memo']),
-      folderId: serializer.fromJson<String?>(json['folderId']),
+      folderId: serializer.fromJson<String>(json['folderId']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
       completedAt: serializer.fromJson<DateTime?>(json['completedAt']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
@@ -901,7 +1357,7 @@ class Task extends DataClass implements Insertable<Task> {
       'dueDate': serializer.toJson<DateTime?>(dueDate),
       'priority': serializer.toJson<String?>(priority),
       'memo': serializer.toJson<String?>(memo),
-      'folderId': serializer.toJson<String?>(folderId),
+      'folderId': serializer.toJson<String>(folderId),
       'sortOrder': serializer.toJson<int>(sortOrder),
       'completedAt': serializer.toJson<DateTime?>(completedAt),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
@@ -916,7 +1372,7 @@ class Task extends DataClass implements Insertable<Task> {
     Value<DateTime?> dueDate = const Value.absent(),
     Value<String?> priority = const Value.absent(),
     Value<String?> memo = const Value.absent(),
-    Value<String?> folderId = const Value.absent(),
+    String? folderId,
     int? sortOrder,
     Value<DateTime?> completedAt = const Value.absent(),
     Value<DateTime?> deletedAt = const Value.absent(),
@@ -928,7 +1384,7 @@ class Task extends DataClass implements Insertable<Task> {
     dueDate: dueDate.present ? dueDate.value : this.dueDate,
     priority: priority.present ? priority.value : this.priority,
     memo: memo.present ? memo.value : this.memo,
-    folderId: folderId.present ? folderId.value : this.folderId,
+    folderId: folderId ?? this.folderId,
     sortOrder: sortOrder ?? this.sortOrder,
     completedAt: completedAt.present ? completedAt.value : this.completedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -1008,7 +1464,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
   final Value<DateTime?> dueDate;
   final Value<String?> priority;
   final Value<String?> memo;
-  final Value<String?> folderId;
+  final Value<String> folderId;
   final Value<int> sortOrder;
   final Value<DateTime?> completedAt;
   final Value<DateTime?> deletedAt;
@@ -1066,7 +1522,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
       if (dueDate != null) 'due_date': dueDate,
       if (priority != null) 'priority': priority,
       if (memo != null) 'memo': memo,
-      if (folderId != null) 'folder_id': folderId,
+      if (folderId != null) 'list_id': folderId,
       if (sortOrder != null) 'sort_order': sortOrder,
       if (completedAt != null) 'completed_at': completedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
@@ -1082,7 +1538,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Value<DateTime?>? dueDate,
     Value<String?>? priority,
     Value<String?>? memo,
-    Value<String?>? folderId,
+    Value<String>? folderId,
     Value<int>? sortOrder,
     Value<DateTime?>? completedAt,
     Value<DateTime?>? deletedAt,
@@ -1125,7 +1581,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
       map['memo'] = Variable<String>(memo.value);
     }
     if (folderId.present) {
-      map['folder_id'] = Variable<String>(folderId.value);
+      map['list_id'] = Variable<String>(folderId.value);
     }
     if (sortOrder.present) {
       map['sort_order'] = Variable<int>(sortOrder.value);
@@ -2510,6 +2966,18 @@ class $EcampusCoursesTable extends EcampusCourses
       'REFERENCES tags (id)',
     ),
   );
+  static const VerificationMeta _listIdMeta = const VerificationMeta('listId');
+  @override
+  late final GeneratedColumn<String> listId = GeneratedColumn<String>(
+    'list_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES task_lists (id)',
+    ),
+  );
   static const VerificationMeta _lastObservedAtMeta = const VerificationMeta(
     'lastObservedAt',
   );
@@ -2529,6 +2997,7 @@ class $EcampusCoursesTable extends EcampusCourses
     externalCourseKey,
     name,
     tagId,
+    listId,
     lastObservedAt,
   ];
   @override
@@ -2582,6 +3051,12 @@ class $EcampusCoursesTable extends EcampusCourses
         tagId.isAcceptableOrUnknown(data['tag_id']!, _tagIdMeta),
       );
     }
+    if (data.containsKey('list_id')) {
+      context.handle(
+        _listIdMeta,
+        listId.isAcceptableOrUnknown(data['list_id']!, _listIdMeta),
+      );
+    }
     if (data.containsKey('last_observed_at')) {
       context.handle(
         _lastObservedAtMeta,
@@ -2626,6 +3101,10 @@ class $EcampusCoursesTable extends EcampusCourses
         DriftSqlType.string,
         data['${effectivePrefix}tag_id'],
       ),
+      listId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}list_id'],
+      ),
       lastObservedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}last_observed_at'],
@@ -2645,6 +3124,7 @@ class EcampusCourse extends DataClass implements Insertable<EcampusCourse> {
   final String? externalCourseKey;
   final String name;
   final String? tagId;
+  final String? listId;
   final DateTime lastObservedAt;
   const EcampusCourse({
     required this.id,
@@ -2652,6 +3132,7 @@ class EcampusCourse extends DataClass implements Insertable<EcampusCourse> {
     this.externalCourseKey,
     required this.name,
     this.tagId,
+    this.listId,
     required this.lastObservedAt,
   });
   @override
@@ -2665,6 +3146,9 @@ class EcampusCourse extends DataClass implements Insertable<EcampusCourse> {
     map['name'] = Variable<String>(name);
     if (!nullToAbsent || tagId != null) {
       map['tag_id'] = Variable<String>(tagId);
+    }
+    if (!nullToAbsent || listId != null) {
+      map['list_id'] = Variable<String>(listId);
     }
     map['last_observed_at'] = Variable<DateTime>(lastObservedAt);
     return map;
@@ -2681,6 +3165,9 @@ class EcampusCourse extends DataClass implements Insertable<EcampusCourse> {
       tagId: tagId == null && nullToAbsent
           ? const Value.absent()
           : Value(tagId),
+      listId: listId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(listId),
       lastObservedAt: Value(lastObservedAt),
     );
   }
@@ -2698,6 +3185,7 @@ class EcampusCourse extends DataClass implements Insertable<EcampusCourse> {
       ),
       name: serializer.fromJson<String>(json['name']),
       tagId: serializer.fromJson<String?>(json['tagId']),
+      listId: serializer.fromJson<String?>(json['listId']),
       lastObservedAt: serializer.fromJson<DateTime>(json['lastObservedAt']),
     );
   }
@@ -2710,6 +3198,7 @@ class EcampusCourse extends DataClass implements Insertable<EcampusCourse> {
       'externalCourseKey': serializer.toJson<String?>(externalCourseKey),
       'name': serializer.toJson<String>(name),
       'tagId': serializer.toJson<String?>(tagId),
+      'listId': serializer.toJson<String?>(listId),
       'lastObservedAt': serializer.toJson<DateTime>(lastObservedAt),
     };
   }
@@ -2720,6 +3209,7 @@ class EcampusCourse extends DataClass implements Insertable<EcampusCourse> {
     Value<String?> externalCourseKey = const Value.absent(),
     String? name,
     Value<String?> tagId = const Value.absent(),
+    Value<String?> listId = const Value.absent(),
     DateTime? lastObservedAt,
   }) => EcampusCourse(
     id: id ?? this.id,
@@ -2729,6 +3219,7 @@ class EcampusCourse extends DataClass implements Insertable<EcampusCourse> {
         : this.externalCourseKey,
     name: name ?? this.name,
     tagId: tagId.present ? tagId.value : this.tagId,
+    listId: listId.present ? listId.value : this.listId,
     lastObservedAt: lastObservedAt ?? this.lastObservedAt,
   );
   EcampusCourse copyWithCompanion(EcampusCoursesCompanion data) {
@@ -2742,6 +3233,7 @@ class EcampusCourse extends DataClass implements Insertable<EcampusCourse> {
           : this.externalCourseKey,
       name: data.name.present ? data.name.value : this.name,
       tagId: data.tagId.present ? data.tagId.value : this.tagId,
+      listId: data.listId.present ? data.listId.value : this.listId,
       lastObservedAt: data.lastObservedAt.present
           ? data.lastObservedAt.value
           : this.lastObservedAt,
@@ -2756,6 +3248,7 @@ class EcampusCourse extends DataClass implements Insertable<EcampusCourse> {
           ..write('externalCourseKey: $externalCourseKey, ')
           ..write('name: $name, ')
           ..write('tagId: $tagId, ')
+          ..write('listId: $listId, ')
           ..write('lastObservedAt: $lastObservedAt')
           ..write(')'))
         .toString();
@@ -2768,6 +3261,7 @@ class EcampusCourse extends DataClass implements Insertable<EcampusCourse> {
     externalCourseKey,
     name,
     tagId,
+    listId,
     lastObservedAt,
   );
   @override
@@ -2779,6 +3273,7 @@ class EcampusCourse extends DataClass implements Insertable<EcampusCourse> {
           other.externalCourseKey == this.externalCourseKey &&
           other.name == this.name &&
           other.tagId == this.tagId &&
+          other.listId == this.listId &&
           other.lastObservedAt == this.lastObservedAt);
 }
 
@@ -2788,6 +3283,7 @@ class EcampusCoursesCompanion extends UpdateCompanion<EcampusCourse> {
   final Value<String?> externalCourseKey;
   final Value<String> name;
   final Value<String?> tagId;
+  final Value<String?> listId;
   final Value<DateTime> lastObservedAt;
   final Value<int> rowid;
   const EcampusCoursesCompanion({
@@ -2796,6 +3292,7 @@ class EcampusCoursesCompanion extends UpdateCompanion<EcampusCourse> {
     this.externalCourseKey = const Value.absent(),
     this.name = const Value.absent(),
     this.tagId = const Value.absent(),
+    this.listId = const Value.absent(),
     this.lastObservedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -2805,6 +3302,7 @@ class EcampusCoursesCompanion extends UpdateCompanion<EcampusCourse> {
     this.externalCourseKey = const Value.absent(),
     required String name,
     this.tagId = const Value.absent(),
+    this.listId = const Value.absent(),
     required DateTime lastObservedAt,
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -2817,6 +3315,7 @@ class EcampusCoursesCompanion extends UpdateCompanion<EcampusCourse> {
     Expression<String>? externalCourseKey,
     Expression<String>? name,
     Expression<String>? tagId,
+    Expression<String>? listId,
     Expression<DateTime>? lastObservedAt,
     Expression<int>? rowid,
   }) {
@@ -2826,6 +3325,7 @@ class EcampusCoursesCompanion extends UpdateCompanion<EcampusCourse> {
       if (externalCourseKey != null) 'external_course_key': externalCourseKey,
       if (name != null) 'name': name,
       if (tagId != null) 'tag_id': tagId,
+      if (listId != null) 'list_id': listId,
       if (lastObservedAt != null) 'last_observed_at': lastObservedAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -2837,6 +3337,7 @@ class EcampusCoursesCompanion extends UpdateCompanion<EcampusCourse> {
     Value<String?>? externalCourseKey,
     Value<String>? name,
     Value<String?>? tagId,
+    Value<String?>? listId,
     Value<DateTime>? lastObservedAt,
     Value<int>? rowid,
   }) {
@@ -2846,6 +3347,7 @@ class EcampusCoursesCompanion extends UpdateCompanion<EcampusCourse> {
       externalCourseKey: externalCourseKey ?? this.externalCourseKey,
       name: name ?? this.name,
       tagId: tagId ?? this.tagId,
+      listId: listId ?? this.listId,
       lastObservedAt: lastObservedAt ?? this.lastObservedAt,
       rowid: rowid ?? this.rowid,
     );
@@ -2869,6 +3371,9 @@ class EcampusCoursesCompanion extends UpdateCompanion<EcampusCourse> {
     if (tagId.present) {
       map['tag_id'] = Variable<String>(tagId.value);
     }
+    if (listId.present) {
+      map['list_id'] = Variable<String>(listId.value);
+    }
     if (lastObservedAt.present) {
       map['last_observed_at'] = Variable<DateTime>(lastObservedAt.value);
     }
@@ -2886,6 +3391,7 @@ class EcampusCoursesCompanion extends UpdateCompanion<EcampusCourse> {
           ..write('externalCourseKey: $externalCourseKey, ')
           ..write('name: $name, ')
           ..write('tagId: $tagId, ')
+          ..write('listId: $listId, ')
           ..write('lastObservedAt: $lastObservedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -5792,6 +6298,7 @@ class DeletedEntitiesCompanion extends UpdateCompanion<DeletedEntity> {
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
+  late final $FolderGroupsTable folderGroups = $FolderGroupsTable(this);
   late final $FoldersTable folders = $FoldersTable(this);
   late final $TasksTable tasks = $TasksTable(this);
   late final $SubTasksTable subTasks = $SubTasksTable(this);
@@ -5815,6 +6322,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
+    folderGroups,
     folders,
     tasks,
     subTasks,
@@ -5831,12 +6339,334 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   ];
 }
 
+typedef $$FolderGroupsTableCreateCompanionBuilder =
+    FolderGroupsCompanion Function({
+      required String id,
+      required String name,
+      Value<int> sortOrder,
+      Value<DateTime?> deletedAt,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$FolderGroupsTableUpdateCompanionBuilder =
+    FolderGroupsCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<int> sortOrder,
+      Value<DateTime?> deletedAt,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+final class $$FolderGroupsTableReferences
+    extends BaseReferences<_$AppDatabase, $FolderGroupsTable, FolderGroup> {
+  $$FolderGroupsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$FoldersTable, List<Folder>> _foldersRefsTable(
+    _$AppDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.folders,
+    aliasName: $_aliasNameGenerator(db.folderGroups.id, db.folders.groupId),
+  );
+
+  $$FoldersTableProcessedTableManager get foldersRefs {
+    final manager = $$FoldersTableTableManager(
+      $_db,
+      $_db.folders,
+    ).filter((f) => f.groupId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_foldersRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$FolderGroupsTableFilterComposer
+    extends Composer<_$AppDatabase, $FolderGroupsTable> {
+  $$FolderGroupsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> foldersRefs(
+    Expression<bool> Function($$FoldersTableFilterComposer f) f,
+  ) {
+    final $$FoldersTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.folders,
+      getReferencedColumn: (t) => t.groupId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FoldersTableFilterComposer(
+            $db: $db,
+            $table: $db.folders,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$FolderGroupsTableOrderingComposer
+    extends Composer<_$AppDatabase, $FolderGroupsTable> {
+  $$FolderGroupsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$FolderGroupsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FolderGroupsTable> {
+  $$FolderGroupsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  Expression<T> foldersRefs<T extends Object>(
+    Expression<T> Function($$FoldersTableAnnotationComposer a) f,
+  ) {
+    final $$FoldersTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.folders,
+      getReferencedColumn: (t) => t.groupId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FoldersTableAnnotationComposer(
+            $db: $db,
+            $table: $db.folders,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$FolderGroupsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FolderGroupsTable,
+          FolderGroup,
+          $$FolderGroupsTableFilterComposer,
+          $$FolderGroupsTableOrderingComposer,
+          $$FolderGroupsTableAnnotationComposer,
+          $$FolderGroupsTableCreateCompanionBuilder,
+          $$FolderGroupsTableUpdateCompanionBuilder,
+          (FolderGroup, $$FolderGroupsTableReferences),
+          FolderGroup,
+          PrefetchHooks Function({bool foldersRefs})
+        > {
+  $$FolderGroupsTableTableManager(_$AppDatabase db, $FolderGroupsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FolderGroupsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FolderGroupsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$FolderGroupsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FolderGroupsCompanion(
+                id: id,
+                name: name,
+                sortOrder: sortOrder,
+                deletedAt: deletedAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                Value<int> sortOrder = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => FolderGroupsCompanion.insert(
+                id: id,
+                name: name,
+                sortOrder: sortOrder,
+                deletedAt: deletedAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$FolderGroupsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({foldersRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (foldersRefs) db.folders],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (foldersRefs)
+                    await $_getPrefetchedData<
+                      FolderGroup,
+                      $FolderGroupsTable,
+                      Folder
+                    >(
+                      currentTable: table,
+                      referencedTable: $$FolderGroupsTableReferences
+                          ._foldersRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$FolderGroupsTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).foldersRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.groupId == item.id),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$FolderGroupsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FolderGroupsTable,
+      FolderGroup,
+      $$FolderGroupsTableFilterComposer,
+      $$FolderGroupsTableOrderingComposer,
+      $$FolderGroupsTableAnnotationComposer,
+      $$FolderGroupsTableCreateCompanionBuilder,
+      $$FolderGroupsTableUpdateCompanionBuilder,
+      (FolderGroup, $$FolderGroupsTableReferences),
+      FolderGroup,
+      PrefetchHooks Function({bool foldersRefs})
+    >;
 typedef $$FoldersTableCreateCompanionBuilder =
     FoldersCompanion Function({
       required String id,
       required String name,
       Value<String?> color,
       Value<String?> icon,
+      Value<String?> groupId,
       Value<int> sortOrder,
       Value<DateTime?> deletedAt,
       required DateTime createdAt,
@@ -5849,6 +6679,7 @@ typedef $$FoldersTableUpdateCompanionBuilder =
       Value<String> name,
       Value<String?> color,
       Value<String?> icon,
+      Value<String?> groupId,
       Value<int> sortOrder,
       Value<DateTime?> deletedAt,
       Value<DateTime> createdAt,
@@ -5859,6 +6690,25 @@ typedef $$FoldersTableUpdateCompanionBuilder =
 final class $$FoldersTableReferences
     extends BaseReferences<_$AppDatabase, $FoldersTable, Folder> {
   $$FoldersTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $FolderGroupsTable _groupIdTable(_$AppDatabase db) =>
+      db.folderGroups.createAlias(
+        $_aliasNameGenerator(db.folders.groupId, db.folderGroups.id),
+      );
+
+  $$FolderGroupsTableProcessedTableManager? get groupId {
+    final $_column = $_itemColumn<String>('folder_id');
+    if ($_column == null) return null;
+    final manager = $$FolderGroupsTableTableManager(
+      $_db,
+      $_db.folderGroups,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_groupIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
 
   static MultiTypedResultKey<$TasksTable, List<Task>> _tasksRefsTable(
     _$AppDatabase db,
@@ -5874,6 +6724,24 @@ final class $$FoldersTableReferences
     ).filter((f) => f.folderId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_tasksRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$EcampusCoursesTable, List<EcampusCourse>>
+  _ecampusCoursesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.ecampusCourses,
+    aliasName: $_aliasNameGenerator(db.folders.id, db.ecampusCourses.listId),
+  );
+
+  $$EcampusCoursesTableProcessedTableManager get ecampusCoursesRefs {
+    final manager = $$EcampusCoursesTableTableManager(
+      $_db,
+      $_db.ecampusCourses,
+    ).filter((f) => f.listId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_ecampusCoursesRefsTable($_db));
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -5929,6 +6797,29 @@ class $$FoldersTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  $$FolderGroupsTableFilterComposer get groupId {
+    final $$FolderGroupsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.groupId,
+      referencedTable: $db.folderGroups,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FolderGroupsTableFilterComposer(
+            $db: $db,
+            $table: $db.folderGroups,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
   Expression<bool> tasksRefs(
     Expression<bool> Function($$TasksTableFilterComposer f) f,
   ) {
@@ -5945,6 +6836,31 @@ class $$FoldersTableFilterComposer
           }) => $$TasksTableFilterComposer(
             $db: $db,
             $table: $db.tasks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> ecampusCoursesRefs(
+    Expression<bool> Function($$EcampusCoursesTableFilterComposer f) f,
+  ) {
+    final $$EcampusCoursesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.ecampusCourses,
+      getReferencedColumn: (t) => t.listId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$EcampusCoursesTableFilterComposer(
+            $db: $db,
+            $table: $db.ecampusCourses,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -6003,6 +6919,29 @@ class $$FoldersTableOrderingComposer
     column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  $$FolderGroupsTableOrderingComposer get groupId {
+    final $$FolderGroupsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.groupId,
+      referencedTable: $db.folderGroups,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FolderGroupsTableOrderingComposer(
+            $db: $db,
+            $table: $db.folderGroups,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$FoldersTableAnnotationComposer
@@ -6038,6 +6977,29 @@ class $$FoldersTableAnnotationComposer
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 
+  $$FolderGroupsTableAnnotationComposer get groupId {
+    final $$FolderGroupsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.groupId,
+      referencedTable: $db.folderGroups,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FolderGroupsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.folderGroups,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
   Expression<T> tasksRefs<T extends Object>(
     Expression<T> Function($$TasksTableAnnotationComposer a) f,
   ) {
@@ -6062,6 +7024,31 @@ class $$FoldersTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> ecampusCoursesRefs<T extends Object>(
+    Expression<T> Function($$EcampusCoursesTableAnnotationComposer a) f,
+  ) {
+    final $$EcampusCoursesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.ecampusCourses,
+      getReferencedColumn: (t) => t.listId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$EcampusCoursesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.ecampusCourses,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$FoldersTableTableManager
@@ -6077,7 +7064,11 @@ class $$FoldersTableTableManager
           $$FoldersTableUpdateCompanionBuilder,
           (Folder, $$FoldersTableReferences),
           Folder,
-          PrefetchHooks Function({bool tasksRefs})
+          PrefetchHooks Function({
+            bool groupId,
+            bool tasksRefs,
+            bool ecampusCoursesRefs,
+          })
         > {
   $$FoldersTableTableManager(_$AppDatabase db, $FoldersTable table)
     : super(
@@ -6096,6 +7087,7 @@ class $$FoldersTableTableManager
                 Value<String> name = const Value.absent(),
                 Value<String?> color = const Value.absent(),
                 Value<String?> icon = const Value.absent(),
+                Value<String?> groupId = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -6106,6 +7098,7 @@ class $$FoldersTableTableManager
                 name: name,
                 color: color,
                 icon: icon,
+                groupId: groupId,
                 sortOrder: sortOrder,
                 deletedAt: deletedAt,
                 createdAt: createdAt,
@@ -6118,6 +7111,7 @@ class $$FoldersTableTableManager
                 required String name,
                 Value<String?> color = const Value.absent(),
                 Value<String?> icon = const Value.absent(),
+                Value<String?> groupId = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
                 required DateTime createdAt,
@@ -6128,6 +7122,7 @@ class $$FoldersTableTableManager
                 name: name,
                 color: color,
                 icon: icon,
+                groupId: groupId,
                 sortOrder: sortOrder,
                 deletedAt: deletedAt,
                 createdAt: createdAt,
@@ -6142,29 +7137,90 @@ class $$FoldersTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({tasksRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [if (tasksRefs) db.tasks],
-              addJoins: null,
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (tasksRefs)
-                    await $_getPrefetchedData<Folder, $FoldersTable, Task>(
-                      currentTable: table,
-                      referencedTable: $$FoldersTableReferences._tasksRefsTable(
-                        db,
-                      ),
-                      managerFromTypedResult: (p0) =>
-                          $$FoldersTableReferences(db, table, p0).tasksRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where((e) => e.folderId == item.id),
-                      typedResults: items,
-                    ),
-                ];
+          prefetchHooksCallback:
+              ({
+                groupId = false,
+                tasksRefs = false,
+                ecampusCoursesRefs = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (tasksRefs) db.tasks,
+                    if (ecampusCoursesRefs) db.ecampusCourses,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (groupId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.groupId,
+                                    referencedTable: $$FoldersTableReferences
+                                        ._groupIdTable(db),
+                                    referencedColumn: $$FoldersTableReferences
+                                        ._groupIdTable(db)
+                                        .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (tasksRefs)
+                        await $_getPrefetchedData<Folder, $FoldersTable, Task>(
+                          currentTable: table,
+                          referencedTable: $$FoldersTableReferences
+                              ._tasksRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$FoldersTableReferences(db, table, p0).tasksRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.folderId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (ecampusCoursesRefs)
+                        await $_getPrefetchedData<
+                          Folder,
+                          $FoldersTable,
+                          EcampusCourse
+                        >(
+                          currentTable: table,
+                          referencedTable: $$FoldersTableReferences
+                              ._ecampusCoursesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$FoldersTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).ecampusCoursesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.listId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -6181,7 +7237,11 @@ typedef $$FoldersTableProcessedTableManager =
       $$FoldersTableUpdateCompanionBuilder,
       (Folder, $$FoldersTableReferences),
       Folder,
-      PrefetchHooks Function({bool tasksRefs})
+      PrefetchHooks Function({
+        bool groupId,
+        bool tasksRefs,
+        bool ecampusCoursesRefs,
+      })
     >;
 typedef $$TasksTableCreateCompanionBuilder =
     TasksCompanion Function({
@@ -6190,7 +7250,7 @@ typedef $$TasksTableCreateCompanionBuilder =
       Value<DateTime?> dueDate,
       Value<String?> priority,
       Value<String?> memo,
-      Value<String?> folderId,
+      Value<String> folderId,
       Value<int> sortOrder,
       Value<DateTime?> completedAt,
       Value<DateTime?> deletedAt,
@@ -6205,7 +7265,7 @@ typedef $$TasksTableUpdateCompanionBuilder =
       Value<DateTime?> dueDate,
       Value<String?> priority,
       Value<String?> memo,
-      Value<String?> folderId,
+      Value<String> folderId,
       Value<int> sortOrder,
       Value<DateTime?> completedAt,
       Value<DateTime?> deletedAt,
@@ -6221,9 +7281,9 @@ final class $$TasksTableReferences
   static $FoldersTable _folderIdTable(_$AppDatabase db) => db.folders
       .createAlias($_aliasNameGenerator(db.tasks.folderId, db.folders.id));
 
-  $$FoldersTableProcessedTableManager? get folderId {
-    final $_column = $_itemColumn<String>('folder_id');
-    if ($_column == null) return null;
+  $$FoldersTableProcessedTableManager get folderId {
+    final $_column = $_itemColumn<String>('list_id')!;
+
     final manager = $$FoldersTableTableManager(
       $_db,
       $_db.folders,
@@ -6864,7 +7924,7 @@ class $$TasksTableTableManager
                 Value<DateTime?> dueDate = const Value.absent(),
                 Value<String?> priority = const Value.absent(),
                 Value<String?> memo = const Value.absent(),
-                Value<String?> folderId = const Value.absent(),
+                Value<String> folderId = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
@@ -6892,7 +7952,7 @@ class $$TasksTableTableManager
                 Value<DateTime?> dueDate = const Value.absent(),
                 Value<String?> priority = const Value.absent(),
                 Value<String?> memo = const Value.absent(),
-                Value<String?> folderId = const Value.absent(),
+                Value<String> folderId = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
@@ -8289,6 +9349,7 @@ typedef $$EcampusCoursesTableCreateCompanionBuilder =
       Value<String?> externalCourseKey,
       required String name,
       Value<String?> tagId,
+      Value<String?> listId,
       required DateTime lastObservedAt,
       Value<int> rowid,
     });
@@ -8299,6 +9360,7 @@ typedef $$EcampusCoursesTableUpdateCompanionBuilder =
       Value<String?> externalCourseKey,
       Value<String> name,
       Value<String?> tagId,
+      Value<String?> listId,
       Value<DateTime> lastObservedAt,
       Value<int> rowid,
     });
@@ -8323,6 +9385,24 @@ final class $$EcampusCoursesTableReferences
       $_db.tags,
     ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_tagIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $FoldersTable _listIdTable(_$AppDatabase db) => db.folders.createAlias(
+    $_aliasNameGenerator(db.ecampusCourses.listId, db.folders.id),
+  );
+
+  $$FoldersTableProcessedTableManager? get listId {
+    final $_column = $_itemColumn<String>('list_id');
+    if ($_column == null) return null;
+    final manager = $$FoldersTableTableManager(
+      $_db,
+      $_db.folders,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_listIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -8399,6 +9479,29 @@ class $$EcampusCoursesTableFilterComposer
           }) => $$TagsTableFilterComposer(
             $db: $db,
             $table: $db.tags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$FoldersTableFilterComposer get listId {
+    final $$FoldersTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.listId,
+      referencedTable: $db.folders,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FoldersTableFilterComposer(
+            $db: $db,
+            $table: $db.folders,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -8490,6 +9593,29 @@ class $$EcampusCoursesTableOrderingComposer
     );
     return composer;
   }
+
+  $$FoldersTableOrderingComposer get listId {
+    final $$FoldersTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.listId,
+      referencedTable: $db.folders,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FoldersTableOrderingComposer(
+            $db: $db,
+            $table: $db.folders,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$EcampusCoursesTableAnnotationComposer
@@ -8545,6 +9671,29 @@ class $$EcampusCoursesTableAnnotationComposer
     return composer;
   }
 
+  $$FoldersTableAnnotationComposer get listId {
+    final $$FoldersTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.listId,
+      referencedTable: $db.folders,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FoldersTableAnnotationComposer(
+            $db: $db,
+            $table: $db.folders,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
   Expression<T> ecampusItemsRefs<T extends Object>(
     Expression<T> Function($$EcampusItemsTableAnnotationComposer a) f,
   ) {
@@ -8584,7 +9733,11 @@ class $$EcampusCoursesTableTableManager
           $$EcampusCoursesTableUpdateCompanionBuilder,
           (EcampusCourse, $$EcampusCoursesTableReferences),
           EcampusCourse,
-          PrefetchHooks Function({bool tagId, bool ecampusItemsRefs})
+          PrefetchHooks Function({
+            bool tagId,
+            bool listId,
+            bool ecampusItemsRefs,
+          })
         > {
   $$EcampusCoursesTableTableManager(
     _$AppDatabase db,
@@ -8606,6 +9759,7 @@ class $$EcampusCoursesTableTableManager
                 Value<String?> externalCourseKey = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String?> tagId = const Value.absent(),
+                Value<String?> listId = const Value.absent(),
                 Value<DateTime> lastObservedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => EcampusCoursesCompanion(
@@ -8614,6 +9768,7 @@ class $$EcampusCoursesTableTableManager
                 externalCourseKey: externalCourseKey,
                 name: name,
                 tagId: tagId,
+                listId: listId,
                 lastObservedAt: lastObservedAt,
                 rowid: rowid,
               ),
@@ -8624,6 +9779,7 @@ class $$EcampusCoursesTableTableManager
                 Value<String?> externalCourseKey = const Value.absent(),
                 required String name,
                 Value<String?> tagId = const Value.absent(),
+                Value<String?> listId = const Value.absent(),
                 required DateTime lastObservedAt,
                 Value<int> rowid = const Value.absent(),
               }) => EcampusCoursesCompanion.insert(
@@ -8632,6 +9788,7 @@ class $$EcampusCoursesTableTableManager
                 externalCourseKey: externalCourseKey,
                 name: name,
                 tagId: tagId,
+                listId: listId,
                 lastObservedAt: lastObservedAt,
                 rowid: rowid,
               ),
@@ -8643,68 +9800,89 @@ class $$EcampusCoursesTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({tagId = false, ecampusItemsRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [if (ecampusItemsRefs) db.ecampusItems],
-              addJoins:
-                  <
-                    T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic
-                    >
-                  >(state) {
-                    if (tagId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.tagId,
-                                referencedTable: $$EcampusCoursesTableReferences
-                                    ._tagIdTable(db),
-                                referencedColumn:
-                                    $$EcampusCoursesTableReferences
-                                        ._tagIdTable(db)
-                                        .id,
-                              )
-                              as T;
-                    }
+          prefetchHooksCallback:
+              ({tagId = false, listId = false, ecampusItemsRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (ecampusItemsRefs) db.ecampusItems,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (tagId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.tagId,
+                                    referencedTable:
+                                        $$EcampusCoursesTableReferences
+                                            ._tagIdTable(db),
+                                    referencedColumn:
+                                        $$EcampusCoursesTableReferences
+                                            ._tagIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (listId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.listId,
+                                    referencedTable:
+                                        $$EcampusCoursesTableReferences
+                                            ._listIdTable(db),
+                                    referencedColumn:
+                                        $$EcampusCoursesTableReferences
+                                            ._listIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
 
-                    return state;
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (ecampusItemsRefs)
+                        await $_getPrefetchedData<
+                          EcampusCourse,
+                          $EcampusCoursesTable,
+                          EcampusItem
+                        >(
+                          currentTable: table,
+                          referencedTable: $$EcampusCoursesTableReferences
+                              ._ecampusItemsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$EcampusCoursesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).ecampusItemsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.courseId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
                   },
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (ecampusItemsRefs)
-                    await $_getPrefetchedData<
-                      EcampusCourse,
-                      $EcampusCoursesTable,
-                      EcampusItem
-                    >(
-                      currentTable: table,
-                      referencedTable: $$EcampusCoursesTableReferences
-                          ._ecampusItemsRefsTable(db),
-                      managerFromTypedResult: (p0) =>
-                          $$EcampusCoursesTableReferences(
-                            db,
-                            table,
-                            p0,
-                          ).ecampusItemsRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where((e) => e.courseId == item.id),
-                      typedResults: items,
-                    ),
-                ];
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -8721,7 +9899,7 @@ typedef $$EcampusCoursesTableProcessedTableManager =
       $$EcampusCoursesTableUpdateCompanionBuilder,
       (EcampusCourse, $$EcampusCoursesTableReferences),
       EcampusCourse,
-      PrefetchHooks Function({bool tagId, bool ecampusItemsRefs})
+      PrefetchHooks Function({bool tagId, bool listId, bool ecampusItemsRefs})
     >;
 typedef $$EcampusItemsTableCreateCompanionBuilder =
     EcampusItemsCompanion Function({
@@ -10733,6 +11911,8 @@ typedef $$DeletedEntitiesTableProcessedTableManager =
 class $AppDatabaseManager {
   final _$AppDatabase _db;
   $AppDatabaseManager(this._db);
+  $$FolderGroupsTableTableManager get folderGroups =>
+      $$FolderGroupsTableTableManager(_db, _db.folderGroups);
   $$FoldersTableTableManager get folders =>
       $$FoldersTableTableManager(_db, _db.folders);
   $$TasksTableTableManager get tasks =>

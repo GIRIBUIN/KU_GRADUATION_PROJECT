@@ -100,14 +100,20 @@ void main() {
 
         expect(updated.name, '이번 주 집중');
         expect(updated.sortOrder, 0);
-        expect(folders.map((folder) => folder.id), ['folder-1']);
+        expect(folders.map((folder) => folder.id), [
+          'kutodo:inbox',
+          'folder-1',
+        ]);
 
         await folderRepository.deleteFolder('folder-1');
 
-        expect(await folderRepository.getFolderById('folder-1'), isNull);
+        expect(
+          (await folderRepository.getFolderById('folder-1'))!.archivedAt,
+          isNotNull,
+        );
         expect(
           (await database.select(database.tasks).get()).single.folderId,
-          isNull,
+          'folder-1',
         );
       },
     );
@@ -121,6 +127,7 @@ void main() {
       );
 
       expect((await folderRepository.getFolders()).map((folder) => folder.id), [
+        'kutodo:inbox',
         'folder-1',
         'folder-2',
       ]);
@@ -128,6 +135,7 @@ void main() {
       await folderRepository.updateFolderOrder(['folder-2', 'folder-1']);
 
       expect((await folderRepository.getFolders()).map((folder) => folder.id), [
+        'kutodo:inbox',
         'folder-2',
         'folder-1',
       ]);

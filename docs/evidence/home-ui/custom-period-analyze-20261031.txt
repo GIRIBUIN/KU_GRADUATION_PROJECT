@@ -1,0 +1,6 @@
+Analyzing kutodo...                                             
+
+   info - 'onReorder' is deprecated and shouldn't be used. Use the onReorderItem callback instead. The onReorderItem callback adjusts the newIndex parameter for a removed item at the oldIndex. This feature was deprecated after v3.41.0-0.0.pre. Try replacing the use of the deprecated member with the replacement - lib\presentation\screens\main\main_shell_screen.dart:3081:9 - deprecated_member_use
+
+1 issue found. (ran in 1.8s)
+

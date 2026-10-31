@@ -1,0 +1,4 @@
+Command: C:\flutter\bin\flutter.bat build apk --debug --no-pub
+Running Gradle task 'assembleDebug'...                              5.5s
+√ Built build\app\outputs\flutter-apk\app-debug.apk
+Exit code: 0

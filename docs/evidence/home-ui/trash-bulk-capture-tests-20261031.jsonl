@@ -1,0 +1,15 @@
+{"protocolVersion":"0.1.1","runnerVersion":null,"pid":3704,"type":"start","time":0}
+{"suite":{"id":0,"platform":"vm","path":"D:/_workspace/repos/kutodo/test/presentation/screens/mobile_home_test.dart"},"type":"suite","time":0}
+{"test":{"id":1,"name":"loading D:/_workspace/repos/kutodo/test/presentation/screens/mobile_home_test.dart","suiteID":0,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":0}
+{"count":1,"time":2,"type":"allSuites"}
+{"testID":1,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":6351}
+{"group":{"id":2,"suiteID":0,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":2,"line":null,"column":null,"url":null},"type":"group","time":6352}
+{"test":{"id":3,"name":"(setUpAll)","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":32,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/presentation/screens/mobile_home_test.dart"},"type":"testStart","time":6353}
+{"testID":3,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":6402}
+{"test":{"id":4,"name":"trash selection restores only selected tasks and keeps completion and list metadata","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":1774,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/screens/mobile_home_test.dart"},"type":"testStart","time":6403}
+{"testID":4,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":8137}
+{"test":{"id":5,"name":"trash view is temporary and independent of saved home sorting and filters","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":1872,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/screens/mobile_home_test.dart"},"type":"testStart","time":8138}
+{"testID":5,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":9472}
+{"test":{"id":6,"name":"(tearDownAll)","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":9472}
+{"testID":6,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":9474}
+{"success":true,"type":"done","time":9503}

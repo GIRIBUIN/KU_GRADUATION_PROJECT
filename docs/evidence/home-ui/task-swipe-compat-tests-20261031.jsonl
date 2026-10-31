@@ -1,0 +1,10 @@
+{"protocolVersion":"0.1.1","runnerVersion":null,"pid":17560,"type":"start","time":0}
+{"suite":{"id":0,"platform":"vm","path":"D:/_workspace/repos/kutodo/test/data/repositories/drift_metadata_repositories_test.dart"},"type":"suite","time":0}
+{"test":{"id":1,"name":"loading D:/_workspace/repos/kutodo/test/data/repositories/drift_metadata_repositories_test.dart","suiteID":0,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":0}
+{"count":1,"time":2,"type":"allSuites"}
+{"testID":1,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":1773}
+{"group":{"id":2,"suiteID":0,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":1,"line":null,"column":null,"url":null},"type":"group","time":1778}
+{"group":{"id":3,"suiteID":0,"parentID":2,"name":"home layout settings compatibility","metadata":{"skip":false,"skipReason":null},"testCount":1,"line":352,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_metadata_repositories_test.dart"},"type":"group","time":1779}
+{"test":{"id":4,"name":"home layout settings compatibility swipe settings accept old data, reject invalid domains, and preserve unrelated fields","suiteID":0,"groupIDs":[2,3],"metadata":{"skip":false,"skipReason":null},"line":355,"column":5,"url":"file:///D:/_workspace/repos/kutodo/test/data/repositories/drift_metadata_repositories_test.dart"},"type":"testStart","time":1779}
+{"testID":4,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1861}
+{"success":true,"type":"done","time":1878}

@@ -1,0 +1,92 @@
+{
+  "recorded_at_utc": "2026-10-31T05:27:33.404620+00:00",
+  "git_base": "e734b556cc943ef635589b15324a340fdc726bc6",
+  "uncommitted_changes": true,
+  "scope": "Trash-only available filter values, retained pre-deletion completion filtering, and always-visible row selection checkboxes without a separate selection entry icon",
+  "tests": {
+    "raw": "trash-filter-tests-20261031.jsonl",
+    "passed": 38,
+    "failed": 0,
+    "elapsed_ms": 20683
+  },
+  "capture_tests": {
+    "raw": "trash-filter-capture-tests-20261031.jsonl",
+    "passed": 2,
+    "failed": 0,
+    "elapsed_ms": 9244
+  },
+  "analysis": {
+    "raw": "trash-filter-analyze-20261031.txt",
+    "errors": 0,
+    "warnings": 0,
+    "existing_info": 1
+  },
+  "android_build": {
+    "raw": "trash-filter-build-20261031.txt",
+    "success": true,
+    "apk": "build/app/outputs/flutter-apk/app-debug.apk",
+    "sha256": "750664bac64593438b8c2150502c04835a267364291edfb738932c60f503accf",
+    "bytes": 192301198,
+    "installed_on_device": false
+  },
+  "source_comparison": {
+    "baseline": "trash-bulk-summary-20261031.json",
+    "changed_files": [
+      "lib/presentation/screens/main/mobile_home_page.dart",
+      "test/presentation/screens/mobile_home_test.dart"
+    ],
+    "other_recorded_sources_unchanged": true,
+    "schema_version": 7
+  },
+  "screenshots": [
+    "trash-filter-trash-checkboxes.png",
+    "trash-filter-trash-filter-options.png"
+  ],
+  "source_git_blob_hashes": {
+    "lib/core/utils/list_defaults.dart": "55bd9a3c3cdfe404dbcb07b6ea0639ea7b7eeed4",
+    "lib/data/local/app_database.dart": "209c8c9a8633fd68ba73e1c60ec15649eb8ea5e2",
+    "lib/data/local/app_database.g.dart": "53880240c689747588143febeae3f145445733f2",
+    "lib/data/local/mappers/metadata_mappers.dart": "dfe55f9d24140f2af2aa72105f103757c173a18f",
+    "lib/data/local/mappers/task_mapper.dart": "57c625bb27f1e40c323824e633791a2f3bd18fbd",
+    "lib/data/local/README.md": "30a74e1c9013f37f4461cd40830f591c4ed3335a",
+    "lib/data/local/schema_v6_migration.dart": "7b71a483cd9a41a4b8c729ae7188e809ea2e8eda",
+    "lib/data/local/schema_v7_migration.dart": "5ff9c72d1d1537abe7a1de22aefa63c33bc2db70",
+    "lib/data/models/ecampus_models.dart": "6c400dd78e94678d893c3a01d0d9f6b454301555",
+    "lib/data/models/home_view_options.dart": "1b702675e4a19e60b36b4ea1c0e2a315dd048362",
+    "lib/data/models/task_models.dart": "0a7eb3658451f78318ba0412b82bfaa06ed7e4ac",
+    "lib/data/repositories/drift_folder_repository.dart": "840a20827b6eddaf8a292119bc01ca0d40004b60",
+    "lib/data/repositories/drift_task_repository.dart": "d1e69201ee3c0b902c62aa40cc8dff535a43d8b3",
+    "lib/data/repositories/folder_repository.dart": "6ec830b156d65b54df27bd0bc6d0cb2a8ab7274c",
+    "lib/data/repositories/settings_repository.dart": "3b3c9492d7fc891870ee94e7cf5053f95cb4e867",
+    "lib/data/repositories/task_repository.dart": "9e952a8e9d60b7fa6c959caef8249a8fe1d5e457",
+    "lib/data/services/default_ecampus_sync_service.dart": "8c9ede45e520cbb37a91fa68739c1a870d19be6a",
+    "lib/data/services/ecampus_sync_apply_service.dart": "ce14f536c9c761406912494e9be2342a834be3f3",
+    "lib/data/services/ecampus_sync_classifier.dart": "807aa6ba0cf8833e5c08259fbcc8b5cb6bb07e15",
+    "lib/data/services/ecampus_todo_parser.dart": "41b85e7d248beb78bea8e4a337bee76ee32c7617",
+    "lib/data/services/http_ecampus_auth_service.dart": "00d8eb1279188bfdb17442af909fc5bc58480f54",
+    "lib/presentation/screens/main/main_shell_screen.dart": "d32e94793027dc7d9da248fbf6c8c5ba86a63e3a",
+    "lib/presentation/screens/main/mobile_home_page.dart": "f96b9fc3d72d84e7c8a8b2b54fbb5189daeedd7d",
+    "lib/presentation/screens/sync/ecampus_sync_preview_screen.dart": "3cca2be409d4e78d823395a8999dc3d1cd331d22",
+    "lib/presentation/screens/sync/ecampus_sync_progress_screen.dart": "7f76238d30a8655733695a3b0f0f7afec264f58c",
+    "lib/presentation/screens/task/task_create_screen.dart": "f8dc8817b7867d7f58232010bbbe5f38148f0bcb",
+    "lib/presentation/screens/task/task_detail_screen.dart": "c56243f5b55b87ac680d9f0c7fe3b0e2ae6ab03e",
+    "lib/presentation/services/ecampus_notification_updater.dart": "8c910f136e3a231f3d54120f86d41ce0c85a64cf",
+    "lib/presentation/services/in_app_webview_ecampus_cookie_store.dart": "5f7e96305c787cbc8327ca2d9db0add2527fdcd9",
+    "lib/presentation/widgets/task_metadata_picker.dart": "6846586a0235bd7cfd9a8fc0d054221278885631",
+    "test/data/local/app_database_test.dart": "b029d319483afac9fe03438e1c98924632b08a38",
+    "test/data/local/database_v6_test.dart": "381796503c44993a2cefb92d5faccac5a6120177",
+    "test/data/local/database_v7_lists_test.dart": "d16fb8dee4f7e40cfdc0c0281e081f48002510fe",
+    "test/data/repositories/drift_metadata_repositories_test.dart": "0ffce286be6bf94874ae1349dc367f5fceba3786",
+    "test/data/services/ecampus_review_v6_test.dart": "4e71c7ba98df4e5e1cc84e13cd7b0d5f01b900e4",
+    "test/data/services/ecampus_todo_parser_test.dart": "f67277c1995d37306cec8f03a79fa8f99e9da0e7",
+    "test/data/services/http_ecampus_auth_service_test.dart": "144d4a5b803be1d90df89002303a505d4611342b",
+    "test/fixtures/database/schema_v6.sql": "861f550a6340b002a89237848688a8ea41f90174",
+    "test/presentation/screens/database_v6_ui_test.dart": "948fa5df2f10919ca0020432927849c974f95fac",
+    "test/presentation/screens/ecampus_review_flow_test.dart": "18dfe65029244a520669f05cb7e692be5d068330",
+    "test/presentation/screens/list_groups_test.dart": "d94121497e19d0decb5d5f8227ea1e1f21af6510",
+    "test/presentation/screens/main_shell_home_layout_test.dart": "96e4055d84f67d371dbde7b201f984d48072d55b",
+    "test/presentation/screens/mobile_home_test.dart": "807b60717deff14eff8d73f4427e58b6495c5af7",
+    "lib/data/models/task_swipe_options.dart": "7acf7ee2aa787e451813276c7ff784e22d298eaa",
+    "lib/presentation/screens/main/task_swipe_settings_sheet.dart": "0969cdf36929d891bb40435d54ce717c7a432919"
+  }
+}

@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ku_task_management/data/local/app_database.dart'
     show AppDatabase, TaskTagsCompanion, TasksCompanion;
 import 'package:ku_task_management/data/models/task_models.dart';
+import 'package:ku_task_management/data/models/task_swipe_options.dart';
 import 'package:ku_task_management/data/models/home_section.dart';
 import 'package:ku_task_management/data/models/home_view_options.dart';
 import 'package:ku_task_management/data/local/mappers/metadata_mappers.dart';
@@ -247,7 +248,7 @@ void main() {
       expect(saved.tagFolderIds, isEmpty);
       expect(saved.tagSortOrders, {'tag-2': 1});
       expect(saved.ecampusFolderId, 'folder-ecampus');
-      expect((await database.select(database.appSettings).get()).length, 13);
+      expect((await database.select(database.appSettings).get()).length, 14);
 
       final restartedRepository = DriftSettingsRepository(database: database);
       final persisted = await restartedRepository.getSettings();
@@ -303,6 +304,12 @@ void main() {
           settings.copyWith(
             homeSectionOrder: order,
             hiddenHomeSections: {HomeSection.todayTasks},
+            taskSwipes: const TaskSwipeOptions(
+              right: TaskSwipeAction.edit,
+              left: TaskSwipeAction.complete,
+              trashRight: TaskSwipeAction.deletePermanently,
+              trashLeft: TaskSwipeAction.restore,
+            ),
             homeView: const HomeViewOptions(
               sort: HomeSort.newest,
               statuses: {TaskStatus.active},
@@ -326,6 +333,15 @@ void main() {
         expect(loaded.homeView.statuses, {TaskStatus.active});
         expect(loaded.homeView.priorities, {TaskPriority.high});
         expect(loaded.homeView.tagIds, {'tag-a', 'tag-b'});
+        expect(
+          loaded.taskSwipes.encode(),
+          const TaskSwipeOptions(
+            right: TaskSwipeAction.edit,
+            left: TaskSwipeAction.complete,
+            trashRight: TaskSwipeAction.deletePermanently,
+            trashLeft: TaskSwipeAction.restore,
+          ).encode(),
+        );
       } finally {
         await database.close();
         await directory.delete(recursive: true);
@@ -335,6 +351,33 @@ void main() {
 
   group('home layout settings compatibility', () {
     const mapper = AppSettingsMapper();
+
+    test(
+      'swipe settings accept old data, reject invalid domains, and preserve unrelated fields',
+      () {
+        const defaults = TaskSwipeOptions();
+        for (final raw in [null, '{broken', '[]', 'null']) {
+          final values = raw == null ? <String, String>{} : {'taskSwipes': raw};
+          expect(mapper.fromMap(values).taskSwipes.encode(), defaults.encode());
+        }
+        final loaded = mapper.fromMap({
+          'taskSwipes':
+              '{"right":"restore","left":"edit","trashRight":"delete","trashLeft":"future"}',
+        });
+        expect(loaded.taskSwipes.right, defaults.right);
+        expect(loaded.taskSwipes.left, TaskSwipeAction.edit);
+        expect(loaded.taskSwipes.trashRight, defaults.trashRight);
+        expect(loaded.taskSwipes.trashLeft, defaults.trashLeft);
+        expect(
+          loaded.copyWith(urgentDueDays: 7).taskSwipes.encode(),
+          loaded.taskSwipes.encode(),
+        );
+        expect(
+          mapper.fromMap(mapper.toMap(loaded)).taskSwipes.encode(),
+          loaded.taskSwipes.encode(),
+        );
+      },
+    );
 
     test(
       'view settings tolerate old or malformed values and retain an explicit empty status selection',

@@ -1,5 +1,6 @@
 import '../models/home_section.dart';
 import '../models/home_view_options.dart';
+import '../models/task_swipe_options.dart';
 
 class AppSettings {
   const AppSettings({
@@ -18,6 +19,7 @@ class AppSettings {
     this.tagSortOrders = const <String, int>{},
     this.ecampusFolderId,
     this.homeView = const HomeViewOptions(),
+    this.taskSwipes = const TaskSwipeOptions(),
   });
 
   final bool autoSyncEnabled;
@@ -35,6 +37,7 @@ class AppSettings {
   final Map<String, int> tagSortOrders;
   final String? ecampusFolderId;
   final HomeViewOptions homeView;
+  final TaskSwipeOptions taskSwipes;
 
   AppSettings copyWith({
     bool? autoSyncEnabled,
@@ -52,6 +55,7 @@ class AppSettings {
     Map<String, int>? tagSortOrders,
     Object? ecampusFolderId = _appSettingsUnset,
     HomeViewOptions? homeView,
+    TaskSwipeOptions? taskSwipes,
   }) {
     return AppSettings(
       autoSyncEnabled: autoSyncEnabled ?? this.autoSyncEnabled,
@@ -76,6 +80,7 @@ class AppSettings {
           ? this.ecampusFolderId
           : ecampusFolderId as String?,
       homeView: homeView ?? this.homeView,
+      taskSwipes: taskSwipes ?? this.taskSwipes,
     );
   }
 }

@@ -21,6 +21,7 @@ import '../../../data/services/http_ecampus_auth_service.dart';
 import '../../services/in_app_webview_ecampus_cookie_store.dart';
 import '../../services/local_notification_service.dart';
 import 'mobile_home_page.dart';
+import 'task_swipe_settings_sheet.dart';
 import '../sync/ecampus_sync_progress_screen.dart';
 import '../task/task_create_screen.dart';
 import '../task/task_detail_screen.dart';
@@ -2552,6 +2553,34 @@ class _SettingsPageState extends State<_SettingsPage> {
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 96),
             children: [
               _PageTitle(title: '설정'),
+              const SizedBox(height: 24),
+              _SettingsSection(
+                title: '편집',
+                children: [
+                  _SettingsActionRow(
+                    icon: Icons.swipe_rounded,
+                    title: '스와이프 동작',
+                    subtitle: '일반 할 일과 휴지통의 좌우 동작을 지정합니다.',
+                    onTap: () {
+                      if (isLoading) return;
+                      showModalBottomSheet<void>(
+                        context: context,
+                        isScrollControlled: true,
+                        useSafeArea: true,
+                        isDismissible: false,
+                        enableDrag: false,
+                        builder: (_) => TaskSwipeSettingsSheet(
+                          settings: settings,
+                          repository: widget.settingsRepository,
+                          onSaved: (saved) {
+                            if (mounted) widget.onSettingsChanged(saved);
+                          },
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
               const SizedBox(height: 28),
               _SettingsSection(
                 title: 'e-campus 연동',

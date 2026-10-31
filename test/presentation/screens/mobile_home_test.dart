@@ -12,9 +12,11 @@ import 'package:ku_task_management/core/utils/list_defaults.dart';
 import 'package:ku_task_management/data/local/app_database.dart' as db;
 import 'package:ku_task_management/data/models/home_view_options.dart';
 import 'package:ku_task_management/data/models/task_models.dart';
+import 'package:ku_task_management/data/models/task_swipe_options.dart';
 import 'package:ku_task_management/data/repositories/drift_folder_repository.dart';
 import 'package:ku_task_management/data/repositories/drift_notification_repository.dart';
 import 'package:ku_task_management/data/repositories/drift_settings_repository.dart';
+import 'package:ku_task_management/data/repositories/settings_repository.dart';
 import 'package:ku_task_management/data/repositories/drift_sub_task_repository.dart';
 import 'package:ku_task_management/data/repositories/drift_tag_repository.dart';
 import 'package:ku_task_management/data/repositories/drift_task_repository.dart';
@@ -247,6 +249,37 @@ void main() {
 
   Future<void> adjust(WidgetTester tester) async {
     await tester.tap(find.byTooltip('보기 조정'));
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> openSwipeSettings(WidgetTester tester) async {
+    await openDrawer(tester);
+    await tester.tap(find.byKey(const ValueKey('drawer-settings')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('스와이프 동작'));
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> chooseSwipe(
+    WidgetTester tester,
+    String id,
+    TaskSwipeAction action,
+  ) async {
+    final field = find.byKey(ValueKey('swipe-setting-$id'));
+    await tester.scrollUntilVisible(
+      field,
+      150,
+      scrollable: find
+          .descendant(
+            of: find.byType(BottomSheet),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.ensureVisible(field);
+    await tester.tap(field);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(action.label).last);
     await tester.pumpAndSettle();
   }
 
@@ -501,6 +534,114 @@ void main() {
       await finish(tester);
     },
   );
+
+  testWidgets(
+    'swipe settings cancel without changes and save all four mappings across restart',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await settings.saveSettings(
+        (await settings.getSettings()).copyWith(
+          urgentDueDays: 7,
+          hiddenTagIds: {'tag-b'},
+          homeView: const HomeViewOptions(sort: HomeSort.newest),
+        ),
+      );
+      await add('설정 일정', due: today);
+      await pumpApp(tester);
+      await openSwipeSettings(tester);
+      await chooseSwipe(tester, 'right', TaskSwipeAction.edit);
+      await tester.tap(find.widgetWithText(TextButton, '취소'));
+      await tester.pumpAndSettle();
+      expect(
+        (await settings.getSettings()).taskSwipes.right,
+        TaskSwipeAction.complete,
+      );
+      await tester.tap(find.text('스와이프 동작'));
+      await tester.pumpAndSettle();
+      for (final id in ['right', 'left']) {
+        final field = find.byKey(ValueKey('swipe-setting-$id'));
+        expect(
+          tester
+              .widget<DropdownButton<TaskSwipeAction>>(
+                find.descendant(
+                  of: field,
+                  matching: find.byType(DropdownButton<TaskSwipeAction>),
+                ),
+              )
+              .items!
+              .map((i) => i.value)
+              .toList(),
+          normalSwipeActions,
+        );
+      }
+      await chooseSwipe(tester, 'right', TaskSwipeAction.edit);
+      await chooseSwipe(tester, 'left', TaskSwipeAction.complete);
+      await chooseSwipe(
+        tester,
+        'trash-right',
+        TaskSwipeAction.deletePermanently,
+      );
+      await chooseSwipe(tester, 'trash-left', TaskSwipeAction.restore);
+      final trashField = tester.widget<DropdownButton<TaskSwipeAction>>(
+        find.descendant(
+          of: find.byKey(const ValueKey('swipe-setting-trash-left')),
+          matching: find.byType(DropdownButton<TaskSwipeAction>),
+        ),
+      );
+      expect(trashField.items!.map((i) => i.value).toList(), trashSwipeActions);
+      await capture(tester, 'swipe-settings');
+      await tester.tap(find.widgetWithText(FilledButton, '저장'));
+      await tester.pumpAndSettle();
+      final saved = await settings.getSettings();
+      expect(
+        saved.taskSwipes.encode(),
+        const TaskSwipeOptions(
+          right: TaskSwipeAction.edit,
+          left: TaskSwipeAction.complete,
+          trashRight: TaskSwipeAction.deletePermanently,
+          trashLeft: TaskSwipeAction.restore,
+        ).encode(),
+      );
+      expect(saved.urgentDueDays, 7);
+      expect(saved.hiddenTagIds, {'tag-b'});
+      expect(saved.homeView.sort, HomeSort.newest);
+      await restart(tester);
+      expect((await settings.getSettings()).taskSwipes.encode(), saved.taskSwipes.encode());
+      expect(tester.takeException(), isNull);
+      await finish(tester);
+    },
+  );
+
+  testWidgets('failed swipe settings save retains the draft and allows retry', (
+    tester,
+  ) async {
+    final failing = _FailingSwipeSettings(database: database);
+    settings = failing;
+    await pumpApp(tester);
+    await openSwipeSettings(tester);
+    await chooseSwipe(tester, 'right', TaskSwipeAction.edit);
+    await tester.tap(find.widgetWithText(FilledButton, '저장'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('swipe-setting-right')), findsOneWidget);
+    expect(find.textContaining('설정을 저장하지 못했습니다.'), findsOneWidget);
+    expect(
+      (await settings.getSettings()).taskSwipes.right,
+      TaskSwipeAction.complete,
+    );
+    failing.failSave = false;
+    await tester.tap(find.widgetWithText(FilledButton, '저장'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('swipe-setting-right')), findsNothing);
+    expect(
+      (await settings.getSettings()).taskSwipes.right,
+      TaskSwipeAction.edit,
+    );
+    expect(tester.takeException(), isNull);
+    await finish(tester);
+  });
 
   testWidgets(
     'selected Drawer row does not paint behind the fixed settings footer',
@@ -1581,6 +1722,16 @@ class _FailingDetailReminders extends DriftNotificationRepository {
   Future<NotificationSetting> save(NotificationSetting setting) {
     if (failSave) throw StateError('test reminder save failure');
     return super.save(setting);
+  }
+}
+
+class _FailingSwipeSettings extends DriftSettingsRepository {
+  _FailingSwipeSettings({required super.database});
+  bool failSave = true;
+  @override
+  Future<AppSettings> saveSettings(AppSettings settings) {
+    if (failSave) throw StateError('test settings save failure');
+    return super.saveSettings(settings);
   }
 }
 

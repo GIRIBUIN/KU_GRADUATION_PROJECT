@@ -70,6 +70,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('drawer-settings')));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('목록·태그 관리'), 200);
+    await tester.ensureVisible(find.text('목록·태그 관리'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('목록·태그 관리'));
     await tester.pumpAndSettle();
   }
@@ -282,6 +285,9 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('drawer-settings')));
       await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.text('목록·태그 관리'), 200);
+      await tester.ensureVisible(find.text('목록·태그 관리'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('목록·태그 관리'));
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('상위 폴더 추가'));
@@ -340,6 +346,9 @@ void main() {
       await tester.tap(find.byTooltip('사이드 메뉴'));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('drawer-settings')));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.text('목록·태그 관리'), 200);
+      await tester.ensureVisible(find.text('목록·태그 관리'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('목록·태그 관리'));
       await tester.pumpAndSettle();

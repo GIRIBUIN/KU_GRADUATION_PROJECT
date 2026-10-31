@@ -5,6 +5,7 @@ import '../../../core/utils/list_defaults.dart';
 
 import '../../models/home_section.dart';
 import '../../models/home_view_options.dart';
+import '../../models/task_swipe_options.dart';
 import '../../models/task_models.dart' as models;
 import '../../repositories/settings_repository.dart' as settings_model;
 import '../app_database.dart' as db;
@@ -143,6 +144,7 @@ class AppSettingsMapper {
       tagSortOrders: _parseIntMap(values[tagSortOrdersKey]),
       ecampusFolderId: _emptyToNull(values[ecampusFolderIdKey]),
       homeView: HomeViewOptions.decode(values['homeView']),
+      taskSwipes: TaskSwipeOptions.decode(values['taskSwipes']),
     );
   }
 
@@ -168,6 +170,7 @@ class AppSettingsMapper {
       tagSortOrdersKey: _encodeIntMap(settings.tagSortOrders),
       ecampusFolderIdKey: settings.ecampusFolderId ?? '',
       'homeView': settings.homeView.encode(),
+      'taskSwipes': settings.taskSwipes.encode(),
     };
   }
 

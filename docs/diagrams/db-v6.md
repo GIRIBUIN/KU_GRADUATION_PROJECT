@@ -1,5 +1,7 @@
 # DB v6 관계도
 
+이 문서는 v6 시점 기록이다. 현재 구조는 [DB v7 관계도](db-v7.md)를 참고한다.
+
 기준: 2026-10-30, [실제 Drift 스키마](../../lib/data/local/app_database.dart)의 `schemaVersion = 6`.
 화살표는 외래키가 참조하는 방향이다. 화면 DTO가 아닌 현재 저장 테이블 13개를 표시한다.
 

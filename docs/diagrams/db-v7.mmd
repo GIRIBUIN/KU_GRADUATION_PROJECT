@@ -1,0 +1,29 @@
+%% Flutter DB v7: arrows point from FK owner to referenced table.
+flowchart BT
+    Tasks["tasks · 할 일<br/>list_id 필수 · 완료/휴지통에도 보존"]
+    Lists["task_lists · 목록<br/>수집함 포함 · 보관/복원 가능"]
+    Groups["folder_groups · 상위 폴더<br/>목록만 묶음"]
+    Subs["sub_tasks · 하위 할 일"]
+    Tags["tags · 전역 태그"]
+    Links["task_tags · 할 일–태그 연결"]
+    Items["ecampus_items · 원본 스냅샷"]
+    Courses["ecampus_courses · 강의<br/>기본 과목 목록 연결"]
+    Reminders["task_reminders · 알림 규칙"]
+    Schedules["local_notification_schedules · 기기 예약 상태"]
+    Tasks -->|"list_id · 정확히 1개"| Lists
+    Lists -->|"folder_id · 선택"| Groups
+    Subs -->|"task_id"| Tasks
+    Links -->|"task_id"| Tasks
+    Links -->|"tag_id"| Tags
+    Items -->|"task_id · 선택 · 고유"| Tasks
+    Items -->|"course_id · 선택"| Courses
+    Courses -->|"list_id · 기본 배치 목록"| Lists
+    Courses -->|"tag_id · 선택 연결"| Tags
+    Reminders -->|"task_id · 기본키"| Tasks
+    Schedules -->|"task_id · 기본키"| Tasks
+    subgraph Independent["외래키 없는 보조 테이블"]
+        Sessions["import_sessions · 반영 기록"]
+        Settings["app_settings · 앱 설정"]
+        Issues["migration_issues · 이관 문제"]
+        Deleted["deleted_entities · 영구 삭제 기록"]
+    end

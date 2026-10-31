@@ -253,6 +253,7 @@ void main() {
   Finder row(String id, [String section = 'period']) =>
       find.byKey(ValueKey('home-task-$section-$id'));
   Future<void> openDrawer(WidgetTester tester) async {
+    if (find.byType(Drawer).evaluate().isNotEmpty) return;
     await tester.tap(find.byTooltip('사이드 메뉴'));
     await tester.pumpAndSettle();
   }
@@ -307,7 +308,7 @@ void main() {
     await openDrawer(tester);
     await tester.tap(find.byKey(const ValueKey('drawer-settings')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('스와이프 동작'));
+    await tester.tap(find.text('스와이프'));
     await tester.pumpAndSettle();
   }
 
@@ -418,7 +419,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('drawer-settings')));
       await tester.pumpAndSettle();
       expect(find.text('전체 일정 관리'), findsNothing);
-      await tester.tap(find.byType(BackButton).first);
+      await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
       await chooseScope(tester, 'all');
       expect(find.byKey(const ValueKey('home-section-period')), findsOneWidget);
@@ -984,7 +985,143 @@ void main() {
   );
 
   testWidgets(
-    'swipe settings cancel without changes and save all four mappings across restart',
+    'settings context menu toggles notification and saves sliders on release without a page',
+    (tester) async {
+      await settings.saveSettings(
+        (await settings.getSettings()).copyWith(
+          hiddenTagIds: {'tag-b'},
+          homeView: const HomeViewOptions(sort: HomeSort.newest),
+        ),
+      );
+      await pumpApp(tester);
+      await choosePeriod(tester, '이번 주');
+      await openDrawer(tester);
+      await tester.tap(find.byKey(const ValueKey('drawer-settings')));
+      await tester.pumpAndSettle();
+      final menu = find.byKey(const ValueKey('home-settings-menu'));
+      expect(menu, findsOneWidget);
+      expect(find.byType(BackButton), findsNothing);
+      expect(find.byType(BottomSheet), findsNothing);
+      expect(
+        find
+            .descendant(of: menu, matching: find.byType(Text))
+            .evaluate()
+            .map((e) => (e.widget as Text).data),
+        ['스와이프', '알림', '마감 임박'],
+      );
+      for (final text in ['eCampus 가져오기', '로그인 세션', '마지막 가져오기', '세션/쿠키 정리']) {
+        expect(find.text(text), findsNothing);
+      }
+      await tester.tap(
+        find.byKey(const ValueKey('settings-notification-toggle')),
+      );
+      await tester.pumpAndSettle();
+      expect((await settings.getSettings()).defaultNotificationEnabled, isTrue);
+      expect(notifications.permissionRequests, 1);
+      expect(
+        find.descendant(of: menu, matching: find.text('알림 시점')),
+        findsOneWidget,
+      );
+      await capture(tester, 'settings-menu');
+      await tester.tap(find.text('알림 시점'));
+      await tester.pumpAndSettle();
+      final slider = find.byKey(const ValueKey('settings-value-slider'));
+      final box = tester.getRect(slider);
+      final gesture = await tester.startGesture(box.center);
+      await gesture.moveTo(Offset(box.right - 24, box.center.dy));
+      await tester.pump();
+      expect((await settings.getSettings()).defaultNotificationDays, 60);
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect((await settings.getSettings()).defaultNotificationDays, 4320);
+      expect(find.text('마감 3일 전'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.byType(FilledButton),
+        ),
+        findsNothing,
+      );
+      await capture(tester, 'notification-time');
+      await dismissSheet(tester);
+      await tester.tap(find.byKey(const ValueKey('drawer-settings')));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-settings-menu')),
+          matching: find.text('마감 임박'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final urgent = tester.getRect(slider);
+      await tester.tapAt(Offset(urgent.right - 24, urgent.center.dy));
+      await tester.pumpAndSettle();
+      expect((await settings.getSettings()).urgentDueDays, 14);
+      await capture(tester, 'urgent-days');
+      await dismissSheet(tester);
+      await restart(tester);
+      final saved = await settings.getSettings();
+      expect(saved.defaultNotificationDays, 4320);
+      expect(saved.urgentDueDays, 14);
+      expect(saved.homeView.sort, HomeSort.newest);
+      expect(saved.homePeriod.mode, HomePeriod.week);
+      expect(saved.hiddenTagIds, {'tag-b'});
+      expect(tester.takeException(), isNull);
+      await finish(tester);
+    },
+  );
+
+  testWidgets(
+    'automatic settings errors keep prior values and retry from their controls',
+    (tester) async {
+      final failing = _FailingSwipeSettings(database: database);
+      settings = failing;
+      await pumpApp(tester);
+      await openDrawer(tester);
+      await tester.tap(find.byKey(const ValueKey('drawer-settings')));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('settings-notification-toggle')),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        (await settings.getSettings()).defaultNotificationEnabled,
+        isFalse,
+      );
+      expect(find.text('알림 시점'), findsNothing);
+      failing.failSave = false;
+      await tester.tap(
+        find.byKey(const ValueKey('settings-notification-toggle')),
+      );
+      await tester.pumpAndSettle();
+      expect((await settings.getSettings()).defaultNotificationEnabled, isTrue);
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-settings-menu')),
+          matching: find.text('마감 임박'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      failing.failSave = true;
+      final slider = find.byKey(const ValueKey('settings-value-slider'));
+      final box = tester.getRect(slider);
+      await tester.tapAt(Offset(box.right - 24, box.center.dy));
+      await tester.pumpAndSettle();
+      expect((await settings.getSettings()).urgentDueDays, 3);
+      expect(find.text('3일 이내'), findsOneWidget);
+      expect(find.text('설정을 저장하지 못했습니다. 다시 설정해주세요.'), findsOneWidget);
+      failing.failSave = false;
+      final retryBox = tester.getRect(slider);
+      await tester.tapAt(Offset(retryBox.right - 24, retryBox.center.dy));
+      await tester.pumpAndSettle();
+      expect((await settings.getSettings()).urgentDueDays, 14);
+      expect(tester.takeException(), isNull);
+      await finish(tester);
+    },
+  );
+
+  testWidgets(
+    'swipe settings immediately save four mappings and survive restart without action buttons',
     (tester) async {
       tester.view.physicalSize = const Size(360, 1000);
       tester.view.devicePixelRatio = 1;
@@ -1000,15 +1137,40 @@ void main() {
       await add('설정 일정', due: today);
       await pumpApp(tester);
       await openSwipeSettings(tester);
-      await chooseSwipe(tester, 'right', TaskSwipeAction.edit);
-      await tester.tap(find.widgetWithText(TextButton, '취소'));
-      await tester.pumpAndSettle();
       expect(
-        (await settings.getSettings()).taskSwipes.right,
-        TaskSwipeAction.complete,
+        tester.widget<Text>(find.text('스와이프 동작')).textAlign,
+        TextAlign.center,
       );
-      await tester.tap(find.text('스와이프 동작'));
-      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.text('할 일'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.text('휴지통'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.byType(TextButton),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.byType(FilledButton),
+        ),
+        findsNothing,
+      );
+      expect(find.byIcon(Icons.arrow_forward_rounded), findsNWidgets(2));
+      expect(find.byIcon(Icons.arrow_back_rounded), findsNWidgets(2));
       for (final id in ['right', 'left']) {
         final field = find.byKey(ValueKey('swipe-setting-$id'));
         expect(
@@ -1041,8 +1203,6 @@ void main() {
       );
       expect(trashField.items!.map((i) => i.value).toList(), trashSwipeActions);
       await capture(tester, 'swipe-settings');
-      await tester.tap(find.widgetWithText(FilledButton, '저장'));
-      await tester.pumpAndSettle();
       final saved = await settings.getSettings();
       expect(
         saved.taskSwipes.encode(),
@@ -1090,33 +1250,40 @@ void main() {
     await finish(tester);
   });
 
-  testWidgets('failed swipe settings save retains the draft and allows retry', (
-    tester,
-  ) async {
-    final failing = _FailingSwipeSettings(database: database);
-    settings = failing;
-    await pumpApp(tester);
-    await openSwipeSettings(tester);
-    await chooseSwipe(tester, 'right', TaskSwipeAction.edit);
-    await tester.tap(find.widgetWithText(FilledButton, '저장'));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('swipe-setting-right')), findsOneWidget);
-    expect(find.textContaining('설정을 저장하지 못했습니다.'), findsOneWidget);
-    expect(
-      (await settings.getSettings()).taskSwipes.right,
-      TaskSwipeAction.complete,
-    );
-    failing.failSave = false;
-    await tester.tap(find.widgetWithText(FilledButton, '저장'));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('swipe-setting-right')), findsNothing);
-    expect(
-      (await settings.getSettings()).taskSwipes.right,
-      TaskSwipeAction.edit,
-    );
-    expect(tester.takeException(), isNull);
-    await finish(tester);
-  });
+  testWidgets(
+    'failed automatic swipe save keeps the old choice and retries without buttons',
+    (tester) async {
+      final failing = _FailingSwipeSettings(database: database);
+      settings = failing;
+      await pumpApp(tester);
+      await openSwipeSettings(tester);
+      await chooseSwipe(tester, 'right', TaskSwipeAction.edit);
+      expect(find.text('설정을 저장하지 못했습니다. 다시 선택해주세요.'), findsOneWidget);
+      expect(
+        (await settings.getSettings()).taskSwipes.right,
+        TaskSwipeAction.complete,
+      );
+      final dropdown = find.descendant(
+        of: find.byKey(const ValueKey('swipe-setting-right')),
+        matching: find.byType(DropdownButton<TaskSwipeAction>),
+      );
+      expect(
+        tester.widget<DropdownButton<TaskSwipeAction>>(dropdown).value,
+        TaskSwipeAction.complete,
+      );
+      failing.failSave = false;
+      await chooseSwipe(tester, 'right', TaskSwipeAction.edit);
+      expect(
+        (await settings.getSettings()).taskSwipes.right,
+        TaskSwipeAction.edit,
+      );
+      expect(find.byKey(const ValueKey('swipe-setting-right')), findsOneWidget);
+      await dismissSheet(tester);
+      expect(find.byKey(const ValueKey('swipe-setting-right')), findsNothing);
+      expect(tester.takeException(), isNull);
+      await finish(tester);
+    },
+  );
 
   testWidgets(
     'selected Drawer row does not paint behind the fixed settings footer',
@@ -1203,7 +1370,8 @@ void main() {
       await capture(tester, 'drawer-footer');
       await tester.tap(find.byKey(const ValueKey('drawer-settings')));
       await tester.pumpAndSettle();
-      expect(find.text('세션/쿠키 정리'), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-settings-menu')), findsOneWidget);
+      expect(find.text('세션/쿠키 정리'), findsNothing);
       expect(tester.takeException(), isNull);
       await finish(tester);
     },
@@ -2255,8 +2423,14 @@ void main() {
       await openDrawer(tester);
       await tester.tap(find.byKey(const ValueKey('drawer-settings')));
       await tester.pumpAndSettle();
-      expect(find.text('세션/쿠키 정리'), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-settings-menu')), findsOneWidget);
+      expect(find.text('세션/쿠키 정리'), findsNothing);
       expect(find.text('목록·태그 관리'), findsNothing);
+      await capture(tester, 'settings-large-menu');
+      await tester.tap(find.text('스와이프'));
+      await tester.pumpAndSettle();
+      expect(find.byType(DropdownButton<TaskSwipeAction>), findsNWidgets(4));
+      await capture(tester, 'swipe-large');
       expect(tester.takeException(), isNull);
       await finish(tester);
     },
@@ -2718,6 +2892,13 @@ void main() {
 }
 
 class _Notifications extends LocalNotificationService {
+  int permissionRequests = 0;
+  @override
+  Future<bool> requestPermission() async {
+    permissionRequests++;
+    return true;
+  }
+
   final cancelled = <String>[];
   final scheduled = <(Task, NotificationSetting)>[];
   @override

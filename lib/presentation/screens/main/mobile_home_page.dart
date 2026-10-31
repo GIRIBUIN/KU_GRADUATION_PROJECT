@@ -60,7 +60,8 @@ class MobileHomePage extends StatefulWidget {
   final List<Folder> lists;
   final List<FolderGroup> groups;
   final ValueChanged<AppSettings> onSettingsSaved;
-  final VoidCallback onRefresh, onSettings;
+  final VoidCallback onRefresh;
+  final Future<void> Function(BuildContext anchor) onSettings;
   final Future<void> Function()? onAddFolder;
   final Future<void> Function() onAddList, onAddTag;
   final Future<void> Function(FolderGroup) onEditFolder, onAddListToFolder;
@@ -734,14 +735,15 @@ class _MobileHomePageState extends State<MobileHomePage> {
             ),
           ),
           const Divider(height: 1),
-          ListTile(
-            key: const ValueKey('drawer-settings'),
-            leading: const Icon(Icons.settings_outlined),
-            title: const Text('설정'),
-            onTap: () {
-              Navigator.of(context).pop();
-              widget.onSettings();
-            },
+          Builder(
+            builder: (anchor) => ListTile(
+              key: const ValueKey('drawer-settings'),
+              leading: const Icon(Icons.settings_outlined),
+              title: const Text('설정'),
+              onTap: widget.settingsReady
+                  ? () => widget.onSettings(anchor)
+                  : null,
+            ),
           ),
         ],
       ),

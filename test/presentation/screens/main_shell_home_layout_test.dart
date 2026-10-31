@@ -157,12 +157,16 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('drawer-settings')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byType(Switch));
+      await tester.tap(
+        find.byKey(const ValueKey('settings-notification-toggle')),
+      );
       await tester.pumpAndSettle();
       expect(repositories.settings.defaultNotificationEnabled, false);
       expect(repositories.settings.homeSelectedTagId, 'tag-1');
       expect(repositories.settings.homeView.sort, HomeSort.newest);
-      await tester.tap(find.byKey(const ValueKey('nav-home')));
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('home-section-period')), findsOneWidget);
       expect(repositories.tasks.single.status, TaskStatus.active);

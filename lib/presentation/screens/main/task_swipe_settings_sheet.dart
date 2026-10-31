@@ -10,11 +10,9 @@ class TaskSwipeSettingsSheet extends StatefulWidget {
     required this.repository,
     required this.onSaved,
   });
-
   final AppSettings settings;
   final SettingsRepository repository;
   final ValueChanged<AppSettings> onSaved;
-
   @override
   State<TaskSwipeSettingsSheet> createState() => _TaskSwipeSettingsSheetState();
 }
@@ -24,115 +22,134 @@ class _TaskSwipeSettingsSheetState extends State<TaskSwipeSettingsSheet> {
   bool _saving = false;
   String? _error;
 
-  Future<void> _save() async {
+  Future<void> _save(String id, TaskSwipeAction action) async {
     if (_saving) return;
-    var completed = false;
     setState(() {
       _saving = true;
       _error = null;
     });
     try {
       final latest = await widget.repository.getSettings();
+      final choices = latest.taskSwipes;
+      final updated = switch (id) {
+        'right' => choices.copyWith(right: action),
+        'left' => choices.copyWith(left: action),
+        'trash-right' => choices.copyWith(trashRight: action),
+        _ => choices.copyWith(trashLeft: action),
+      };
       final saved = await widget.repository.saveSettings(
-        latest.copyWith(taskSwipes: _value),
+        latest.copyWith(taskSwipes: updated),
       );
       widget.onSaved(saved);
-      completed = true;
-      if (mounted) Navigator.pop(context);
+      if (mounted) setState(() => _value = saved.taskSwipes);
     } catch (_) {
-      if (mounted) setState(() => _error = '설정을 저장하지 못했습니다. 다시 시도해주세요.');
+      if (mounted) setState(() => _error = '설정을 저장하지 못했습니다. 다시 선택해주세요.');
     } finally {
-      if (mounted && !completed) setState(() => _saving = false);
+      if (mounted) setState(() => _saving = false);
     }
   }
 
   Widget _choice(
     String id,
-    String label,
+    bool right,
     TaskSwipeAction value,
     List<TaskSwipeAction> allowed,
-    ValueChanged<TaskSwipeAction> onChanged,
-  ) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8),
-    child: DropdownButtonFormField<TaskSwipeAction>(
-      key: ValueKey('swipe-setting-$id'),
-      initialValue: value,
-      decoration: InputDecoration(labelText: label),
-      items: [
-        for (final action in allowed)
-          DropdownMenuItem(value: action, child: Text(action.label)),
+  ) => Expanded(
+    child: Column(
+      children: [
+        Icon(
+          right ? Icons.arrow_forward_rounded : Icons.arrow_back_rounded,
+          size: 20,
+        ),
+        const SizedBox(height: 6),
+        InputDecorator(
+          key: ValueKey('swipe-setting-$id'),
+          decoration: const InputDecoration(
+            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<TaskSwipeAction>(
+              value: value,
+              isExpanded: true,
+              style: Theme.of(context).textTheme.bodyMedium,
+              selectedItemBuilder: (context) => [
+                for (final action in allowed)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(action.label),
+                    ),
+                  ),
+              ],
+              items: [
+                for (final action in allowed)
+                  DropdownMenuItem(
+                    value: action,
+                    child: Text(action.label, maxLines: 1),
+                  ),
+              ],
+              onChanged: _saving
+                  ? null
+                  : (action) {
+                      if (action != null) _save(id, action);
+                    },
+            ),
+          ),
+        ),
       ],
-      onChanged: _saving
-          ? null
-          : (action) {
-              if (action != null) setState(() => onChanged(action));
-            },
     ),
   );
 
   @override
-  Widget build(BuildContext context) => PopScope(
-    canPop: !_saving,
-    child: SafeArea(
-      child: SizedBox(
-        height: MediaQuery.sizeOf(context).height * .8,
+  Widget build(BuildContext context) => SafeArea(
+    child: ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * .8,
+      ),
+      child: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
                 '스와이프 동작',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
               ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: ListView(
-                  children: [
-                    const Text(
-                      '할 일 행을 밀면 지정한 작업을 실행합니다. 빈 공간이나 섹션 제목을 오른쪽으로 밀면 메뉴가 열립니다.',
-                    ),
-                    const SizedBox(height: 20),
-                    const Text(
-                      '일반 할 일',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    _choice(
-                      'right',
-                      '왼쪽 → 오른쪽',
-                      _value.right,
-                      normalSwipeActions,
-                      (a) => _value = _value.copyWith(right: a),
-                    ),
-                    _choice(
-                      'left',
-                      '오른쪽 → 왼쪽',
-                      _value.left,
-                      normalSwipeActions,
-                      (a) => _value = _value.copyWith(left: a),
-                    ),
-                    const SizedBox(height: 20),
-                    const Text(
-                      '휴지통',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    _choice(
-                      'trash-right',
-                      '왼쪽 → 오른쪽',
-                      _value.trashRight,
-                      trashSwipeActions,
-                      (a) => _value = _value.copyWith(trashRight: a),
-                    ),
-                    _choice(
-                      'trash-left',
-                      '오른쪽 → 왼쪽',
-                      _value.trashLeft,
-                      trashSwipeActions,
-                      (a) => _value = _value.copyWith(trashLeft: a),
-                    ),
-                    const Text('삭제는 휴지통으로 이동합니다. 영구 삭제는 확인 후 실행합니다.'),
-                  ],
-                ),
+              const SizedBox(height: 20),
+              const Text('할 일', style: TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 10),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _choice('right', true, _value.right, normalSwipeActions),
+                  const SizedBox(width: 12),
+                  _choice('left', false, _value.left, normalSwipeActions),
+                ],
+              ),
+              const SizedBox(height: 20),
+              const Text('휴지통', style: TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 10),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _choice(
+                    'trash-right',
+                    true,
+                    _value.trashRight,
+                    trashSwipeActions,
+                  ),
+                  const SizedBox(width: 12),
+                  _choice(
+                    'trash-left',
+                    false,
+                    _value.trashLeft,
+                    trashSwipeActions,
+                  ),
+                ],
               ),
               if (_error != null)
                 Padding(
@@ -144,20 +161,6 @@ class _TaskSwipeSettingsSheetState extends State<TaskSwipeSettingsSheet> {
                     ),
                   ),
                 ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: _saving ? null : () => Navigator.pop(context),
-                    child: const Text('취소'),
-                  ),
-                  const SizedBox(width: 12),
-                  FilledButton(
-                    onPressed: _saving ? null : _save,
-                    child: Text(_saving ? '저장 중…' : '저장'),
-                  ),
-                ],
-              ),
             ],
           ),
         ),

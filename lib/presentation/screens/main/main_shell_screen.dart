@@ -4,7 +4,6 @@ import '../../../core/utils/list_defaults.dart';
 
 import 'package:flutter/material.dart';
 import 'package:home_widget/home_widget.dart';
-import 'package:http/http.dart' as http;
 
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/task_models.dart';
@@ -13,15 +12,12 @@ import '../../../data/repositories/notification_repository.dart';
 import '../../../data/repositories/settings_repository.dart';
 import '../../../data/repositories/sub_task_repository.dart';
 import '../../../data/repositories/tag_repository.dart';
-import '../../../data/services/ecampus_auth_service.dart';
 import '../../../data/repositories/task_repository.dart';
 import '../../../data/services/home_task_summary.dart';
 import '../../../data/services/widget_update_service.dart';
-import '../../../data/services/http_ecampus_auth_service.dart';
-import '../../services/in_app_webview_ecampus_cookie_store.dart';
 import '../../services/local_notification_service.dart';
 import 'mobile_home_page.dart';
-import 'task_swipe_settings_sheet.dart';
+import 'home_settings_menu.dart';
 import '../sync/ecampus_sync_progress_screen.dart';
 import '../task/task_create_screen.dart';
 import '../task/task_detail_screen.dart';
@@ -60,7 +56,6 @@ class _MainShellScreenState extends State<MainShellScreen>
     with WidgetsBindingObserver {
   var _selectedIndex = 0;
   final _metadataManagerKey = GlobalKey<_ManagementPageState>();
-  EcampusSession? _ecampusSession;
   Timer? _clockRefreshTimer;
   late Future<List<Task>> _tasksFuture;
   late Future<AppSettings> _settingsFuture;
@@ -228,14 +223,6 @@ class _MainShellScreenState extends State<MainShellScreen>
                 ? (ids) => (widget.taskRepository as EcampusListOrganizer)
                       .organizeUnassignedEcampusTasks(ids)
                 : null,
-            onSessionChanged: (session) {
-              if (!mounted) {
-                return;
-              }
-              setState(() {
-                _ecampusSession = session;
-              });
-            },
           ),
           fullscreenDialog: true,
         ),
@@ -254,39 +241,6 @@ class _MainShellScreenState extends State<MainShellScreen>
         });
       }
     }
-  }
-
-  Future<void> _clearEcampusSession() async {
-    final httpClient = http.Client();
-    final cookieStore = const InAppWebViewEcampusCookieStore();
-    final authService = HttpEcampusAuthService(
-      httpClient: httpClient,
-      cookieStore: cookieStore,
-    );
-
-    try {
-      final session = _ecampusSession;
-      if (session == null) {
-        await authService.clearSession();
-      } else {
-        await authService.logout(session);
-      }
-    } catch (_) {
-      if (mounted) {
-        _showSnackBar(
-          context,
-          '서버 로그아웃 또는 쿠키 정리 중 오류가 발생했습니다. 다음 가져오기는 다시 로그인합니다.',
-        );
-      }
-      return;
-    } finally {
-      httpClient.close();
-      if (mounted) setState(() => _ecampusSession = null);
-    }
-    if (!mounted) {
-      return;
-    }
-    _showSnackBar(context, 'e-campus 세션과 쿠키를 정리했습니다.');
   }
 
   Future<void> _toggleTaskCompletion(Task task) async {
@@ -563,6 +517,7 @@ class _MainShellScreenState extends State<MainShellScreen>
   }
 
   void _settingsSaved(AppSettings saved) {
+    if (!mounted) return;
     setState(() {
       _settingsFuture = Future.value(saved);
     });
@@ -612,7 +567,13 @@ class _MainShellScreenState extends State<MainShellScreen>
                     onOpenExcluded: _openExcludedFromDrawer,
                     onRefresh: _refreshTasks,
                     onImport: _openEcampusSync,
-                    onSettings: () => setState(() => _selectedIndex = 3),
+                    onSettings: (anchor) => showHomeSettingsMenu(
+                      anchor: anchor,
+                      settings: settings,
+                      repository: widget.settingsRepository,
+                      notifications: widget.localNotificationService,
+                      onSaved: _settingsSaved,
+                    ),
                     onAddFolder:
                         widget.folderRepository is GroupedListRepository
                         ? () => _addFromDrawer(_DrawerAdd.folder)
@@ -670,70 +631,39 @@ class _MainShellScreenState extends State<MainShellScreen>
                     onAllowExcludedTaskSync: _allowExcludedTaskSync,
                     onDeletePermanently: _deleteTaskPermanently,
                   ),
-                  _SettingsPage(
-                    settingsRepository: widget.settingsRepository,
-                    settingsFuture: _settingsFuture,
-                    ecampusSession: _ecampusSession,
-                    lastEcampusSyncedAt: _lastEcampusSyncedAt(tasks),
-                    onSettingsChanged: _settingsSaved,
-                    onOpenSync: _openEcampusSync,
-                    onClearEcampusSession: _clearEcampusSession,
-                    localNotificationService: widget.localNotificationService,
-                  ),
                 ];
-                return PopScope(
-                  canPop: _selectedIndex < 2,
-                  onPopInvokedWithResult: (didPop, result) {
-                    if (!didPop) setState(() => _selectedIndex = 0);
-                  },
-                  child: Scaffold(
-                    appBar: _selectedIndex < 2
-                        ? null
-                        : AppBar(
-                            leading: BackButton(
-                              onPressed: () => setState(
-                                () => _selectedIndex = _selectedIndex == 3
-                                    ? 0
-                                    : 3,
-                              ),
-                            ),
-                            title: Text(switch (_selectedIndex) {
-                              2 => '목록·태그 관리',
-                              _ => '설정',
-                            }),
-                          ),
-                    body: IndexedStack(index: _selectedIndex, children: pages),
-                    bottomNavigationBar: NavigationBar(
-                      labelBehavior:
-                          NavigationDestinationLabelBehavior.alwaysHide,
-                      selectedIndex: _selectedIndex == 1 ? 2 : 0,
-                      onDestinationSelected: (index) {
-                        if (index == 1) {
-                          _openQuickAdd();
-                          return;
-                        }
-                        setState(() => _selectedIndex = index == 2 ? 1 : 0);
-                      },
-                      destinations: const [
-                        NavigationDestination(
-                          key: ValueKey('nav-home'),
-                          icon: Icon(Icons.home_outlined),
-                          selectedIcon: Icon(Icons.home_rounded),
-                          label: '홈',
-                        ),
-                        NavigationDestination(
-                          key: ValueKey('nav-add'),
-                          icon: Icon(Icons.add_rounded),
-                          label: '빠른 추가',
-                        ),
-                        NavigationDestination(
-                          key: ValueKey('nav-calendar'),
-                          icon: Icon(Icons.calendar_month_outlined),
-                          selectedIcon: Icon(Icons.calendar_month_rounded),
-                          label: '캘린더',
-                        ),
-                      ],
-                    ),
+                return Scaffold(
+                  body: IndexedStack(index: _selectedIndex, children: pages),
+                  bottomNavigationBar: NavigationBar(
+                    labelBehavior:
+                        NavigationDestinationLabelBehavior.alwaysHide,
+                    selectedIndex: _selectedIndex == 1 ? 2 : 0,
+                    onDestinationSelected: (index) {
+                      if (index == 1) {
+                        _openQuickAdd();
+                        return;
+                      }
+                      setState(() => _selectedIndex = index == 2 ? 1 : 0);
+                    },
+                    destinations: const [
+                      NavigationDestination(
+                        key: ValueKey('nav-home'),
+                        icon: Icon(Icons.home_outlined),
+                        selectedIcon: Icon(Icons.home_rounded),
+                        label: '홈',
+                      ),
+                      NavigationDestination(
+                        key: ValueKey('nav-add'),
+                        icon: Icon(Icons.add_rounded),
+                        label: '빠른 추가',
+                      ),
+                      NavigationDestination(
+                        key: ValueKey('nav-calendar'),
+                        icon: Icon(Icons.calendar_month_outlined),
+                        selectedIcon: Icon(Icons.calendar_month_rounded),
+                        label: '캘린더',
+                      ),
+                    ],
                   ),
                 );
               },
@@ -2224,347 +2154,6 @@ class _ExcludedEcampusTaskTile extends StatelessWidget {
   }
 }
 
-class _SettingsPage extends StatefulWidget {
-  const _SettingsPage({
-    required this.settingsRepository,
-    required this.settingsFuture,
-    required this.ecampusSession,
-    required this.lastEcampusSyncedAt,
-    required this.onSettingsChanged,
-    required this.onOpenSync,
-    required this.onClearEcampusSession,
-    required this.localNotificationService,
-  });
-
-  final SettingsRepository settingsRepository;
-  final Future<AppSettings> settingsFuture;
-  final EcampusSession? ecampusSession;
-  final DateTime? lastEcampusSyncedAt;
-  final ValueChanged<AppSettings> onSettingsChanged;
-  final Future<void> Function() onOpenSync;
-  final Future<void> Function() onClearEcampusSession;
-  final LocalNotificationService localNotificationService;
-
-  @override
-  State<_SettingsPage> createState() => _SettingsPageState();
-}
-
-class _SettingsPageState extends State<_SettingsPage> {
-  Future<void> _saveSettings(AppSettings settings) async {
-    final saved = await widget.settingsRepository.saveSettings(settings);
-    if (!mounted) {
-      return;
-    }
-    widget.onSettingsChanged(saved);
-  }
-
-  Future<void> _setDefaultNotificationEnabled(
-    AppSettings settings,
-    bool enabled,
-  ) async {
-    if (enabled) {
-      await widget.localNotificationService.requestPermission();
-    }
-    await _saveSettings(settings.copyWith(defaultNotificationEnabled: enabled));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<AppSettings>(
-      future: widget.settingsFuture,
-      builder: (context, snapshot) {
-        final settings =
-            snapshot.data ??
-            const AppSettings(
-              autoSyncEnabled: false,
-              saveEcampusAccount: false,
-              defaultNotificationEnabled: true,
-              defaultNotificationDays: 60,
-              defaultNotificationTime: 'relative',
-              urgentDueDays: 3,
-            );
-        final isLoading =
-            snapshot.connectionState == ConnectionState.waiting &&
-            !snapshot.hasData;
-        final session = widget.ecampusSession;
-
-        return SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 96),
-            children: [
-              _PageTitle(title: '설정'),
-              const SizedBox(height: 24),
-              _SettingsSection(
-                title: '편집',
-                children: [
-                  _SettingsActionRow(
-                    icon: Icons.swipe_rounded,
-                    title: '스와이프 동작',
-                    subtitle: '일반 할 일과 휴지통의 좌우 동작을 지정합니다.',
-                    onTap: () {
-                      if (isLoading) return;
-                      showModalBottomSheet<void>(
-                        context: context,
-                        isScrollControlled: true,
-                        useSafeArea: true,
-                        isDismissible: false,
-                        enableDrag: false,
-                        builder: (_) => TaskSwipeSettingsSheet(
-                          settings: settings,
-                          repository: widget.settingsRepository,
-                          onSaved: (saved) {
-                            if (mounted) widget.onSettingsChanged(saved);
-                          },
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 28),
-              _SettingsSection(
-                title: 'e-campus 연동',
-                children: [
-                  _SettingsActionRow(
-                    icon: Icons.sync_rounded,
-                    title: 'eCampus 가져오기',
-                    subtitle: 'WebView 로그인 후 todo를 가져옵니다.',
-                    onTap: () => unawaited(widget.onOpenSync()),
-                  ),
-                  _SettingsInfoRow(
-                    icon: Icons.lock_outline_rounded,
-                    title: '로그인 세션',
-                    value: session?.hasSessionCookie == true ? '로그인됨' : '없음',
-                    subtitle: session == null
-                        ? '아이디와 비밀번호는 저장하지 않습니다.'
-                        : '생성 ${_dateTimeLabel(session.createdAt)}',
-                  ),
-                  _SettingsInfoRow(
-                    icon: Icons.schedule_rounded,
-                    title: '마지막 가져오기',
-                    value: widget.lastEcampusSyncedAt == null
-                        ? '없음'
-                        : _dateTimeLabel(widget.lastEcampusSyncedAt!),
-                    subtitle: '가져온 e-campus 항목 기준',
-                  ),
-                  _SettingsActionRow(
-                    icon: Icons.cleaning_services_outlined,
-                    title: '세션/쿠키 정리',
-                    subtitle: '이 기기의 e-campus 로그인 정보를 삭제합니다.',
-                    onTap: () => unawaited(widget.onClearEcampusSession()),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              _SettingsSection(
-                title: '알림',
-                children: [
-                  _SettingsSwitchRow(
-                    icon: Icons.notifications_rounded,
-                    title: '기본 알림',
-                    value: settings.defaultNotificationEnabled,
-                    subtitle: settings.defaultNotificationEnabled
-                        ? _notificationOffsetLabel(
-                            settings.defaultNotificationDays,
-                          )
-                        : '꺼짐',
-                    onChanged: isLoading
-                        ? null
-                        : (value) =>
-                              _setDefaultNotificationEnabled(settings, value),
-                  ),
-                  if (settings.defaultNotificationEnabled) ...[
-                    _SettingsInfoRow(
-                      icon: Icons.access_time_rounded,
-                      title: '알림 시점',
-                      value: _notificationOffsetLabel(
-                        settings.defaultNotificationDays,
-                      ),
-                      onTap: isLoading
-                          ? null
-                          : () => _pickDefaultNotificationOffset(settings),
-                    ),
-                  ],
-                ],
-              ),
-              const SizedBox(height: 24),
-              _SettingsSection(
-                title: '홈 표시',
-                children: [
-                  _SettingsInfoRow(
-                    icon: Icons.access_time_rounded,
-                    title: '마감 임박 기준',
-                    value: '${settings.urgentDueDays}일 이내',
-                    onTap: isLoading
-                        ? null
-                        : () => _pickUrgentDueDays(settings),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _pickDefaultNotificationOffset(AppSettings settings) async {
-    final minutes = await _pickNotificationOffsetMinutes(
-      title: '알림 시점',
-      selected: settings.defaultNotificationDays,
-    );
-    if (minutes != null) {
-      await _saveSettings(
-        settings.copyWith(
-          defaultNotificationDays: minutes,
-          defaultNotificationTime: 'relative',
-        ),
-      );
-    }
-  }
-
-  Future<void> _pickUrgentDueDays(AppSettings settings) async {
-    final days = await _pickDaySlider(
-      title: '마감 임박 기준',
-      selected: settings.urgentDueDays,
-      min: 1,
-      max: 14,
-      labelBuilder: (days) => '$days일 이내',
-    );
-    if (days != null) {
-      await _saveSettings(settings.copyWith(urgentDueDays: days));
-    }
-  }
-
-  Future<int?> _pickNotificationOffsetMinutes({
-    required String title,
-    required int selected,
-  }) {
-    var current = _closestNotificationOffset(selected);
-    return showModalBottomSheet<int>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) {
-          return SafeArea(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.sizeOf(context).height * 0.8,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
-                    child: Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: ListView(
-                      padding: EdgeInsets.zero,
-                      children: [
-                        for (final option in _notificationOffsetOptions)
-                          ListTile(
-                            onTap: () {
-                              setSheetState(() {
-                                current = option;
-                              });
-                            },
-                            title: Text(_notificationOffsetLabel(option)),
-                            trailing: current == option
-                                ? const Icon(Icons.check_rounded)
-                                : null,
-                          ),
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        onPressed: () => Navigator.of(context).pop(current),
-                        child: const Text('적용'),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Future<int?> _pickDaySlider({
-    required String title,
-    required int selected,
-    required int min,
-    required int max,
-    required String Function(int days) labelBuilder,
-  }) {
-    var current = selected.clamp(min, max);
-    return showModalBottomSheet<int>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) {
-          return SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Center(
-                    child: _ColoredChip(
-                      label: labelBuilder(current),
-                      color: AppTheme.primaryBlue,
-                    ),
-                  ),
-                  Slider(
-                    value: current.toDouble(),
-                    min: min.toDouble(),
-                    max: max.toDouble(),
-                    divisions: max - min,
-                    label: labelBuilder(current),
-                    onChanged: (value) {
-                      setSheetState(() {
-                        current = value.round();
-                      });
-                    },
-                  ),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: () => Navigator.of(context).pop(current),
-                      child: const Text('적용'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
 class _TaskListTile extends StatefulWidget {
   const _TaskListTile({
     required this.task,
@@ -3807,172 +3396,6 @@ class _FolderFormResult {
   final bool isHidden;
 }
 
-class _SettingsSection extends StatelessWidget {
-  const _SettingsSection({required this.title, required this.children});
-
-  final String title;
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
-        ),
-        const SizedBox(height: 12),
-        Card(
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            children: [
-              for (var i = 0; i < children.length; i++) ...[
-                children[i],
-                if (i != children.length - 1)
-                  const Divider(height: 1, indent: 58),
-              ],
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SettingsSwitchRow extends StatelessWidget {
-  const _SettingsSwitchRow({
-    required this.icon,
-    required this.title,
-    required this.value,
-    this.subtitle,
-    this.onChanged,
-  });
-
-  final IconData icon;
-  final String title;
-  final bool value;
-  final String? subtitle;
-  final ValueChanged<bool>? onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      minLeadingWidth: 28,
-      leading: _SettingsIcon(icon: icon, color: AppTheme.successGreen),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-      subtitle: subtitle == null ? null : Text(subtitle!),
-      trailing: Switch(value: value, onChanged: onChanged),
-    );
-  }
-}
-
-class _SettingsInfoRow extends StatelessWidget {
-  const _SettingsInfoRow({
-    required this.icon,
-    required this.title,
-    required this.value,
-    this.subtitle,
-    this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String value;
-  final String? subtitle;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      onTap: onTap,
-      minLeadingWidth: 28,
-      leading: _SettingsIcon(icon: icon, color: AppTheme.primaryBlue),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-      subtitle: subtitle == null
-          ? null
-          : Text(
-              subtitle!,
-              style: const TextStyle(
-                color: AppTheme.muted,
-                fontSize: 12,
-                height: 1.3,
-              ),
-            ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 86),
-            child: Text(
-              value,
-              textAlign: TextAlign.end,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: AppTheme.primaryBlue,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                height: 1.2,
-              ),
-            ),
-          ),
-          if (onTap != null) ...[
-            const SizedBox(width: 4),
-            const Icon(Icons.chevron_right_rounded, color: AppTheme.muted),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _SettingsActionRow extends StatelessWidget {
-  const _SettingsActionRow({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      onTap: onTap,
-      minLeadingWidth: 28,
-      leading: _SettingsIcon(icon: icon, color: AppTheme.primaryBlue),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-      subtitle: Text(subtitle),
-      trailing: const Icon(Icons.chevron_right_rounded),
-    );
-  }
-}
-
-class _SettingsIcon extends StatelessWidget {
-  const _SettingsIcon({required this.icon, required this.color});
-
-  final IconData icon;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 28,
-      height: 28,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Icon(icon, color: color, size: 18),
-    );
-  }
-}
-
 bool _isDueToday(Task task) => isTaskDueToday(task, now: DateTime.now());
 
 bool _isOverdue(DateTime dueDate) {
@@ -4042,46 +3465,6 @@ const _metadataColorOptions = [
   '#6B7280',
 ];
 
-const _notificationOffsetOptions = [
-  0,
-  10,
-  20,
-  30,
-  60,
-  180,
-  360,
-  720,
-  1440,
-  4320,
-];
-
-int _closestNotificationOffset(int value) {
-  var closest = _notificationOffsetOptions.first;
-  for (final option in _notificationOffsetOptions) {
-    final currentDistance = (option - value).abs();
-    final closestDistance = (closest - value).abs();
-    if (currentDistance < closestDistance) {
-      closest = option;
-    }
-  }
-  return closest;
-}
-
-String _notificationOffsetLabel(int minutes) {
-  if (minutes == 0) {
-    return '마감 시각';
-  }
-  if (minutes < 60) {
-    return '마감 $minutes분 전';
-  }
-  if (minutes < 24 * 60) {
-    final hours = minutes ~/ 60;
-    return '마감 $hours시간 전';
-  }
-  final days = minutes ~/ (24 * 60);
-  return '마감 $days일 전';
-}
-
 Color _colorFromHex(String? value, {Color fallback = AppTheme.primaryBlue}) {
   final normalized = _normalizeHex(value);
   if (!_isValidHexColor(normalized)) {
@@ -4101,26 +3484,6 @@ String _normalizeHex(String? value) {
 
 bool _isValidHexColor(String value) {
   return RegExp(r'^#[0-9A-F]{6}$').hasMatch(value);
-}
-
-DateTime? _lastEcampusSyncedAt(List<Task> tasks) {
-  DateTime? latest;
-  for (final task in tasks) {
-    final syncedAt = task.ecampus?.lastSyncedAt;
-    if (syncedAt == null) {
-      continue;
-    }
-    if (latest == null || syncedAt.isAfter(latest)) {
-      latest = syncedAt;
-    }
-  }
-  return latest;
-}
-
-String _dateTimeLabel(DateTime date) {
-  final hour = date.hour.toString().padLeft(2, '0');
-  final minute = date.minute.toString().padLeft(2, '0');
-  return '${date.month}월 ${date.day}일 $hour:$minute';
 }
 
 void _showSnackBar(BuildContext context, String message) {

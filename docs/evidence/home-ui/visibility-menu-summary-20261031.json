@@ -1,0 +1,63 @@
+{
+  "recorded_at_utc": "2026-10-31T10:19:50.635587+00:00",
+  "git_base": "a9b231dccef02fbee51caa74a76d4ffaafb51136",
+  "uncommitted_changes": true,
+  "scope": "Remove list archive/restore UI and optional APIs without data conversion; separate compact list/tag visibility popup menus; names and eyes only, omit Inbox and folder paths",
+  "tests": {
+    "raw": "visibility-menu-final-tests-20261031.jsonl",
+    "passed": 87,
+    "failed": 0,
+    "success": true,
+    "elapsed_ms": 30722
+  },
+  "final_layout_tests": {
+    "raw": "visibility-menu-layout-final-tests-20261031.jsonl",
+    "passed": 2,
+    "failed": 0,
+    "success": true,
+    "elapsed_ms": 3829
+  },
+  "counts_overlap": true,
+  "coverage_note": "87 related tests passed before the final menu-width/row-alignment polish. The two affected popup tests then passed again with the final layout, including visibility persistence, save failure retry, width and alignment assertions.",
+  "analysis": {
+    "raw": "visibility-menu-analyze-20261031.txt",
+    "errors": 0,
+    "warnings": 0,
+    "info": 0,
+    "exit_code": 0,
+    "capture_method": "Exact stdout copied from direct flutter analyze --no-pub output"
+  },
+  "layout": {
+    "min_width": 152,
+    "max_width": 208,
+    "content": "one-line name at left, eye toggle at right",
+    "row_title_font_size": 14,
+    "row_horizontal_padding": 12,
+    "folder_path_shown": false,
+    "inbox_in_popup": false,
+    "list_tag_menus_separate": true
+  },
+  "archive_policy": {
+    "conversion_added": false,
+    "existing_archived_rows_restored": false,
+    "schema_changed": false,
+    "settings_repository_changed": false,
+    "note": "User explicitly declined conversion. Storage columns and existing soft-deleted rows remain untouched; settings-read regression verifies no automatic restoration/visibility conversion."
+  },
+  "full_suite_run": false,
+  "android_build_run": false,
+  "installed_on_device": false,
+  "source_git_blob_hashes": {
+    "lib/data/models/home_period_preference.dart": "22cb89cbcbb8e6cb1a366bd917c838fb38c970dc",
+    "lib/data/repositories/drift_folder_repository.dart": "4bf525340435213ccf0a1f06eb18c22c05800879",
+    "lib/data/repositories/folder_repository.dart": "022680552b953462f50ce291999964005f6415a7",
+    "lib/presentation/screens/main/main_shell_screen.dart": "a33b96cabfd0a7d273543a79dfb78559911bb2b5",
+    "lib/presentation/screens/main/mobile_home_page.dart": "1870368b4b423577b1ab816e2be10b320021b49d",
+    "test/data/local/database_v7_lists_test.dart": "4d6958c3b20919321948c09cf6d3d753b3536e8a",
+    "test/data/repositories/drift_metadata_repositories_test.dart": "47c8daa5ee37556d48cad3209f726c717ffcb393",
+    "test/presentation/screens/list_groups_test.dart": "73928273bbfb1dd15d2ccf0d86e8034fd8e13182",
+    "test/presentation/screens/mobile_home_test.dart": "e08827bd1737df814f3943e07212a60fcd16d901",
+    "lib/presentation/screens/main/drawer_context_item.dart": "628a323a970860193a7eaddd44ec79f35db1440e"
+  },
+  "unchanged_settings_repository_blob": "74ca1d9a23baf83445025a358c8a0aab1c606f38"
+}

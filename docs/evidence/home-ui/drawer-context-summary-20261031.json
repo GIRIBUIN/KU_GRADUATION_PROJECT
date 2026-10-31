@@ -1,0 +1,62 @@
+{
+  "recorded_at_utc": "2026-10-31T09:55:32.030242+00:00",
+  "git_base": "a9b231dccef02fbee51caa74a76d4ffaafb51136",
+  "uncommitted_changes": true,
+  "scope": "Remove all-date option from normal period menu; unify Task labels; Drawer context menu with drag reorder/membership; excluded import management and archived list restore entry; independent all-date default for trash",
+  "tests": {
+    "raw": "drawer-context-natural-drop-final-tests-20261031.jsonl",
+    "passed": 85,
+    "failed": 0,
+    "success": true,
+    "elapsed_ms": 30799
+  },
+  "followup_capture_tests": {
+    "raw": "drawer-context-capture-tests-20261031.jsonl",
+    "passed": 3,
+    "failed": 0,
+    "success": true,
+    "elapsed_ms": 9642
+  },
+  "menu_capture_tests": {
+    "raw": "drawer-context-menu-capture-tests-20261031.jsonl",
+    "passed": 1,
+    "failed": 0,
+    "success": true,
+    "elapsed_ms": 4070
+  },
+  "counts_overlap": true,
+  "final_change_coverage": "The final 85-test run includes natural drop targets, same-scope trash reentry reset, persistence, excluded-item and archived-list entry points. Earlier screenshot runs overlap these tests and are not additional unique cases.",
+  "analysis": {
+    "raw": "drawer-context-analyze-20261031.txt",
+    "errors": 0,
+    "warnings": 0,
+    "info": 0,
+    "exit_code": 0,
+    "capture_method": "Exact stdout copied from successful direct flutter analyze --no-pub exec"
+  },
+  "legacy_period_all": "Old persisted normal period all decodes to today. HomePeriod.all remains available for the transient trash period only.",
+  "settings_management": "Settings entry removed. Existing internal management State and edit/create handlers remain reused; they were not replaced with new CRUD logic.",
+  "schema_version": 7,
+  "full_suite_run": false,
+  "android_build_run": false,
+  "device_install_run": false,
+  "source_git_blob_hashes": {
+    "lib/data/models/home_period_preference.dart": "22cb89cbcbb8e6cb1a366bd917c838fb38c970dc",
+    "lib/data/repositories/drift_folder_repository.dart": "704dc064e76368ca840e1c31cec8c3b83a247aff",
+    "lib/presentation/screens/main/main_shell_screen.dart": "0f03c08536539b22078cd4a03e2b423d3ff081b1",
+    "lib/presentation/screens/main/mobile_home_page.dart": "76cb19270d7a4d98b5408bbc24df045c60acb302",
+    "test/data/local/database_v7_lists_test.dart": "c959f358c9f4899c350c9bb9421eaffcd55c275d",
+    "test/data/repositories/drift_metadata_repositories_test.dart": "f29b7c8fffc4f1ec23962b03e9be2ed987bd2a08",
+    "test/presentation/screens/list_groups_test.dart": "a7b93849aca0698d280af2e6a55bf2a465c87c06",
+    "test/presentation/screens/mobile_home_test.dart": "4d13c050860725d27c867ab96547e56a9e5a5e72",
+    "lib/presentation/screens/main/drawer_context_item.dart": "628a323a970860193a7eaddd44ec79f35db1440e"
+  },
+  "pre_natural_drop_tests": {
+    "raw": "drawer-context-final-verified-tests-20261031.jsonl",
+    "passed": 85,
+    "failed": 0,
+    "success": true,
+    "elapsed_ms": 31948
+  },
+  "natural_drop_behavior": "No temporary rows; existing list/tag upper/lower half chooses before/after with a paint-only insertion line. Existing Lists heading or Inbox accepts moves to root; folder header accepts moves into the folder."
+}

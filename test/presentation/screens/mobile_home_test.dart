@@ -146,7 +146,11 @@ void main() {
     return saved;
   }
 
-  Future<void> pumpApp(WidgetTester tester, {double textScale = 1}) async {
+  Future<void> pumpApp(
+    WidgetTester tester, {
+    double textScale = 1,
+    DriftNotificationRepository? reminders,
+  }) async {
     final theme = AppTheme.light();
     // Widget tests normally replace platform fonts with Ahem. Use readable
     // local fonts only for optional documentation captures, not app assets.
@@ -186,9 +190,8 @@ void main() {
           home: MainShellScreen(
             taskRepository: tasks,
             subTaskRepository: DriftSubTaskRepository(database: database),
-            notificationRepository: DriftNotificationRepository(
-              database: database,
-            ),
+            notificationRepository:
+                reminders ?? DriftNotificationRepository(database: database),
             settingsRepository: settings,
             tagRepository: tags,
             folderRepository: lists,
@@ -618,8 +621,14 @@ void main() {
       await pumpApp(tester);
       expect(row('먼 마감 일정'), findsNothing);
       expect((await tasks.getTasks()).length, 1);
-      await choosePeriod(tester, '전체 기간');
-      expect(find.text('전체 기간'), findsNWidgets(2));
+      await choosePeriod(tester, '전체');
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-period')),
+          matching: find.text('전체'),
+        ),
+        findsWidgets,
+      );
       expect(row('먼 마감 일정'), findsOneWidget);
       await openDrawer(tester);
       expect(
@@ -653,14 +662,94 @@ void main() {
     },
   );
 
-  testWidgets('month and specific year month day are session state only', (
+  for (final endDay in [12, 14]) {
+    testWidgets(
+      'custom period includes both date boundaries and supports a same-day range: $endDay',
+      (tester) async {
+        await add('구간 시작', due: DateTime(2030, 11, 12), list: 'course');
+        await add(
+          '구간 끝',
+          due: DateTime(2030, 11, endDay, 23, 59, 59, 999),
+          list: 'course',
+        );
+        await add(
+          '구간 이전',
+          due: DateTime(2030, 11, 11, 23, 59, 59),
+          list: 'course',
+        );
+        await add('구간 이후', due: DateTime(2030, 11, endDay + 1), list: 'course');
+        await pumpApp(tester);
+        await chooseScope(tester, 'list', 'course');
+        await tester.tap(find.byKey(const ValueKey('home-period')));
+        await tester.pumpAndSettle();
+        final options = tester
+            .widgetList<ListTile>(
+              find.descendant(
+                of: find.byType(BottomSheet),
+                matching: find.byType(ListTile),
+              ),
+            )
+            .map((tile) => (tile.title! as Text).data)
+            .toList();
+        expect(options, ['오늘', '이번 주', '이번 달', '전체', '기간 선택']);
+        await tester.tap(find.text('기간 선택').last);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('날짜 구간'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byIcon(Icons.edit_outlined));
+        await tester.pumpAndSettle();
+        final fields = find.byType(TextField);
+        await tester.enterText(fields.at(0), '2030. 11. 12.');
+        await tester.enterText(fields.at(1), '2030. 11. $endDay.');
+        await tester.tap(find.text('적용').last);
+        await tester.pumpAndSettle();
+        expect(row('구간 시작'), findsOneWidget);
+        expect(row('구간 끝'), findsOneWidget);
+        expect(row('구간 이전'), findsNothing);
+        expect(row('구간 이후'), findsNothing);
+        final label = endDay == 12 ? '2030년 11월 12일' : '2030.11.12 ~ 11.14';
+        expect(find.text(label), findsNWidgets(2));
+        await capture(tester, endDay == 12 ? 'same-day' : 'range');
+        await tester.tap(find.byKey(const ValueKey('nav-calendar')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('nav-home')));
+        await tester.pumpAndSettle();
+        expect(row('구간 끝'), findsOneWidget);
+        expect(find.text(label), findsNWidgets(2));
+        expect(tester.takeException(), isNull);
+        await finish(tester);
+      },
+    );
+  }
+
+  testWidgets('canceling custom period selection retains the previous period', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await choosePeriod(tester, '이번 주');
+    await choosePeriod(tester, '기간 선택');
+    await dismissSheet(tester);
+    expect(find.text('이번 주'), findsNWidgets(2));
+    await choosePeriod(tester, '기간 선택');
+    await tester.tap(find.text('날짜 구간'));
+    await tester.pumpAndSettle();
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('이번 주'), findsNWidgets(2));
+    expect(tester.takeException(), isNull);
+    await finish(tester);
+  });
+
+  testWidgets('month and single custom date are session state only', (
     tester,
   ) async {
     await add('선택 날짜 일정', due: DateTime(2030, 11, 12, 23, 59));
     await pumpApp(tester);
     await choosePeriod(tester, '이번 달');
     expect(row('선택 날짜 일정'), findsNothing);
-    await choosePeriod(tester, '특정 날짜 선택');
+    await choosePeriod(tester, '기간 선택');
+    await tester.tap(find.text('단일 날짜'));
+    await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.edit_outlined));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), '2030. 11. 12.');
@@ -957,12 +1046,16 @@ void main() {
 
 class _Notifications extends LocalNotificationService {
   final cancelled = <String>[];
+  final scheduled = <(Task, NotificationSetting)>[];
   @override
   Future<void> scheduleTaskNotification({
     required Task task,
     required NotificationSetting setting,
     bool requestPermissionBeforeScheduling = false,
-  }) async {}
+  }) async {
+    scheduled.add((task, setting));
+  }
+
   @override
   Future<void> cancelTaskNotification(String taskId) async {
     cancelled.add(taskId);

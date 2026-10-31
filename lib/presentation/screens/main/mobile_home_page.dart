@@ -11,7 +11,7 @@ import '../../widgets/task_metadata_picker.dart' show colorFromHex;
 
 enum _ScopeKind { all, list, tag, completed, trash }
 
-enum _Period { today, week, month, day, all }
+enum _Period { today, week, month, all, custom }
 
 class MobileHomePage extends StatefulWidget {
   const MobileHomePage({
@@ -64,7 +64,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
   _ScopeKind _scope = _ScopeKind.all;
   String? _scopeId;
   _Period _period = _Period.today;
-  DateTime? _day;
+  DateTimeRange? _customRange;
   HomeViewOptions _view = const HomeViewOptions();
   bool _loadedPreferences = false;
   bool _showHiddenMetadata = false;
@@ -96,8 +96,15 @@ class _MobileHomePageState extends State<MobileHomePage> {
         DateTime(today.year, today.month),
         DateTime(today.year, today.month + 1),
       ),
-      _Period.day => (_day!, DateTime(_day!.year, _day!.month, _day!.day + 1)),
       _Period.all => (DateTime(1), DateTime(10000)),
+      _Period.custom => (
+        _customRange!.start,
+        DateTime(
+          _customRange!.end.year,
+          _customRange!.end.month,
+          _customRange!.end.day + 1,
+        ),
+      ),
     };
   }
 
@@ -105,8 +112,11 @@ class _MobileHomePageState extends State<MobileHomePage> {
     _Period.today => '오늘',
     _Period.week => '이번 주',
     _Period.month => '이번 달',
-    _Period.day => DateFormat('yyyy년 M월 d일', 'ko_KR').format(_day!),
-    _Period.all => '전체 기간',
+    _Period.all => '전체',
+    _Period.custom =>
+      _customRange!.start == _customRange!.end
+          ? DateFormat('yyyy년 M월 d일', 'ko_KR').format(_customRange!.start)
+          : '${DateFormat('yyyy.MM.dd').format(_customRange!.start)} ~ ${DateFormat(_customRange!.start.year == _customRange!.end.year ? 'MM.dd' : 'yyyy.MM.dd').format(_customRange!.end)}',
   };
 
   void _selectScope(_ScopeKind scope, [String? id]) {
@@ -371,8 +381,8 @@ class _MobileHomePageState extends State<MobileHomePage> {
                   _Period.today => '오늘',
                   _Period.week => '이번 주',
                   _Period.month => '이번 달',
-                  _Period.day => '특정 날짜 선택',
-                  _Period.all => '전체 기간',
+                  _Period.all => '전체',
+                  _Period.custom => '기간 선택',
                 }),
                 trailing: _period == period
                     ? const Icon(Icons.check_rounded)
@@ -384,22 +394,70 @@ class _MobileHomePageState extends State<MobileHomePage> {
       ),
     );
     if (selected == null || !mounted) return;
-    if (selected == _Period.day) {
-      final date = await showDatePicker(
+    if (selected == _Period.custom) {
+      final isRange = await showModalBottomSheet<bool>(
         context: context,
-        initialDate: _day ?? DateTime.now(),
-        firstDate: DateTime(2000),
-        lastDate: DateTime(2100, 12, 31),
-        helpText: '날짜 선택',
-        fieldLabelText: '연 / 월 / 일',
+        showDragHandle: true,
+        builder: (context) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(12),
+                child: Text(
+                  '기간 선택',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.event_outlined),
+                title: const Text('단일 날짜'),
+                onTap: () => Navigator.pop(context, false),
+              ),
+              ListTile(
+                leading: const Icon(Icons.date_range_outlined),
+                title: const Text('날짜 구간'),
+                onTap: () => Navigator.pop(context, true),
+              ),
+            ],
+          ),
+        ),
       );
-      if (date == null || !mounted) return;
+      if (isRange == null || !mounted) return;
+      DateTimeRange? range;
+      if (isRange) {
+        range = await showDateRangePicker(
+          context: context,
+          initialDateRange: _customRange,
+          firstDate: DateTime(2000),
+          lastDate: DateTime(2100, 12, 31),
+          helpText: '기간 선택',
+          saveText: '적용',
+          confirmText: '적용',
+          cancelText: '취소',
+          fieldStartLabelText: '시작일',
+          fieldEndLabelText: '종료일',
+        );
+      } else {
+        final date = await showDatePicker(
+          context: context,
+          initialDate: _customRange?.start ?? DateTime.now(),
+          firstDate: DateTime(2000),
+          lastDate: DateTime(2100, 12, 31),
+          helpText: '단일 날짜 선택',
+          fieldLabelText: '연 / 월 / 일',
+        );
+        if (date != null) range = DateTimeRange(start: date, end: date);
+      }
+      if (range == null || !mounted) return;
       setState(() {
-        _day = date;
+        _customRange = range;
         _period = selected;
       });
     } else {
-      setState(() => _period = selected);
+      setState(() {
+        _period = selected;
+      });
     }
   }
 

@@ -476,20 +476,6 @@ class _MainShellScreenState extends State<MainShellScreen>
     if (mounted) _settingsSaved(saved);
   }
 
-  Future<void> _openExcludedFromDrawer() async {
-    final tasks = await _loadTasks();
-    if (!mounted) return;
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute(
-        builder: (_) => _ExcludedEcampusTasksManagementScreen(
-          tasks: tasks.where(_isExcludedEcampusTask).toList(),
-          onAllowSync: _allowExcludedTaskSync,
-        ),
-      ),
-    );
-    if (mounted) _refreshTasksAndMetadata();
-  }
-
   Future<void> _openQuickAdd({
     String? listId,
     List<String> tagIds = const [],
@@ -564,7 +550,7 @@ class _MainShellScreenState extends State<MainShellScreen>
                     onSettingsSaved: _settingsSaved,
                     onMoveList: _moveDrawerList,
                     onMoveTag: _moveDrawerTag,
-                    onOpenExcluded: _openExcludedFromDrawer,
+                    onAllowExcludedTaskSync: _allowExcludedTaskSync,
                     onRefresh: _refreshTasks,
                     onImport: _openEcampusSync,
                     onSettings: (anchor) => showHomeSettingsMenu(
@@ -628,7 +614,6 @@ class _MainShellScreenState extends State<MainShellScreen>
                     onDeleteTask: _deleteTask,
                     onOpenTaskDetail: _openTaskDetail,
                     onRestoreTask: _restoreTask,
-                    onAllowExcludedTaskSync: _allowExcludedTaskSync,
                     onDeletePermanently: _deleteTaskPermanently,
                   ),
                 ];
@@ -680,13 +665,6 @@ bool _isHiddenInMainList(Task task) {
       task.status == TaskStatus.excluded;
 }
 
-bool _isExcludedEcampusTask(Task task) {
-  final sourceKey = task.ecampus?.sourceKey.trim();
-  return task.status == TaskStatus.excluded &&
-      sourceKey != null &&
-      sourceKey.isNotEmpty;
-}
-
 class _TaskMetadataLookup {
   const _TaskMetadataLookup({
     required List<Tag> tags,
@@ -734,7 +712,6 @@ class _ManagementPage extends StatefulWidget {
     required this.onDeleteTask,
     required this.onOpenTaskDetail,
     required this.onRestoreTask,
-    required this.onAllowExcludedTaskSync,
     required this.onDeletePermanently,
   });
 
@@ -751,7 +728,6 @@ class _ManagementPage extends StatefulWidget {
   final Future<void> Function(Task task) onDeleteTask;
   final Future<void> Function(Task task) onOpenTaskDetail;
   final Future<void> Function(Task task) onRestoreTask;
-  final Future<void> Function(Task task) onAllowExcludedTaskSync;
   final Future<void> Function(Task task) onDeletePermanently;
 
   @override
@@ -807,7 +783,6 @@ class _ManagementPageState extends State<_ManagementPage> {
     final deletedCount = widget.tasks
         .where((task) => task.status == TaskStatus.deleted)
         .length;
-    final excludedCount = widget.tasks.where(_isExcludedEcampusTask).length;
 
     return SafeArea(
       child: ListView(
@@ -899,13 +874,6 @@ class _ManagementPageState extends State<_ManagementPage> {
                 trailing: '$deletedCount',
                 onTap: _openDeletedTasks,
               ),
-              _ManagementRow(
-                icon: Icons.block_rounded,
-                iconColor: AppTheme.warningOrange,
-                title: '제외된 e-campus 항목',
-                trailing: '$excludedCount',
-                onTap: _openExcludedTasks,
-              ),
             ],
           ),
         ],
@@ -951,21 +919,6 @@ class _ManagementPageState extends State<_ManagementPage> {
           tasks: deletedTasks,
           onRestoreTask: widget.onRestoreTask,
           onDeletePermanently: widget.onDeletePermanently,
-        ),
-      ),
-    );
-  }
-
-  Future<void> _openExcludedTasks() async {
-    final excludedTasks = widget.tasks
-        .where(_isExcludedEcampusTask)
-        .toList(growable: false);
-
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute(
-        builder: (_) => _ExcludedEcampusTasksManagementScreen(
-          tasks: excludedTasks,
-          onAllowSync: widget.onAllowExcludedTaskSync,
         ),
       ),
     );
@@ -1955,198 +1908,6 @@ class _DeletedManagementTaskTile extends StatelessWidget {
                 label: const Text('영구 삭제'),
               ),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ExcludedEcampusTasksManagementScreen extends StatefulWidget {
-  const _ExcludedEcampusTasksManagementScreen({
-    required this.tasks,
-    required this.onAllowSync,
-  });
-
-  final List<Task> tasks;
-  final Future<void> Function(Task task) onAllowSync;
-
-  @override
-  State<_ExcludedEcampusTasksManagementScreen> createState() =>
-      _ExcludedEcampusTasksManagementScreenState();
-}
-
-class _ExcludedEcampusTasksManagementScreenState
-    extends State<_ExcludedEcampusTasksManagementScreen> {
-  late List<Task> _tasks;
-  final Set<String> _busyTaskIds = {};
-
-  @override
-  void initState() {
-    super.initState();
-    _tasks = List<Task>.of(widget.tasks)..sort(_compareCreatedAt);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('제외된 e-campus 항목')),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: AppTheme.warningOrange.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.block_rounded,
-                    color: AppTheme.warningOrange,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        '동기화 제외',
-                        style: TextStyle(
-                          color: AppTheme.muted,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${_tasks.length}개 항목',
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              '허용하면 즉시 할 일로 복구하지 않고, 다음 e-campus 동기화부터 다시 가져올 수 있습니다.',
-              style: TextStyle(color: AppTheme.muted, height: 1.4),
-            ),
-            const SizedBox(height: 20),
-            if (_tasks.isEmpty)
-              const _EmptyBlock(message: '제외된 e-campus 항목이 없습니다.')
-            else
-              Card(
-                clipBehavior: Clip.antiAlias,
-                child: Column(
-                  children: [
-                    for (var i = 0; i < _tasks.length; i++) ...[
-                      _ExcludedEcampusTaskTile(
-                        task: _tasks[i],
-                        isBusy: _busyTaskIds.contains(_tasks[i].id),
-                        onAllowSync: () => _allowSync(_tasks[i]),
-                      ),
-                      if (i != _tasks.length - 1)
-                        const Divider(height: 1, indent: 16),
-                    ],
-                  ],
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _allowSync(Task task) async {
-    if (_busyTaskIds.contains(task.id)) {
-      return;
-    }
-    setState(() {
-      _busyTaskIds.add(task.id);
-    });
-
-    try {
-      await widget.onAllowSync(task);
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _tasks.removeWhere((item) => item.id == task.id);
-        _busyTaskIds.remove(task.id);
-      });
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _busyTaskIds.remove(task.id);
-      });
-      _showSnackBar(context, '제외 해제에 실패했습니다.');
-    }
-  }
-}
-
-class _ExcludedEcampusTaskTile extends StatelessWidget {
-  const _ExcludedEcampusTaskTile({
-    required this.task,
-    required this.isBusy,
-    required this.onAllowSync,
-  });
-
-  final Task task;
-  final bool isBusy;
-  final VoidCallback onAllowSync;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            task.title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontWeight: FontWeight.w900, height: 1.3),
-          ),
-          const SizedBox(height: 8),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                if (task.dueDate != null) ...[
-                  _DueChip(task: task),
-                  const SizedBox(width: 6),
-                ],
-                const _ColoredChip(
-                  label: '동기화 제외',
-                  color: AppTheme.warningOrange,
-                ),
-                if (task.ecampus?.sourceCourse != null) ...[
-                  const SizedBox(width: 6),
-                  _NeutralChip(label: task.ecampus!.sourceCourse!),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              onPressed: isBusy ? null : onAllowSync,
-              icon: const Icon(Icons.sync_rounded, size: 18),
-              label: const Text('다시 가져오기 허용'),
-            ),
           ),
         ],
       ),

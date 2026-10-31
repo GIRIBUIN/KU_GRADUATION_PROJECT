@@ -720,11 +720,178 @@ void main() {
       );
       await tester.tap(excluded);
       await tester.pumpAndSettle();
-      expect(find.text('제외 과제'), findsOneWidget);
-      await tester.tap(find.text('다시 가져오기 허용'));
+      expect(row('excluded', 'excluded'), findsOneWidget);
+      expect(find.byType(BackButton), findsNothing);
+      expect(find.byKey(const ValueKey('nav-home')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-section-period')), findsNothing);
+      expect(find.byType(Card), findsNothing);
+      expect(find.text('동기화 제외'), findsNothing);
+      expect(find.textContaining('허용하면 즉시'), findsNothing);
+      expect(find.byType(Checkbox), findsNothing);
+      await tester.drag(row('excluded', 'excluded'), const Offset(260, 0));
+      await tester.pumpAndSettle();
+      expect(
+        (await tasks.getTaskById('excluded'))!.status,
+        TaskStatus.excluded,
+      );
+      await openDrawer(tester);
+      expect(tester.widget<ListTile>(excluded).selected, isTrue);
+      await tester.tap(excluded);
+      await tester.pumpAndSettle();
+      await capture(tester, 'excluded-list');
+      await tester.tap(find.byTooltip('다시 가져오기 허용'));
       await tester.pumpAndSettle();
       expect(await tasks.getTaskById('excluded'), isNull);
       expect(find.text('제외 과제'), findsNothing);
+      expect(find.text('할 일이 없습니다.'), findsOneWidget);
+      expect(await database.select(database.tasks).get(), isEmpty);
+      final source =
+          (await database.select(database.ecampusItems).get()).single;
+      expect(source.importState, 'unreviewed');
+      expect(source.taskId, isNull);
+      await capture(tester, 'excluded-empty');
+      expect(tester.takeException(), isNull);
+      await finish(tester);
+    },
+  );
+
+  testWidgets(
+    'excluded home scope ignores home dates and filters and keeps sorting temporary',
+    (tester) async {
+      const longTitle = '제외된 아주 긴 과제 제목을 줄바꿈하여 전체 내용을 표시합니다';
+      for (final (id, title, days) in [
+        ('late-source', longTitle, 50),
+        ('early-source', '지난 과제', -50),
+      ]) {
+        await tasks.createTask(
+          Task(
+            id: id,
+            title: title,
+            origin: TaskOrigin.ecampus,
+            status: TaskStatus.excluded,
+            dueDate: now.add(Duration(days: days)),
+            createdAt: now,
+            updatedAt: now,
+            ecampus: EcampusSyncMetadata(
+              sourceKey: id,
+              sourceCourse: '운영체제',
+              sourceDueDate: now.add(Duration(days: days)),
+            ),
+          ),
+        );
+      }
+      await add('일반 할 일', due: today);
+      const view = HomeViewOptions(
+        sort: HomeSort.priority,
+        statuses: {},
+        priorities: {TaskPriority.high},
+        tagIds: {'tag-a'},
+      );
+      final original = await settings.saveSettings(
+        (await settings.getSettings()).copyWith(
+          homeView: view,
+          homePeriod: const HomePeriodPreference(mode: HomePeriod.week),
+        ),
+      );
+      await pumpApp(tester, textScale: 1.5);
+      await openDrawer(tester);
+      await tester.ensureVisible(find.byKey(const ValueKey('drawer-excluded')));
+      await tester.tap(find.byKey(const ValueKey('drawer-excluded')));
+      await tester.pumpAndSettle();
+      expect(row('late-source', 'excluded'), findsOneWidget);
+      expect(row('early-source', 'excluded'), findsOneWidget);
+      expect(find.text('운영체제'), findsNWidgets(2));
+      expect(find.text('미지정'), findsNothing);
+      expect(find.text('일반 할 일'), findsNothing);
+      final title = tester.widget<Text>(find.text(longTitle));
+      expect(title.maxLines, isNull);
+      expect(title.overflow, isNot(TextOverflow.ellipsis));
+      expect(
+        tester.widget<InkWell>(find.byKey(const ValueKey('home-period'))).onTap,
+        isNull,
+      );
+      await tester.tap(find.byTooltip('보기 조정'));
+      await tester.pumpAndSettle();
+      expect(find.text('상태'), findsNothing);
+      expect(find.byType(FilterChip), findsNothing);
+      expect(find.text('저장'), findsNothing);
+      await capture(tester, 'excluded-sort');
+      await tester.tap(find.widgetWithText(ChoiceChip, '마감 늦은 순'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('닫기'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.getTopLeft(row('late-source', 'excluded')).dy,
+        lessThan(tester.getTopLeft(row('early-source', 'excluded')).dy),
+      );
+      await tester.tap(find.byTooltip('보기 조정'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ChoiceChip, '마감 빠른 순'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('닫기'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.getTopLeft(row('early-source', 'excluded')).dy,
+        lessThan(tester.getTopLeft(row('late-source', 'excluded')).dy),
+      );
+      await capture(tester, 'excluded-large');
+      expect(
+        (await settings.getSettings()).homeView.encode(),
+        original.homeView.encode(),
+      );
+      expect((await settings.getSettings()).homePeriod.mode, HomePeriod.week);
+      await chooseScope(tester, 'all');
+      await openDrawer(tester);
+      await tester.ensureVisible(find.byKey(const ValueKey('drawer-excluded')));
+      await tester.tap(find.byKey(const ValueKey('drawer-excluded')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('보기 조정'));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, '기본'))
+            .selected,
+        isTrue,
+      );
+      expect(tester.takeException(), isNull);
+      await finish(tester);
+    },
+  );
+
+  testWidgets(
+    'excluded allow-import failure retains the source and allows retry',
+    (tester) async {
+      final failing = _FailingExcludedTasks(database: database);
+      tasks = failing;
+      await tasks.createTask(
+        Task(
+          id: 'excluded-retry',
+          title: '재시도 과제',
+          origin: TaskOrigin.ecampus,
+          status: TaskStatus.excluded,
+          createdAt: now,
+          updatedAt: now,
+          ecampus: const EcampusSyncMetadata(sourceKey: 'retry-source'),
+        ),
+      );
+      await pumpApp(tester);
+      await openDrawer(tester);
+      await tester.ensureVisible(find.byKey(const ValueKey('drawer-excluded')));
+      await tester.tap(find.byKey(const ValueKey('drawer-excluded')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('다시 가져오기 허용'));
+      await tester.pumpAndSettle();
+      expect(row('excluded-retry', 'excluded'), findsOneWidget);
+      expect(find.text('제외 해제에 실패했습니다.'), findsOneWidget);
+      expect(
+        (await tasks.getTaskById('excluded-retry'))!.status,
+        TaskStatus.excluded,
+      );
+      failing.failDelete = false;
+      await tester.tap(find.byTooltip('다시 가져오기 허용'));
+      await tester.pumpAndSettle();
+      expect(row('excluded-retry', 'excluded'), findsNothing);
+      expect(await tasks.getTaskById('excluded-retry'), isNull);
       expect(tester.takeException(), isNull);
       await finish(tester);
     },
@@ -2934,6 +3101,16 @@ class _FailingSwipeTasks extends DriftTaskRepository {
   Future<Task> markDeleted(String id) {
     if (failDelete) throw StateError('test swipe failure');
     return super.markDeleted(id);
+  }
+}
+
+class _FailingExcludedTasks extends DriftTaskRepository {
+  _FailingExcludedTasks({required super.database});
+  bool failDelete = true;
+  @override
+  Future<void> deletePermanently(String id) {
+    if (failDelete) throw StateError('test excluded allow failure');
+    return super.deletePermanently(id);
   }
 }
 

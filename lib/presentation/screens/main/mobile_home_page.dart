@@ -13,7 +13,7 @@ import '../../../data/services/home_task_summary.dart';
 import '../../widgets/task_metadata_picker.dart' show colorFromHex;
 import 'drawer_context_item.dart';
 
-enum _ScopeKind { period, all, list, tag, completed, trash }
+enum _ScopeKind { period, all, list, tag, completed, trash, excluded }
 
 class MobileHomePage extends StatefulWidget {
   const MobileHomePage({
@@ -47,7 +47,7 @@ class MobileHomePage extends StatefulWidget {
     required this.onDeleteTask,
     required this.onMoveList,
     required this.onMoveTag,
-    required this.onOpenExcluded,
+    required this.onAllowExcludedTaskSync,
   });
 
   final List<Task> tasks;
@@ -70,13 +70,13 @@ class MobileHomePage extends StatefulWidget {
   final Future<void> Function(String id, String? groupId, String? beforeId)
   onMoveList;
   final Future<void> Function(String id, String? beforeId) onMoveTag;
-  final Future<void> Function() onOpenExcluded;
   final Future<void> Function() onImport;
   final Future<void> Function(Task) onOpenTask,
       onToggleTask,
       onRestoreTask,
       onDeletePermanently,
-      onDeleteTask;
+      onDeleteTask,
+      onAllowExcludedTaskSync;
 
   @override
   State<MobileHomePage> createState() => _MobileHomePageState();
@@ -90,6 +90,8 @@ class _MobileHomePageState extends State<MobileHomePage> {
   DateTimeRange? _customRange;
   HomeViewOptions _view = const HomeViewOptions();
   HomeViewOptions _trashView = const HomeViewOptions();
+  HomeViewOptions _excludedView = const HomeViewOptions();
+  final Set<String> _allowingExcludedIds = {};
   bool _trashSelectionMode = false;
   bool _trashBulkBusy = false;
   final Set<String> _selectedTrashIds = {};
@@ -121,7 +123,10 @@ class _MobileHomePageState extends State<MobileHomePage> {
   @override
   void didUpdateWidget(covariant MobileHomePage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.isActive && !widget.isActive) _resetTrashSession();
+    if (oldWidget.isActive && !widget.isActive) {
+      _resetTrashSession();
+      _excludedView = const HomeViewOptions();
+    }
     _selectedTrashIds.retainAll(
       widget.tasks
           .where((t) => t.status == TaskStatus.deleted)
@@ -138,11 +143,20 @@ class _MobileHomePageState extends State<MobileHomePage> {
       '#${widget.tags.where((t) => t.id == _scopeId).firstOrNull?.name ?? '태그'}',
     _ScopeKind.completed => '완료',
     _ScopeKind.trash => '휴지통',
+    _ScopeKind.excluded => '제외된 eCampus 항목',
+  };
+
+  HomeViewOptions get _currentView => switch (_scope) {
+    _ScopeKind.trash => _trashView,
+    _ScopeKind.excluded => _excludedView,
+    _ => _view,
   };
 
   (DateTime, DateTime) _range(DateTime now) {
     final today = DateTime(now.year, now.month, now.day);
-    if (_scope == _ScopeKind.all) return (DateTime(1), DateTime(10000));
+    if (_scope == _ScopeKind.all || _scope == _ScopeKind.excluded) {
+      return (DateTime(1), DateTime(10000));
+    }
     final range = _scope == _ScopeKind.trash ? _trashCustomRange : _customRange;
     return switch (_scope == _ScopeKind.trash ? _trashPeriod : _period) {
       HomePeriod.today => (
@@ -197,6 +211,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
     setState(() {
       if (_scope != scope || _scopeId != id || scope == _ScopeKind.trash) {
         _resetTrashSession();
+        _excludedView = const HomeViewOptions();
       }
       _scope = scope;
       _scopeId = id;
@@ -212,7 +227,9 @@ class _MobileHomePageState extends State<MobileHomePage> {
     Color? color,
   ]) {
     final row = ListTile(
-      key: ValueKey('scope-${kind.name}-${id ?? ''}'),
+      key: kind == _ScopeKind.excluded
+          ? const ValueKey('drawer-excluded')
+          : ValueKey('scope-${kind.name}-${id ?? ''}'),
       selected: _scope == kind && _scopeId == id,
       selectedTileColor: AppTheme.primaryBlue.withValues(alpha: .08),
       leading: Icon(icon, color: color),
@@ -719,14 +736,10 @@ class _MobileHomePageState extends State<MobileHomePage> {
                       Icons.delete_outline_rounded,
                       _ScopeKind.trash,
                     ),
-                    ListTile(
-                      key: const ValueKey('drawer-excluded'),
-                      leading: const Icon(Icons.block_outlined),
-                      title: const Text('제외된 eCampus 항목'),
-                      onTap: () {
-                        Navigator.of(context).pop();
-                        widget.onOpenExcluded();
-                      },
+                    _drawerEntry(
+                      '제외된 eCampus 항목',
+                      Icons.block_outlined,
+                      _ScopeKind.excluded,
                     ),
                     const SizedBox(height: 12),
                   ],
@@ -895,6 +908,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
 
   Future<void> _adjustView() async {
     final isTrash = _scope == _ScopeKind.trash;
+    final isExcluded = _scope == _ScopeKind.excluded;
     final trash = widget.tasks
         .where((t) => t.status == TaskStatus.deleted)
         .toList();
@@ -904,7 +918,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
       isScrollControlled: true,
       showDragHandle: true,
       builder: (_) => _ViewOptionsSheet(
-        initial: isTrash ? _trashView : _view,
+        initial: _currentView,
         tags: isTrash
             ? widget.tags.where((t) => trashTagIds.contains(t.id)).toList()
             : widget.tags,
@@ -927,15 +941,18 @@ class _MobileHomePageState extends State<MobileHomePage> {
                   .toList()
             : TaskPriority.values,
         isTrash: isTrash,
+        sortOnly: isExcluded,
         onChanged: (value) => setState(() {
           if (isTrash) {
             _trashView = value;
             _selectedTrashIds.clear();
+          } else if (isExcluded) {
+            _excludedView = value;
           } else {
             _view = value;
           }
         }),
-        onSave: isTrash
+        onSave: isTrash || isExcluded
             ? null
             : (value) async {
                 final latest = await widget.settingsRepository.getSettings();
@@ -949,13 +966,18 @@ class _MobileHomePageState extends State<MobileHomePage> {
   }
 
   bool _matches(Task task) {
-    final view = _scope == _ScopeKind.trash ? _trashView : _view;
+    if (_scope == _ScopeKind.excluded) {
+      return task.status == TaskStatus.excluded &&
+          (task.ecampus?.sourceKey.trim().isNotEmpty ?? false);
+    }
+    final view = _currentView;
     final scopeMatches = switch (_scope) {
       _ScopeKind.period || _ScopeKind.all => true,
       _ScopeKind.list => task.listId == _scopeId,
       _ScopeKind.tag => task.tagIds.contains(_scopeId),
       _ScopeKind.completed => task.status == TaskStatus.completed,
       _ScopeKind.trash => task.status == TaskStatus.deleted,
+      _ScopeKind.excluded => false,
     };
     if (!scopeMatches || task.status == TaskStatus.excluded) return false;
     if (_scope == _ScopeKind.trash &&
@@ -988,7 +1010,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
       }
       _loadedPreferences = true;
     }
-    final isAll = _scope == _ScopeKind.all;
+    final isAll = _scope == _ScopeKind.all || _scope == _ScopeKind.excluded;
     final now = DateTime.now();
     final (start, end) = _range(now);
     bool inRange(DateTime? date) =>
@@ -996,13 +1018,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
         !date.toLocal().isBefore(start) &&
         date.toLocal().isBefore(end);
     final matching = widget.tasks.where(_matches).toList()
-      ..sort(
-        (a, b) => _compare(
-          a,
-          b,
-          (_scope == _ScopeKind.trash ? _trashView : _view).sort,
-        ),
-      );
+      ..sort((a, b) => _compare(a, b, _currentView.sort));
     final active = matching
         .where((t) => t.status == TaskStatus.active)
         .toList();
@@ -1114,9 +1130,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
                   ? _adjustView
                   : null,
               icon: Badge(
-                isLabelVisible:
-                    !(_scope == _ScopeKind.trash ? _trashView : _view)
-                        .isDefault,
+                isLabelVisible: !_currentView.isDefault,
                 smallSize: 6,
                 child: const Icon(Icons.tune_rounded),
               ),
@@ -1148,6 +1162,8 @@ class _MobileHomePageState extends State<MobileHomePage> {
               children: [
                 if (widget.isLoading)
                   const Center(child: CircularProgressIndicator())
+                else if (_scope == _ScopeKind.excluded)
+                  _section('제외된 eCampus 항목', 'excluded', matching)
                 else if (_scope == _ScopeKind.trash) ...[
                   _trashControls(trash),
                   _section('휴지통', 'trash', trash),
@@ -1350,7 +1366,10 @@ class _MobileHomePageState extends State<MobileHomePage> {
   );
 
   Widget _taskRow(Task task, String section) {
-    final list = widget.lists.where((l) => l.id == task.listId).firstOrNull;
+    final isExcluded = task.status == TaskStatus.excluded;
+    final list = isExcluded
+        ? null
+        : widget.lists.where((l) => l.id == task.listId).firstOrNull;
     final group = widget.groups.where((g) => g.id == list?.groupId).firstOrNull;
     final path = [
       if (group != null) group.name,
@@ -1358,6 +1377,8 @@ class _MobileHomePageState extends State<MobileHomePage> {
     ].join(' > ');
     final details = [
       if (path.isNotEmpty) path,
+      if (isExcluded && path.isEmpty && task.ecampus?.sourceCourse != null)
+        task.ecampus!.sourceCourse!,
       for (final tag in widget.tags.where((t) => task.tagIds.contains(t.id)))
         '#${tag.name}',
     ];
@@ -1376,6 +1397,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
       key: ValueKey('task-swipe-$section-${task.id}'),
       direction:
           widget.settingsReady &&
+              !isExcluded &&
               !_trashBulkBusy &&
               !(task.status == TaskStatus.deleted && _trashSelectionMode)
           ? DismissDirection.horizontal
@@ -1407,12 +1429,26 @@ class _MobileHomePageState extends State<MobileHomePage> {
       child: ListTile(
         key: ValueKey('home-task-$section-${task.id}'),
         contentPadding: EdgeInsets.zero,
-        onTap: _trashBulkBusy
+        onTap: _trashBulkBusy || isExcluded
             ? null
             : task.status == TaskStatus.deleted && _trashSelectionMode
             ? () => _toggleTrashSelection(task.id)
             : () => widget.onOpenTask(task),
-        leading: task.status == TaskStatus.deleted
+        leading: isExcluded
+            ? IconButton(
+                key: ValueKey('allow-excluded-${task.id}'),
+                tooltip: '다시 가져오기 허용',
+                onPressed: _allowingExcludedIds.contains(task.id)
+                    ? null
+                    : () => _allowExcluded(task),
+                icon: _allowingExcludedIds.contains(task.id)
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.refresh_rounded),
+              )
+            : task.status == TaskStatus.deleted
             ? Checkbox(
                 key: ValueKey('trash-select-${task.id}'),
                 value: _selectedTrashIds.contains(task.id),
@@ -1494,6 +1530,23 @@ class _MobileHomePageState extends State<MobileHomePage> {
               ),
       ),
     );
+  }
+
+  Future<void> _allowExcluded(Task task) async {
+    if (!_allowingExcludedIds.add(task.id)) return;
+    setState(() {});
+    try {
+      await widget.onAllowExcludedTaskSync(task);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('제외 해제에 실패했습니다.')));
+      }
+    } finally {
+      _allowingExcludedIds.remove(task.id);
+      if (mounted) setState(() {});
+    }
   }
 
   Widget _swipeBackground(Task task, {required bool toRight}) {
@@ -1738,6 +1791,7 @@ class _ViewOptionsSheet extends StatefulWidget {
     required this.initial,
     required this.tags,
     required this.isTrash,
+    this.sortOnly = false,
     required this.onChanged,
     this.onSave,
     this.statuses = const [TaskStatus.active, TaskStatus.completed],
@@ -1746,6 +1800,7 @@ class _ViewOptionsSheet extends StatefulWidget {
   final HomeViewOptions initial;
   final List<Tag> tags;
   final bool isTrash;
+  final bool sortOnly;
   final ValueChanged<HomeViewOptions> onChanged;
   final Future<void> Function(HomeViewOptions)? onSave;
   final List<TaskStatus> statuses;
@@ -1809,112 +1864,119 @@ class _ViewOptionsSheetState extends State<_ViewOptionsSheet> {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    '상태',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  if (widget.isTrash)
+                  if (!widget.sortOnly) ...[
+                    const SizedBox(height: 20),
                     const Text(
-                      '삭제 전 완료 여부로 구분합니다.',
-                      style: TextStyle(fontSize: 12, color: AppTheme.muted),
+                      '상태',
+                      style: TextStyle(fontWeight: FontWeight.w700),
                     ),
-                  Wrap(
-                    spacing: 8,
-                    children: [
-                      for (final status in widget.statuses)
-                        FilterChip(
-                          label: Text(
-                            status == TaskStatus.active ? '미완료' : '완료',
-                          ),
-                          selected: _value.statuses.contains(status),
-                          onSelected: _saving
-                              ? null
-                              : (_) => _change(
-                                  _value.copyWith(
-                                    statuses: _toggle(_value.statuses, status),
-                                  ),
-                                ),
-                        ),
-                    ],
-                  ),
-                  if (widget.isTrash && widget.statuses.isEmpty)
-                    const Text('휴지통에 항목이 없습니다.'),
-                  const SizedBox(height: 20),
-                  const Text(
-                    '우선순위',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  const Text(
-                    '선택하지 않으면 모든 우선순위를 표시합니다.',
-                    style: TextStyle(fontSize: 12, color: AppTheme.muted),
-                  ),
-                  Wrap(
-                    spacing: 8,
-                    children: [
-                      for (final priority in widget.priorities)
-                        FilterChip(
-                          label: Text(switch (priority) {
-                            TaskPriority.high => '높음',
-                            TaskPriority.medium => '중간',
-                            TaskPriority.low => '낮음',
-                          }),
-                          selected: _value.priorities.contains(priority),
-                          onSelected: _saving
-                              ? null
-                              : (_) => _change(
-                                  _value.copyWith(
-                                    priorities: _toggle(
-                                      _value.priorities,
-                                      priority,
+                    if (widget.isTrash)
+                      const Text(
+                        '삭제 전 완료 여부로 구분합니다.',
+                        style: TextStyle(fontSize: 12, color: AppTheme.muted),
+                      ),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        for (final status in widget.statuses)
+                          FilterChip(
+                            label: Text(
+                              status == TaskStatus.active ? '미완료' : '완료',
+                            ),
+                            selected: _value.statuses.contains(status),
+                            onSelected: _saving
+                                ? null
+                                : (_) => _change(
+                                    _value.copyWith(
+                                      statuses: _toggle(
+                                        _value.statuses,
+                                        status,
+                                      ),
                                     ),
                                   ),
-                                ),
-                        ),
-                    ],
-                  ),
-                  if (widget.isTrash && widget.priorities.isEmpty)
-                    const Text('우선순위가 지정된 항목이 없습니다.'),
-                  const SizedBox(height: 20),
-                  const Text(
-                    '태그',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  const Text(
-                    '선택한 태그 중 하나가 있는 작업을 표시합니다.',
-                    style: TextStyle(fontSize: 12, color: AppTheme.muted),
-                  ),
-                  if (widget.tags.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: Text(
-                        widget.isTrash ? '휴지통에 사용한 태그가 없습니다.' : '등록된 태그가 없습니다.',
-                      ),
-                    ),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: [
-                      for (final tag in widget.tags)
-                        FilterChip(
-                          label: Text('#${tag.name}'),
-                          selected: _value.tagIds.contains(tag.id),
-                          avatar: Icon(
-                            Icons.circle,
-                            size: 10,
-                            color: colorFromHex(tag.color),
                           ),
-                          onSelected: _saving
-                              ? null
-                              : (_) => _change(
-                                  _value.copyWith(
-                                    tagIds: _toggle(_value.tagIds, tag.id),
+                      ],
+                    ),
+                    if (widget.isTrash && widget.statuses.isEmpty)
+                      const Text('휴지통에 항목이 없습니다.'),
+                    const SizedBox(height: 20),
+                    const Text(
+                      '우선순위',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    const Text(
+                      '선택하지 않으면 모든 우선순위를 표시합니다.',
+                      style: TextStyle(fontSize: 12, color: AppTheme.muted),
+                    ),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        for (final priority in widget.priorities)
+                          FilterChip(
+                            label: Text(switch (priority) {
+                              TaskPriority.high => '높음',
+                              TaskPriority.medium => '중간',
+                              TaskPriority.low => '낮음',
+                            }),
+                            selected: _value.priorities.contains(priority),
+                            onSelected: _saving
+                                ? null
+                                : (_) => _change(
+                                    _value.copyWith(
+                                      priorities: _toggle(
+                                        _value.priorities,
+                                        priority,
+                                      ),
+                                    ),
                                   ),
-                                ),
+                          ),
+                      ],
+                    ),
+                    if (widget.isTrash && widget.priorities.isEmpty)
+                      const Text('우선순위가 지정된 항목이 없습니다.'),
+                    const SizedBox(height: 20),
+                    const Text(
+                      '태그',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    const Text(
+                      '선택한 태그 중 하나가 있는 작업을 표시합니다.',
+                      style: TextStyle(fontSize: 12, color: AppTheme.muted),
+                    ),
+                    if (widget.tags.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Text(
+                          widget.isTrash
+                              ? '휴지통에 사용한 태그가 없습니다.'
+                              : '등록된 태그가 없습니다.',
                         ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
+                      ),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        for (final tag in widget.tags)
+                          FilterChip(
+                            label: Text('#${tag.name}'),
+                            selected: _value.tagIds.contains(tag.id),
+                            avatar: Icon(
+                              Icons.circle,
+                              size: 10,
+                              color: colorFromHex(tag.color),
+                            ),
+                            onSelected: _saving
+                                ? null
+                                : (_) => _change(
+                                    _value.copyWith(
+                                      tagIds: _toggle(_value.tagIds, tag.id),
+                                    ),
+                                  ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                  ],
                 ],
               ),
             ),
@@ -1931,7 +1993,7 @@ class _ViewOptionsSheetState extends State<_ViewOptionsSheet> {
                   child: const Text('기본값 초기화'),
                 ),
                 const Spacer(),
-                if (widget.isTrash)
+                if (widget.isTrash || widget.sortOnly)
                   TextButton(
                     onPressed: () => Navigator.pop(context),
                     child: const Text('닫기'),

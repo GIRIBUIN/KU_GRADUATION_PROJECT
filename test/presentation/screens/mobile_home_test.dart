@@ -252,6 +252,24 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  Future<void> swipeTask(
+    WidgetTester tester,
+    String id, {
+    required bool toRight,
+    String section = 'period',
+  }) async {
+    final target = row(id, section);
+    await tester.ensureVisible(target);
+    await tester.pumpAndSettle();
+    final rect = tester.getRect(target);
+    await tester.flingFrom(
+      Offset(toRight ? rect.left + 64 : rect.right - 24, rect.center.dy),
+      Offset(toRight ? 220 : -220, 0),
+      1000,
+    );
+    await tester.pumpAndSettle();
+  }
+
   Future<void> openSwipeSettings(WidgetTester tester) async {
     await openDrawer(tester);
     await tester.tap(find.byKey(const ValueKey('drawer-settings')));
@@ -450,7 +468,7 @@ void main() {
   }
 
   testWidgets(
-    'home left edge swipe opens Drawer and closing keeps the current scope',
+    'home edge and interior section swipes open Drawer and keep the current scope',
     (tester) async {
       await add('미지정 일정', due: today);
       await pumpApp(tester);
@@ -461,8 +479,15 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('scope-list-kutodo:inbox')));
       await tester.pumpAndSettle();
       expect(row('미지정 일정'), findsOneWidget);
-      await tester.flingFrom(tester.getCenter(row('미지정 일정')), const Offset(150, 0), 1000);
+      // Rows own swipe actions; a section heading still opens the Drawer.
+      await tester.flingFrom(
+        tester.getTopLeft(find.byKey(const ValueKey('home-section-period'))) +
+            const Offset(160, 16),
+        const Offset(150, 0),
+        1000,
+      );
       await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('drawer-settings')), findsOneWidget);
       expect(
         tester
             .widget<ListTile>(
@@ -471,11 +496,13 @@ void main() {
             .selected,
         isTrue,
       );
-      await capture(tester, 'drawer-swipe');
+      await capture(tester, 'drawer-interior');
       await tester.dragFrom(const Offset(280, 300), const Offset(-270, 0));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('drawer-settings')), findsNothing);
       expect(row('미지정 일정'), findsOneWidget);
+      expect((await tasks.getTasks()).single.status, TaskStatus.active);
+      expect(find.byType(TaskDetailScreen), findsNothing);
       expect(tester.takeException(), isNull);
       await finish(tester);
     },
@@ -530,6 +557,52 @@ void main() {
         (await tasks.getTaskById('스크롤 일정 0'))!.status,
         TaskStatus.completed,
       );
+      expect(tester.takeException(), isNull);
+      await finish(tester);
+    },
+  );
+
+  testWidgets(
+    'swipes complete, reopen, delete, restore and confirm permanent deletion through existing handlers',
+    (tester) async {
+      await add('스와이프 일정', due: today, list: 'course');
+      await pumpApp(tester);
+      // A short drag resets without committing an action.
+      await tester.dragFrom(
+        tester.getCenter(row('스와이프 일정')),
+        const Offset(40, 0),
+      );
+      await tester.pumpAndSettle();
+      expect((await tasks.getTaskById('스와이프 일정'))!.status, TaskStatus.active);
+      await swipeTask(tester, '스와이프 일정', toRight: true);
+      expect(
+        (await tasks.getTaskById('스와이프 일정'))!.status,
+        TaskStatus.completed,
+      );
+      expect(notifications.cancelled, contains('스와이프 일정'));
+      expect(find.byKey(const ValueKey('drawer-settings')), findsNothing);
+      await chooseScope(tester, 'completed');
+      await swipeTask(tester, '스와이프 일정', toRight: true, section: 'completed');
+      expect((await tasks.getTaskById('스와이프 일정'))!.status, TaskStatus.active);
+      await chooseScope(tester, 'all');
+      await swipeTask(tester, '스와이프 일정', toRight: false);
+      expect((await tasks.getTaskById('스와이프 일정'))!.status, TaskStatus.deleted);
+      await chooseScope(tester, 'trash');
+      await swipeTask(tester, '스와이프 일정', toRight: true, section: 'trash');
+      expect((await tasks.getTaskById('스와이프 일정'))!.status, TaskStatus.active);
+      expect((await tasks.getTaskById('스와이프 일정'))!.listId, 'course');
+      await chooseScope(tester, 'all');
+      await swipeTask(tester, '스와이프 일정', toRight: false);
+      await chooseScope(tester, 'trash');
+      await swipeTask(tester, '스와이프 일정', toRight: false, section: 'trash');
+      expect(find.text('영구 삭제할까요?'), findsOneWidget);
+      await tester.tap(find.widgetWithText(TextButton, '취소'));
+      await tester.pumpAndSettle();
+      expect((await tasks.getTaskById('스와이프 일정'))!.status, TaskStatus.deleted);
+      await swipeTask(tester, '스와이프 일정', toRight: false, section: 'trash');
+      await tester.tap(find.widgetWithText(FilledButton, '영구 삭제'));
+      await tester.pumpAndSettle();
+      expect(await tasks.getTaskById('스와이프 일정'), isNull);
       expect(tester.takeException(), isNull);
       await finish(tester);
     },
@@ -609,11 +682,38 @@ void main() {
       expect(saved.hiddenTagIds, {'tag-b'});
       expect(saved.homeView.sort, HomeSort.newest);
       await restart(tester);
-      expect((await settings.getSettings()).taskSwipes.encode(), saved.taskSwipes.encode());
+      await swipeTask(tester, '설정 일정', toRight: true);
+      expect(find.byType(TaskDetailScreen), findsOneWidget);
+      expect(find.byKey(const ValueKey('drawer-settings')), findsNothing);
+      await tester.enterText(find.byType(TextField).first, '스와이프로 편집');
+      await tester.tap(find.byTooltip('작업 상세 닫기'));
+      await tester.pumpAndSettle();
+      expect((await tasks.getTaskById('설정 일정'))!.title, '스와이프로 편집');
+      await swipeTask(tester, '설정 일정', toRight: false);
+      expect((await tasks.getTaskById('설정 일정'))!.status, TaskStatus.completed);
       expect(tester.takeException(), isNull);
       await finish(tester);
     },
   );
+
+  testWidgets('failed swipe retains the task row and can be retried', (
+    tester,
+  ) async {
+    final failing = _FailingSwipeTasks(database: database);
+    tasks = failing;
+    await add('실패 스와이프', due: today);
+    await pumpApp(tester);
+    await swipeTask(tester, '실패 스와이프', toRight: false);
+    expect((await tasks.getTaskById('실패 스와이프'))!.status, TaskStatus.active);
+    expect(row('실패 스와이프'), findsOneWidget);
+    expect(notifications.cancelled, isEmpty);
+    expect(find.textContaining('스와이프 작업 처리 중 오류'), findsWidgets);
+    failing.failDelete = false;
+    await swipeTask(tester, '실패 스와이프', toRight: false);
+    expect((await tasks.getTaskById('실패 스와이프'))!.status, TaskStatus.deleted);
+    expect(tester.takeException(), isNull);
+    await finish(tester);
+  });
 
   testWidgets('failed swipe settings save retains the draft and allows retry', (
     tester,
@@ -1722,6 +1822,16 @@ class _FailingDetailReminders extends DriftNotificationRepository {
   Future<NotificationSetting> save(NotificationSetting setting) {
     if (failSave) throw StateError('test reminder save failure');
     return super.save(setting);
+  }
+}
+
+class _FailingSwipeTasks extends DriftTaskRepository {
+  _FailingSwipeTasks({required super.database});
+  bool failDelete = true;
+  @override
+  Future<Task> markDeleted(String id) {
+    if (failDelete) throw StateError('test swipe failure');
+    return super.markDeleted(id);
   }
 }
 

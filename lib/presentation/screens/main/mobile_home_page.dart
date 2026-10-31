@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/list_defaults.dart';
 import '../../../data/models/home_view_options.dart';
 import '../../../data/models/task_models.dart';
+import '../../../data/models/task_swipe_options.dart';
 import '../../../data/repositories/settings_repository.dart';
 import '../../../data/services/home_task_summary.dart';
 import '../../widgets/task_metadata_picker.dart' show colorFromHex;
@@ -42,6 +43,7 @@ class MobileHomePage extends StatefulWidget {
     required this.onToggleTask,
     required this.onRestoreTask,
     required this.onDeletePermanently,
+    required this.onDeleteTask,
   });
 
   final List<Task> tasks;
@@ -63,7 +65,8 @@ class MobileHomePage extends StatefulWidget {
   final Future<void> Function(Task) onOpenTask,
       onToggleTask,
       onRestoreTask,
-      onDeletePermanently;
+      onDeletePermanently,
+      onDeleteTask;
 
   @override
   State<MobileHomePage> createState() => _MobileHomePageState();
@@ -78,6 +81,8 @@ class _MobileHomePageState extends State<MobileHomePage> {
   HomeViewOptions _view = const HomeViewOptions();
   bool _loadedPreferences = false;
   final Set<String> _expandedFolderIds = {};
+  final Set<String> _swipingTaskIds = {};
+  double _drawerDragDistance = 0;
 
   String get _scopeLabel => switch (_scope) {
     _ScopeKind.all => '전체',
@@ -637,7 +642,6 @@ class _MobileHomePageState extends State<MobileHomePage> {
       key: _scaffoldKey,
       drawer: _drawer(),
       drawerEnableOpenDragGesture: true,
-      drawerEdgeDragWidth: MediaQuery.sizeOf(context).width,
       appBar: AppBar(
         automaticallyImplyLeading: false,
         titleSpacing: 0,
@@ -698,7 +702,21 @@ class _MobileHomePageState extends State<MobileHomePage> {
           const SizedBox(width: 4),
         ],
       ),
-      body: RefreshIndicator(
+      body: GestureDetector(
+          // Child row gestures win on Tasks; blank space still opens the Drawer.
+          onHorizontalDragStart: (_) => _drawerDragDistance = 0,
+          onHorizontalDragUpdate: (details) =>
+              _drawerDragDistance += details.primaryDelta!,
+          onHorizontalDragCancel: () => _drawerDragDistance = 0,
+          onHorizontalDragEnd: (details) {
+            if ((_drawerDragDistance > 80 ||
+                    (_drawerDragDistance > 20 &&
+                        (details.primaryVelocity ?? 0) > 500))) {
+              _scaffoldKey.currentState?.openDrawer();
+            }
+            _drawerDragDistance = 0;
+          },
+        child: RefreshIndicator(
         onRefresh: () async => widget.onRefresh(),
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 30),
@@ -718,6 +736,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
             ],
           ],
         ),
+      ),
       ),
     );
   }
@@ -761,7 +780,10 @@ class _MobileHomePageState extends State<MobileHomePage> {
   Widget _taskRow(Task task, String section) {
     final list = widget.lists.where((l) => l.id == task.listId).firstOrNull;
     final group = widget.groups.where((g) => g.id == list?.groupId).firstOrNull;
-    final path = [if (group != null) group.name, if (list != null) list.name].join(' > ');
+    final path = [
+      if (group != null) group.name,
+      if (list != null) list.name,
+    ].join(' > ');
     final details = [
       if (path.isNotEmpty) path,
       for (final tag in widget.tags.where((t) => task.tagIds.contains(t.id)))
@@ -778,10 +800,37 @@ class _MobileHomePageState extends State<MobileHomePage> {
                 : 'M/d HH:mm',
             'ko_KR',
           ).format(due);
-    return ListTile(
-      key: ValueKey('home-task-$section-${task.id}'),
-      contentPadding: EdgeInsets.zero,
-      onTap: () => widget.onOpenTask(task),
+    return Dismissible(
+      key: ValueKey('task-swipe-$section-${task.id}'),
+      direction: widget.settingsReady ? DismissDirection.horizontal : DismissDirection.none,
+      background: _swipeBackground(
+        task,
+        toRight: Directionality.of(context) == TextDirection.ltr,
+      ),
+      secondaryBackground: _swipeBackground(
+        task,
+        toRight: Directionality.of(context) != TextDirection.ltr,
+      ),
+      confirmDismiss: (direction) async {
+        final toRight =
+            direction ==
+            (Directionality.of(context) == TextDirection.ltr
+                ? DismissDirection.startToEnd
+                : DismissDirection.endToStart);
+        await _applySwipe(
+          task,
+          widget.settings.taskSwipes.action(
+            toRight: toRight,
+            inTrash: task.status == TaskStatus.deleted,
+          ),
+        );
+        // Repositories own removal/state changes; never dismiss optimistically.
+        return false;
+      },
+      child: ListTile(
+        key: ValueKey('home-task-$section-${task.id}'),
+        contentPadding: EdgeInsets.zero,
+        onTap: () => widget.onOpenTask(task),
       leading: task.status == TaskStatus.deleted
           ? const Padding(
               padding: EdgeInsets.all(12),
@@ -791,88 +840,167 @@ class _MobileHomePageState extends State<MobileHomePage> {
               value: task.status == TaskStatus.completed,
               onChanged: (_) => widget.onToggleTask(task),
             ),
-      title: Text(
-        task.title,
-        softWrap: true,
-        style: TextStyle(
-          fontSize: 13,
-          decoration: task.status == TaskStatus.completed
-              ? TextDecoration.lineThrough
-              : null,
+        title: Text(
+          task.title,
+          softWrap: true,
+          style: TextStyle(
+            fontSize: 13,
+            decoration: task.status == TaskStatus.completed
+                ? TextDecoration.lineThrough
+                : null,
+          ),
         ),
-      ),
-      subtitle: details.isEmpty
-          ? null
-          : Text(
-              details.join(' · '),
-              softWrap: true,
-              style: const TextStyle(fontSize: 12, color: AppTheme.muted),
-            ),
-      trailing: task.status == TaskStatus.deleted
-          ? PopupMenuButton<String>(
-              tooltip: '휴지통 작업 메뉴',
-              onSelected: (value) async {
-                if (value == 'restore') {
-                  await widget.onRestoreTask(task);
-                  return;
-                }
-                final confirmed = await showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('영구 삭제할까요?'),
-                    content: const Text('이 작업은 복구할 수 없습니다.'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: const Text('취소'),
-                      ),
-                      FilledButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        child: const Text('영구 삭제'),
-                      ),
-                    ],
-                  ),
-                );
-                if (confirmed == true) await widget.onDeletePermanently(task);
-              },
-              itemBuilder: (_) => const [
-                PopupMenuItem(value: 'restore', child: Text('복원')),
-                PopupMenuItem(value: 'delete', child: Text('영구 삭제')),
-              ],
-            )
-          : Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  dueText,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color:
-                        task.status == TaskStatus.active &&
-                            due != null &&
-                            isDueDateOverdue(due, now: DateTime.now())
-                        ? AppTheme.dangerRed
-                        : AppTheme.muted,
-                  ),
-                ),
-                if (task.priority != null)
+        subtitle: details.isEmpty
+            ? null
+            : Text(
+                details.join(' · '),
+                softWrap: true,
+                style: const TextStyle(fontSize: 12, color: AppTheme.muted),
+              ),
+        trailing: task.status == TaskStatus.deleted
+            ? PopupMenuButton<String>(
+                tooltip: '휴지통 작업 메뉴',
+                onSelected: (value) async {
+                  if (value == 'restore') {
+                    await widget.onRestoreTask(task);
+                    return;
+                  }
+                  await _confirmPermanentDelete(task);
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'restore', child: Text('복원')),
+                  PopupMenuItem(value: 'delete', child: Text('영구 삭제')),
+                ],
+              )
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
                   Text(
-                    switch (task.priority!) {
-                      TaskPriority.high => '높음',
-                      TaskPriority.medium => '중간',
-                      TaskPriority.low => '낮음',
-                    },
+                    dueText,
                     style: TextStyle(
-                      fontSize: 10,
-                      color: task.priority == TaskPriority.high
-                          ? AppTheme.warningOrange
+                      fontSize: 12,
+                      color:
+                          task.status == TaskStatus.active &&
+                              due != null &&
+                              isDueDateOverdue(due, now: DateTime.now())
+                          ? AppTheme.dangerRed
                           : AppTheme.muted,
                     ),
                   ),
-              ],
-            ),
+                  if (task.priority != null)
+                    Text(
+                      switch (task.priority!) {
+                        TaskPriority.high => '높음',
+                        TaskPriority.medium => '중간',
+                        TaskPriority.low => '낮음',
+                      },
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: task.priority == TaskPriority.high
+                            ? AppTheme.warningOrange
+                            : AppTheme.muted,
+                      ),
+                    ),
+                ],
+              ),
+      ),
     );
+  }
+
+  Widget _swipeBackground(Task task, {required bool toRight}) {
+    final action = widget.settings.taskSwipes.action(
+      toRight: toRight,
+      inTrash: task.status == TaskStatus.deleted,
+    );
+    final destructive =
+        action == TaskSwipeAction.delete ||
+        action == TaskSwipeAction.deletePermanently;
+    final color = destructive ? AppTheme.dangerRed : AppTheme.primaryBlue;
+    return Container(
+      color: color.withValues(alpha: .1),
+      alignment: toRight ? Alignment.centerLeft : Alignment.centerRight,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(switch (action) {
+            TaskSwipeAction.complete => Icons.check_box_outlined,
+            TaskSwipeAction.edit => Icons.edit_outlined,
+            TaskSwipeAction.delete => Icons.delete_outline_rounded,
+            TaskSwipeAction.restore => Icons.restore_rounded,
+            TaskSwipeAction.deletePermanently => Icons.delete_forever_rounded,
+          }, color: color),
+          const SizedBox(width: 8),
+          Text(
+            action == TaskSwipeAction.complete
+                ? (task.status == TaskStatus.completed ? '미완료로' : '완료')
+                : action.label,
+            style: TextStyle(color: color),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _applySwipe(Task task, TaskSwipeAction action) async {
+    if (!_swipingTaskIds.add(task.id)) return;
+    try {
+      switch (action) {
+        case TaskSwipeAction.complete:
+          await widget.onToggleTask(task);
+        case TaskSwipeAction.edit:
+          await widget.onOpenTask(task);
+        case TaskSwipeAction.delete:
+          await widget.onDeleteTask(task);
+        case TaskSwipeAction.restore:
+          await widget.onRestoreTask(task);
+        case TaskSwipeAction.deletePermanently:
+          await _confirmPermanentDelete(task);
+      }
+    } catch (_) {
+      if (mounted) {
+        widget.onRefresh();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('스와이프 작업 처리 중 오류가 발생했습니다. 목록을 새로고침해 확인해주세요.'),
+          ),
+        );
+      }
+    } finally {
+      _swipingTaskIds.remove(task.id);
+    }
+  }
+
+  Future<void> _confirmPermanentDelete(Task task) async {
+    if (await _confirmTrashDeletion() && mounted) {
+      await widget.onDeletePermanently(task);
+    }
+  }
+
+  Future<bool> _confirmTrashDeletion({int? selectedCount}) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          selectedCount == null
+              ? '영구 삭제할까요?'
+              : '선택한 $selectedCount개를 영구 삭제할까요?',
+        ),
+        content: const Text('이 작업은 복구할 수 없습니다.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(selectedCount == null ? '영구 삭제' : '선택 삭제'),
+          ),
+        ],
+      ),
+    );
+    return confirmed == true;
   }
 }
 

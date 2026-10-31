@@ -590,6 +590,7 @@ class _MainShellScreenState extends State<MainShellScreen>
                     onOpenTask: _openTaskDetail,
                     onRestoreTask: _restoreTask,
                     onDeletePermanently: _deleteTaskPermanently,
+                    onDeleteTask: _deleteTask,
                   ),
                   SafeArea(
                     child: ListView(

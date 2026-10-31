@@ -1,0 +1,234 @@
+[
+  {
+    "number": 1,
+    "commit": "0ebb44224379dd28aadb5b39367ccd50415c38e0",
+    "title": "feat(settings): persist home view options without schema changes",
+    "files": [
+      "lib/data/local/mappers/metadata_mappers.dart",
+      "lib/data/models/home_view_options.dart",
+      "lib/data/repositories/settings_repository.dart",
+      "test/data/repositories/drift_metadata_repositories_test.dart"
+    ],
+    "validation": {
+      "raw": "docs/evidence/commits/phase-1-tests.jsonl",
+      "passed": 12,
+      "elapsed_ms": 4695
+    }
+  },
+  {
+    "number": 2,
+    "commit": "ea0adaa13ea819d9a39c96760f5e0356c3cddc68",
+    "title": "refactor(db): preserve tasks in v7 lists and folder groups",
+    "files": [
+      "lib/core/utils/list_defaults.dart",
+      "lib/data/local/README.md",
+      "lib/data/local/app_database.dart",
+      "lib/data/local/app_database.g.dart",
+      "lib/data/local/mappers/metadata_mappers.dart",
+      "lib/data/local/mappers/task_mapper.dart",
+      "lib/data/local/schema_v6_migration.dart",
+      "lib/data/local/schema_v7_migration.dart",
+      "lib/data/models/task_models.dart",
+      "lib/data/repositories/drift_folder_repository.dart",
+      "lib/data/repositories/drift_task_repository.dart",
+      "lib/data/repositories/folder_repository.dart",
+      "lib/data/repositories/task_repository.dart",
+      "test/data/local/app_database_test.dart",
+      "test/data/local/database_v6_test.dart",
+      "test/data/local/database_v7_lists_test.dart",
+      "test/data/repositories/drift_metadata_repositories_test.dart",
+      "test/fixtures/database/schema_v6.sql"
+    ],
+    "validation": {
+      "raw": "docs/evidence/commits/phase-2-final-tests.jsonl",
+      "passed": 13,
+      "elapsed_ms": 1445
+    }
+  },
+  {
+    "number": 3,
+    "commit": "3ce3def25caad96a885cb55fdc6da57c241f0aaf",
+    "title": "fix(ecampus): complete review, reminders and session cleanup",
+    "files": [
+      "lib/data/models/ecampus_models.dart",
+      "lib/data/services/default_ecampus_sync_service.dart",
+      "lib/data/services/ecampus_sync_apply_service.dart",
+      "lib/data/services/ecampus_sync_classifier.dart",
+      "lib/data/services/ecampus_todo_parser.dart",
+      "lib/data/services/http_ecampus_auth_service.dart",
+      "lib/presentation/screens/main/main_shell_screen.dart",
+      "lib/presentation/screens/sync/ecampus_sync_preview_screen.dart",
+      "lib/presentation/screens/sync/ecampus_sync_progress_screen.dart",
+      "lib/presentation/services/ecampus_notification_updater.dart",
+      "lib/presentation/services/in_app_webview_ecampus_cookie_store.dart",
+      "test/data/services/ecampus_review_v6_test.dart",
+      "test/data/services/ecampus_todo_parser_test.dart",
+      "test/data/services/http_ecampus_auth_service_test.dart",
+      "test/presentation/screens/database_v6_ui_test.dart",
+      "test/presentation/screens/ecampus_review_flow_test.dart"
+    ],
+    "validation": {
+      "raw": "docs/evidence/commits/phase-3-tests.jsonl",
+      "passed": 126,
+      "elapsed_ms": 16336
+    }
+  },
+  {
+    "number": 4,
+    "commit": "86e7c2de6c1709de27b1b7200e23b11cc0d29a58",
+    "title": "feat(lists): manage grouped lists with drag, archive and fixed defaults",
+    "files": [
+      "lib/presentation/screens/main/main_shell_screen.dart",
+      "lib/presentation/screens/task/task_create_screen.dart",
+      "lib/presentation/screens/task/task_detail_screen.dart",
+      "lib/presentation/widgets/task_metadata_picker.dart",
+      "test/presentation/screens/list_groups_test.dart",
+      "test/presentation/screens/main_shell_home_layout_test.dart"
+    ],
+    "validation": {
+      "raw": "docs/evidence/commits/phase-4-tests.jsonl",
+      "passed": 36,
+      "elapsed_ms": 22583
+    }
+  },
+  {
+    "number": 5,
+    "commit": "646515bbcfb4451aa942cde5b8ccfb41b0d52991",
+    "title": "feat(home): add mobile scopes, quick add and icon navigation",
+    "files": [
+      "lib/presentation/screens/main/main_shell_screen.dart",
+      "lib/presentation/screens/main/mobile_home_page.dart",
+      "lib/presentation/screens/task/task_create_screen.dart",
+      "test/presentation/screens/list_groups_test.dart",
+      "test/presentation/screens/main_shell_home_layout_test.dart",
+      "test/presentation/screens/mobile_home_test.dart"
+    ],
+    "validation": {
+      "raw": "docs/evidence/commits/phase-5-final-tests.jsonl",
+      "passed": 208,
+      "elapsed_ms": 43227
+    }
+  },
+  {
+    "number": 6,
+    "commit": "9e7f25bdc678161a89f321725a2b4a2748d77686",
+    "title": "fix(import): reveal saved task locations and all-date navigation",
+    "files": [
+      "lib/presentation/screens/main/main_shell_screen.dart",
+      "lib/presentation/screens/main/mobile_home_page.dart",
+      "lib/presentation/screens/sync/ecampus_sync_preview_screen.dart",
+      "lib/presentation/screens/sync/ecampus_sync_progress_screen.dart",
+      "test/presentation/screens/ecampus_review_flow_test.dart",
+      "test/presentation/screens/mobile_home_test.dart"
+    ],
+    "validation": {
+      "raw": "docs/evidence/commits/final-tests-20261031.jsonl",
+      "passed": 213,
+      "elapsed_ms": 42008
+    }
+  },
+  {
+    "number": 7,
+    "commit": "584278e70db2f3bdb0de3951932a85e436a845df",
+    "title": "docs(db): record v7 schema and preserved migration evidence",
+    "files": [
+      "docs/diagrams/db-v6.md",
+      "docs/diagrams/db-v7.md",
+      "docs/diagrams/db-v7.mmd",
+      "docs/evidence/db-v7/README.md",
+      "docs/evidence/db-v7/interaction-analyze-20261030.txt",
+      "docs/evidence/db-v7/interaction-build-20261030.txt",
+      "docs/evidence/db-v7/interaction-summary-20261030.json",
+      "docs/evidence/db-v7/interaction-tests-20261030.jsonl",
+      "docs/evidence/db-v7/lists-analyze-20261030.txt",
+      "docs/evidence/db-v7/lists-build-20261030.txt",
+      "docs/evidence/db-v7/lists-summary-20261030.json",
+      "docs/evidence/db-v7/lists-tests-20261030.jsonl",
+      "docs/데이터 모델.md"
+    ]
+  },
+  {
+    "number": 8,
+    "commit": "3b94a9d516f54c213694bbdcb6463ceb1f0d450f",
+    "title": "docs(ecampus): preserve review and parser validation evidence",
+    "files": [
+      "docs/evidence/ecampus/README.md",
+      "docs/evidence/ecampus/response-check-fix-analyze-20261030.txt",
+      "docs/evidence/ecampus/response-check-fix-build-20261030.txt",
+      "docs/evidence/ecampus/response-check-fix-summary-20261030.json",
+      "docs/evidence/ecampus/response-check-fix-tests-20261030.jsonl",
+      "docs/evidence/ecampus/review-analyze-20261030.txt",
+      "docs/evidence/ecampus/review-build-20261030.txt",
+      "docs/evidence/ecampus/review-summary-20261030.json",
+      "docs/evidence/ecampus/review-tests-20261030.jsonl"
+    ]
+  },
+  {
+    "number": 9,
+    "commit": "dba718eef1ac1bf40b4e2a9eb008d9cc69326331",
+    "title": "docs(home): preserve mobile UI and regression evidence",
+    "files": [
+      "docs/evidence/home-ui/README.md",
+      "docs/evidence/home-ui/analyze-20261030.txt",
+      "docs/evidence/home-ui/build-20261030.txt",
+      "docs/evidence/home-ui/capture-tests-20261030.jsonl",
+      "docs/evidence/home-ui/drawer.png",
+      "docs/evidence/home-ui/folder-only-analyze-20261030.txt",
+      "docs/evidence/home-ui/folder-only-build-20261030.txt",
+      "docs/evidence/home-ui/folder-only-drawer.png",
+      "docs/evidence/home-ui/folder-only-final-tests-20261030.jsonl",
+      "docs/evidence/home-ui/folder-only-home.png",
+      "docs/evidence/home-ui/folder-only-quick-add.png",
+      "docs/evidence/home-ui/folder-only-summary-20261030.json",
+      "docs/evidence/home-ui/folder-only-tests-20261030.jsonl",
+      "docs/evidence/home-ui/folder-only-view-options.png",
+      "docs/evidence/home-ui/footer-analyze-20261031.txt",
+      "docs/evidence/home-ui/footer-before-tests-20261030.jsonl",
+      "docs/evidence/home-ui/footer-build-20261031.txt",
+      "docs/evidence/home-ui/footer-drawer-footer.png",
+      "docs/evidence/home-ui/footer-drawer-swipe.png",
+      "docs/evidence/home-ui/footer-drawer.png",
+      "docs/evidence/home-ui/footer-final-tests-20261030.jsonl",
+      "docs/evidence/home-ui/footer-final-tests-20261031.jsonl",
+      "docs/evidence/home-ui/footer-home.png",
+      "docs/evidence/home-ui/footer-quick-add.png",
+      "docs/evidence/home-ui/footer-summary-20261031.json",
+      "docs/evidence/home-ui/footer-view-options.png",
+      "docs/evidence/home-ui/home-tests-20261030.jsonl",
+      "docs/evidence/home-ui/home.png",
+      "docs/evidence/home-ui/icon-nav-analyze-20261030.txt",
+      "docs/evidence/home-ui/icon-nav-build-20261030.txt",
+      "docs/evidence/home-ui/icon-nav-drawer-swipe.png",
+      "docs/evidence/home-ui/icon-nav-drawer.png",
+      "docs/evidence/home-ui/icon-nav-final-tests-20261030.jsonl",
+      "docs/evidence/home-ui/icon-nav-home.png",
+      "docs/evidence/home-ui/icon-nav-quick-add.png",
+      "docs/evidence/home-ui/icon-nav-summary-20261030.json",
+      "docs/evidence/home-ui/icon-nav-tests-20261030.jsonl",
+      "docs/evidence/home-ui/icon-nav-view-options.png",
+      "docs/evidence/home-ui/import-visibility-all-dates.png",
+      "docs/evidence/home-ui/import-visibility-drawer-actions.png",
+      "docs/evidence/home-ui/import-visibility-drawer-footer.png",
+      "docs/evidence/home-ui/import-visibility-drawer-swipe.png",
+      "docs/evidence/home-ui/import-visibility-drawer.png",
+      "docs/evidence/home-ui/import-visibility-home.png",
+      "docs/evidence/home-ui/import-visibility-quick-add.png",
+      "docs/evidence/home-ui/import-visibility-view-options.png",
+      "docs/evidence/home-ui/metadata-nav-analyze-20261031.txt",
+      "docs/evidence/home-ui/metadata-nav-build-20261031.txt",
+      "docs/evidence/home-ui/metadata-nav-drawer-actions.png",
+      "docs/evidence/home-ui/metadata-nav-drawer-footer.png",
+      "docs/evidence/home-ui/metadata-nav-drawer-swipe.png",
+      "docs/evidence/home-ui/metadata-nav-drawer.png",
+      "docs/evidence/home-ui/metadata-nav-home.png",
+      "docs/evidence/home-ui/metadata-nav-quick-add.png",
+      "docs/evidence/home-ui/metadata-nav-summary-20261031.json",
+      "docs/evidence/home-ui/metadata-nav-tests-20261031.jsonl",
+      "docs/evidence/home-ui/metadata-nav-view-options.png",
+      "docs/evidence/home-ui/quick-add.png",
+      "docs/evidence/home-ui/summary-20261030.json",
+      "docs/evidence/home-ui/tests-20261030.jsonl",
+      "docs/evidence/home-ui/view-options.png"
+    ]
+  }
+]

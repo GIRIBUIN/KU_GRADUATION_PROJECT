@@ -1,0 +1,33 @@
+{"protocolVersion":"0.1.1","runnerVersion":null,"pid":3504,"type":"start","time":0}
+{"suite":{"id":0,"platform":"vm","path":"D:/_workspace/repos/kutodo/.dart_tool/kutodo_commit_prep/checks/2/test/data/local/database_v7_lists_test.dart"},"type":"suite","time":0}
+{"test":{"id":1,"name":"loading D:/_workspace/repos/kutodo/.dart_tool/kutodo_commit_prep/checks/2/test/data/local/database_v7_lists_test.dart","suiteID":0,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":0}
+{"count":1,"time":2,"type":"allSuites"}
+{"testID":1,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":1134}
+{"group":{"id":2,"suiteID":0,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":13,"line":null,"column":null,"url":null},"type":"group","time":1136}
+{"test":{"id":3,"name":"manual tasks have required Inbox membership; group IDs cannot own tasks","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":49,"column":3,"url":"file:///D:/_workspace/repos/kutodo/.dart_tool/kutodo_commit_prep/checks/2/test/data/local/database_v7_lists_test.dart"},"type":"testStart","time":1136}
+{"testID":3,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1259}
+{"test":{"id":4,"name":"Inbox cannot be archived, renamed or moved, including direct SQL","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":91,"column":3,"url":"file:///D:/_workspace/repos/kutodo/.dart_tool/kutodo_commit_prep/checks/2/test/data/local/database_v7_lists_test.dart"},"type":"testStart","time":1259}
+{"testID":4,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1266}
+{"test":{"id":5,"name":"legacy default list name displays as Unassigned and preserves the fixed identity","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":109,"column":3,"url":"file:///D:/_workspace/repos/kutodo/.dart_tool/kutodo_commit_prep/checks/2/test/data/local/database_v7_lists_test.dart"},"type":"testStart","time":1266}
+{"testID":5,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1277}
+{"test":{"id":6,"name":"folder deletion detaches lists without changing any task membership","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":139,"column":3,"url":"file:///D:/_workspace/repos/kutodo/.dart_tool/kutodo_commit_prep/checks/2/test/data/local/database_v7_lists_test.dart"},"type":"testStart","time":1277}
+{"testID":6,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1289}
+{"test":{"id":7,"name":"completion, trash, list archival and restoration preserve original list and completion","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":154,"column":3,"url":"file:///D:/_workspace/repos/kutodo/.dart_tool/kutodo_commit_prep/checks/2/test/data/local/database_v7_lists_test.dart"},"type":"testStart","time":1289}
+{"testID":7,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1302}
+{"test":{"id":8,"name":"new assignments cannot target archived lists","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":175,"column":3,"url":"file:///D:/_workspace/repos/kutodo/.dart_tool/kutodo_commit_prep/checks/2/test/data/local/database_v7_lists_test.dart"},"type":"testStart","time":1303}
+{"testID":8,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1310}
+{"test":{"id":9,"name":"list moves preserve task history and reject stale targets atomically","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":185,"column":3,"url":"file:///D:/_workspace/repos/kutodo/.dart_tool/kutodo_commit_prep/checks/2/test/data/local/database_v7_lists_test.dart"},"type":"testStart","time":1310}
+{"testID":9,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1326}
+{"test":{"id":10,"name":"eCampus creates course lists by source ID, reuses them and preserves manual moves","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":229,"column":3,"url":"file:///D:/_workspace/repos/kutodo/.dart_tool/kutodo_commit_prep/checks/2/test/data/local/database_v7_lists_test.dart"},"type":"testStart","time":1326}
+{"testID":10,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1353}
+{"test":{"id":11,"name":"organizing reviewed imports moves only active unassigned tasks and reuses course lists","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":274,"column":3,"url":"file:///D:/_workspace/repos/kutodo/.dart_tool/kutodo_commit_prep/checks/2/test/data/local/database_v7_lists_test.dart"},"type":"testStart","time":1353}
+{"testID":11,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1382}
+{"test":{"id":12,"name":"organizing imports rolls back moved tasks and created course lists on a later failure","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":324,"column":3,"url":"file:///D:/_workspace/repos/kutodo/.dart_tool/kutodo_commit_prep/checks/2/test/data/local/database_v7_lists_test.dart"},"type":"testStart","time":1382}
+{"testID":12,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1395}
+{"test":{"id":13,"name":"archived automatic course list is not silently reopened for new tasks","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":359,"column":3,"url":"file:///D:/_workspace/repos/kutodo/.dart_tool/kutodo_commit_prep/checks/2/test/data/local/database_v7_lists_test.dart"},"type":"testStart","time":1395}
+{"testID":13,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1406}
+{"test":{"id":14,"name":"v6 migration preserves all states, source links and child FKs and fills only empty lists","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":375,"column":3,"url":"file:///D:/_workspace/repos/kutodo/.dart_tool/kutodo_commit_prep/checks/2/test/data/local/database_v7_lists_test.dart"},"type":"testStart","time":1406}
+{"testID":14,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1421}
+{"test":{"id":15,"name":"v6 migration failure rolls back table changes and user_version","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":455,"column":3,"url":"file:///D:/_workspace/repos/kutodo/.dart_tool/kutodo_commit_prep/checks/2/test/data/local/database_v7_lists_test.dart"},"type":"testStart","time":1422}
+{"testID":15,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1427}
+{"success":true,"type":"done","time":1445}

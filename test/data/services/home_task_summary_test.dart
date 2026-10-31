@@ -83,12 +83,111 @@ void main() {
         'late',
       ]);
     });
+
+    test(
+      'deadline moves urgent to today to overdue at exact year rollover',
+      () {
+        final deadline = DateTime(2027, 1, 1);
+        final tasks = [
+          _task(id: 'boundary', dueDate: deadline),
+          _task(id: 'undated', dueDate: null),
+          _task(id: 'done', dueDate: deadline, status: TaskStatus.completed),
+          _task(id: 'deleted', dueDate: deadline, status: TaskStatus.deleted),
+        ];
+        final before = HomeTaskSummary.fromTasks(
+          tasks: tasks,
+          now: deadline.subtract(const Duration(microseconds: 1)),
+          urgentDueDays: 3,
+        );
+        final at = HomeTaskSummary.fromTasks(
+          tasks: tasks,
+          now: deadline,
+          urgentDueDays: 3,
+        );
+        final after = HomeTaskSummary.fromTasks(
+          tasks: tasks,
+          now: deadline.add(const Duration(microseconds: 1)),
+          urgentDueDays: 3,
+        );
+        expect(before.urgentTasks.map((t) => t.id), ['boundary']);
+        expect(before.todayTasks, isEmpty);
+        expect(before.overdueTasks, isEmpty);
+        expect(at.todayTasks.map((t) => t.id), ['boundary']);
+        expect(at.urgentTasks, isEmpty);
+        expect(at.overdueTasks, isEmpty);
+        expect(after.overdueTasks.map((t) => t.id), ['boundary']);
+        expect(after.todayTasks, isEmpty);
+        expect(after.urgentTasks, isEmpty);
+        for (final summary in [before, at, after]) {
+          expect(summary.activeTasks.map((t) => t.id), ['boundary', 'undated']);
+        }
+      },
+    );
+
+    for (final (now, days) in [
+      (DateTime(2026, 12, 31, 12), 3),
+      (DateTime(2028, 2, 28, 12), 1),
+      (DateTime(2026, 10, 31, 12), 7),
+    ]) {
+      test(
+        'urgent covers whole calendar days across $now with D+$days cutoff',
+        () {
+          final tasks = [
+            _task(
+              id: 'today',
+              dueDate: DateTime(now.year, now.month, now.day, 23, 59),
+            ),
+            _task(
+              id: 'tomorrow-start',
+              dueDate: DateTime(now.year, now.month, now.day + 1),
+            ),
+            _task(
+              id: 'cutoff-end',
+              dueDate: DateTime(
+                now.year,
+                now.month,
+                now.day + days,
+                23,
+                59,
+                59,
+                999,
+              ),
+            ),
+            _task(
+              id: 'outside',
+              dueDate: DateTime(now.year, now.month, now.day + days + 1),
+            ),
+          ];
+          final summary = HomeTaskSummary.fromTasks(
+            tasks: tasks,
+            now: now,
+            urgentDueDays: days,
+          );
+          expect(summary.todayTasks.map((t) => t.id), ['today']);
+          expect(summary.urgentTasks.map((t) => t.id), [
+            'tomorrow-start',
+            'cutoff-end',
+          ]);
+          expect(summary.overdueTasks, isEmpty);
+          for (final disabled in [0, -1]) {
+            expect(
+              HomeTaskSummary.fromTasks(
+                tasks: tasks,
+                now: now,
+                urgentDueDays: disabled,
+              ).urgentTasks,
+              isEmpty,
+            );
+          }
+        },
+      );
+    }
   });
 }
 
 Task _task({
   required String id,
-  required DateTime dueDate,
+  required DateTime? dueDate,
   TaskStatus status = TaskStatus.active,
   int sortOrder = 0,
 }) {

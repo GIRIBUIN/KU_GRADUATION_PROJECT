@@ -1500,6 +1500,83 @@ void main() {
   );
 
   testWidgets(
+    'period changes affect date and completion sections but keep urgent and overdue anchored to now',
+    (tester) async {
+      final future = DateTime(now.year + 1, 1, 15, 12);
+      await add(
+        '현재 기준 임박',
+        due: DateTime(now.year, now.month, now.day + 2, 23, 59),
+        list: 'course',
+      );
+      await add(
+        '현재 기준 지남',
+        due: DateTime(now.year, now.month, now.day - 2, 23, 59),
+        list: 'course',
+      );
+      await add('미래 선택 마감', due: future, list: 'course');
+      await add('마감 없음 유지', list: 'course');
+      await add('오늘 완료한 미래 마감', due: future, list: 'course', completed: true);
+      await add('다른 목록 임박', due: DateTime(now.year, now.month, now.day + 1));
+      await add('다른 목록 지남', due: DateTime(now.year, now.month, now.day - 1));
+      await pumpApp(tester);
+      await chooseScope(tester, 'list', 'course');
+      void checkCurrentAnchors() {
+        expect(row('현재 기준 임박', 'urgent'), findsOneWidget);
+        expect(row('현재 기준 지남', 'overdue'), findsOneWidget);
+        expect(row('미래 선택 마감', 'urgent'), findsNothing);
+        expect(row('미래 선택 마감', 'overdue'), findsNothing);
+        expect(row('다른 목록 임박', 'urgent'), findsNothing);
+        expect(row('다른 목록 지남', 'overdue'), findsNothing);
+        expect(row('마감 없음 유지'), findsOneWidget);
+      }
+
+      for (final period in ['오늘', '이번 주', '이번 달', '전체']) {
+        await choosePeriod(tester, period);
+        checkCurrentAnchors();
+        expect(row('오늘 완료한 미래 마감', 'completed'), findsOneWidget);
+        expect(row('미래 선택 마감'), period == '전체' ? findsOneWidget : findsNothing);
+      }
+      await choosePeriod(tester, '기간 선택');
+      await tester.tap(find.text('단일 날짜'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.edit_outlined));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byType(TextField),
+        '${future.year}. ${future.month}. ${future.day}.',
+      );
+      await tester.tap(find.text('확인').last);
+      await tester.pumpAndSettle();
+      checkCurrentAnchors();
+      expect(row('미래 선택 마감'), findsOneWidget);
+      // Completed-at, rather than the future due date, controls this section.
+      expect(row('오늘 완료한 미래 마감', 'completed'), findsNothing);
+      await choosePeriod(tester, '기간 선택');
+      await tester.tap(find.text('날짜 구간'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.edit_outlined));
+      await tester.pumpAndSettle();
+      final end = DateTime(future.year, future.month, future.day + 2);
+      final fields = find.byType(TextField);
+      await tester.enterText(
+        fields.at(0),
+        '${future.year}. ${future.month}. ${future.day}.',
+      );
+      await tester.enterText(
+        fields.at(1),
+        '${end.year}. ${end.month}. ${end.day}.',
+      );
+      await tester.tap(find.text('적용').last);
+      await tester.pumpAndSettle();
+      checkCurrentAnchors();
+      expect(row('미래 선택 마감'), findsOneWidget);
+      expect(row('오늘 완료한 미래 마감', 'completed'), findsNothing);
+      expect(tester.takeException(), isNull);
+      await finish(tester);
+    },
+  );
+
+  testWidgets(
     'completed overdue and urgent stay scoped; checkbox and details use existing flows',
     (tester) async {
       await add('운영체제 과제', due: today, list: 'course', tagIds: ['tag-a']);

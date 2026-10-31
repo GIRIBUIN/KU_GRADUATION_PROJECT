@@ -1,4 +1,5 @@
 import '../../../core/utils/entity_id.dart';
+import '../../../core/utils/list_defaults.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -569,7 +570,7 @@ class _MainShellScreenState extends State<MainShellScreen>
                       NavigationDestination(
                         icon: Icon(Icons.format_list_bulleted_rounded),
                         selectedIcon: Icon(Icons.format_list_bulleted_rounded),
-                        label: '목록',
+                        label: '전체',
                       ),
                       NavigationDestination(
                         icon: Icon(Icons.folder_outlined),
@@ -1108,6 +1109,7 @@ class _TaskMetadataLookup {
 
 class _ManagementPage extends StatefulWidget {
   const _ManagementPage({
+    super.key,
     required this.tasks,
     required this.loadTasks,
     required this.settings,
@@ -1149,12 +1151,26 @@ class _ManagementPageState extends State<_ManagementPage> {
   late Future<List<Tag>> _tagsFuture;
   late Future<List<Folder>> _foldersFuture;
   var _showHiddenMetadata = false;
+  List<FolderGroup> _groups = const [];
+  List<Folder> _archivedLists = const [];
+  final Set<String> _expandedGroupIds = {};
+
+  GroupedListRepository? get _grouping =>
+      widget.folderRepository is GroupedListRepository
+      ? widget.folderRepository as GroupedListRepository
+      : null;
+
+  Future<List<Folder>> _loadLists() async {
+    _groups = await _grouping?.getGroups() ?? [];
+    _archivedLists = await _grouping?.getArchivedLists() ?? [];
+    return widget.folderRepository.getFolders();
+  }
 
   @override
   void initState() {
     super.initState();
     _tagsFuture = widget.tagRepository.getTags();
-    _foldersFuture = widget.folderRepository.getFolders();
+    _foldersFuture = _loadLists();
   }
 
   @override
@@ -1168,7 +1184,7 @@ class _ManagementPageState extends State<_ManagementPage> {
   void _reloadMetadataOnly() {
     setState(() {
       _tagsFuture = widget.tagRepository.getTags();
-      _foldersFuture = widget.folderRepository.getFolders();
+      _foldersFuture = _loadLists();
     });
   }
 
@@ -1198,9 +1214,8 @@ class _ManagementPageState extends State<_ManagementPage> {
                 builder: (context, folderSnapshot) {
                   final tags = tagSnapshot.data ?? const <Tag>[];
                   final folders = folderSnapshot.data ?? const <Folder>[];
-                  final rootFolders = _rootFoldersOf(folders);
                   final treeRows = [
-                    ..._folderTreeRows(rootFolders, folders, tags),
+                    ..._groupedListRows(folders, tags),
                     ..._rootTagRows(tags, folders),
                   ];
                   final isLoading =
@@ -1211,7 +1226,7 @@ class _ManagementPageState extends State<_ManagementPage> {
                           !folderSnapshot.hasData);
 
                   return _ManagementSection(
-                    title: '메타데이터',
+                    title: '분류',
                     action: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -1229,10 +1244,19 @@ class _ManagementPageState extends State<_ManagementPage> {
                           tooltip: _showHiddenMetadata ? '숨김 가리기' : '숨김 보기',
                         ),
                         const SizedBox(width: 8),
+                        if (_grouping != null)
+                          IconButton.filledTonal(
+                            onPressed: () => _editGroup(),
+                            icon: const Icon(Icons.create_new_folder_outlined),
+                            tooltip: '상위 폴더 추가',
+                          ),
                         IconButton.filledTonal(
                           onPressed: () => _createFolder(folders),
-                          icon: const Icon(Icons.create_new_folder_rounded),
-                          tooltip: '폴더 추가',
+                          icon: const Icon(
+                            Icons.square_rounded,
+                            color: AppTheme.successGreen,
+                          ),
+                          tooltip: '목록 추가',
                         ),
                         const SizedBox(width: 8),
                         IconButton.filledTonal(
@@ -1249,6 +1273,22 @@ class _ManagementPageState extends State<_ManagementPage> {
                         const _ManagementEmptyRow(message: '항목이 없습니다.')
                       else
                         ...treeRows,
+                      if (_archivedLists.isNotEmpty) ...[
+                        const Divider(),
+                        const Text('보관된 목록'),
+                        for (final list in _archivedLists)
+                          ListTile(
+                            title: Text(list.name),
+                            onTap: () => _openFolderTasks(list, tags),
+                            trailing: TextButton(
+                              onPressed: () async {
+                                await _grouping!.restoreList(list.id);
+                                if (mounted) _refreshMetadata();
+                              },
+                              child: const Text('목록 복원'),
+                            ),
+                          ),
+                      ],
                     ],
                   );
                 },
@@ -1338,12 +1378,91 @@ class _ManagementPageState extends State<_ManagementPage> {
     );
   }
 
-  List<Folder> _rootFoldersOf(List<Folder> folders) {
-    final roots = folders
-        .where((folder) => folder.parentFolderId == null)
-        .toList(growable: false);
-    roots.sort(_compareMetadataFolders);
-    return roots;
+  List<Widget> _groupedListRows(List<Folder> lists, List<Tag> tags) {
+    final root = lists.where((list) => list.groupId == null).toList()
+      ..sort(
+        (a, b) => a.id == b.id
+            ? 0
+            : a.id == inboxListId
+            ? -1
+            : b.id == inboxListId
+            ? 1
+            : _compareMetadataFolders(a, b),
+      );
+    return [
+      _MetadataRootDropTarget(
+        key: const ValueKey('lists-root-drop'),
+        onAccept: (item) => _moveMetadataToRoot(item, lists),
+        child: Column(
+          children: [
+            const ListTile(
+              title: Text('폴더 밖'),
+              subtitle: Text('목록을 여기로 끌어 놓으면 폴더 밖으로 이동합니다.'),
+            ),
+            ..._folderTreeRows(root, lists, tags),
+          ],
+        ),
+      ),
+      for (final group in _groups) ...[
+        _ManagementRow(
+          key: ValueKey('folder-group-${group.id}'),
+          icon: Icons.folder_rounded,
+          iconColor: AppTheme.primaryBlue,
+          title: group.name,
+          trailing: '${lists.where((list) => list.groupId == group.id).length}',
+          expanded: _expandedGroupIds.contains(group.id),
+          onTap: () => setState(() {
+            if (!_expandedGroupIds.add(group.id)) {
+              _expandedGroupIds.remove(group.id);
+            }
+          }),
+          canAccept: _canMoveList,
+          onAccept: (item) => _moveList(item, group.id),
+          onEdit: () => _editGroup(group),
+        ),
+        if (_expandedGroupIds.contains(group.id))
+          for (final list in lists.where((list) => list.groupId == group.id))
+            Padding(
+              padding: const EdgeInsets.only(left: 18),
+              child: Column(
+                children: _folderTreeRowsFrom(
+                  list,
+                  lists,
+                  tags: tags,
+                  depth: 1,
+                ),
+              ),
+            ),
+      ],
+    ];
+  }
+
+  Future<void> _editGroup([FolderGroup? group]) async {
+    final result = await showDialog<(String, bool)>(
+      context: context,
+      builder: (_) => _FolderGroupDialog(group: group),
+    );
+    if (result == null || !mounted) return;
+    if (result.$2) {
+      final confirmed = await _confirmDelete(
+        title: '상위 폴더 삭제',
+        message: '안의 목록은 폴더 밖으로 이동하며 할 일과 목록은 유지됩니다.',
+      );
+      if (!confirmed || !mounted) return;
+      await _grouping!.deleteGroup(group!.id);
+    } else {
+      final now = DateTime.now();
+      await _grouping!.saveGroup(
+        FolderGroup(
+          id: group?.id ?? newEntityId(),
+          name: result.$1,
+          createdAt: group?.createdAt ?? now,
+          updatedAt: now,
+          sortOrder: group?.sortOrder ?? 0,
+        ),
+      );
+    }
+    if (mounted) _refreshMetadata();
   }
 
   List<Widget> _folderTreeRows(
@@ -1366,15 +1485,7 @@ class _ManagementPageState extends State<_ManagementPage> {
         .where((tag) => _showHiddenMetadata || !_isTagHidden(tag.id))
         .toList(growable: false);
     return [
-      _MetadataRootDropTarget(
-        onAccept: (item) => _moveMetadataToRoot(item, folders),
-        child: Column(
-          children: [
-            for (final tag in rootTags)
-              _tagManagementRow(tag, folders, depth: 0),
-          ],
-        ),
-      ),
+      for (final tag in rootTags) _tagManagementRow(tag, folders, depth: 0),
     ];
   }
 
@@ -1387,11 +1498,17 @@ class _ManagementPageState extends State<_ManagementPage> {
     if (!_showHiddenMetadata && _isFolderHidden(folder.id)) return [];
     return [
       _ManagementRow(
-        icon: Icons.folder_rounded,
+        key: ValueKey('task-list-${folder.id}'),
+        icon: Icons.square_rounded,
         iconColor: _colorFromHex(folder.color ?? '#22C55E'),
         title: folder.name,
-        dragItem: _MetadataDragItem.folder(folder.id),
-        onAccept: (item) => _moveMetadataBeforeFolder(item, folder, folders),
+        dragItem: folder.id == inboxListId
+            ? null
+            : _MetadataDragItem.folder(folder.id),
+        canAccept: (item) => _canMoveList(item) && item.id != folder.id,
+        onAccept: folder.id == inboxListId
+            ? null
+            : (item) => _moveMetadataBeforeFolder(item, folder, folders),
         onTap: () => _openFolderTasks(folder, tags),
         onEdit: () => _editFolder(folder, folders),
       ),
@@ -1405,8 +1522,8 @@ class _ManagementPageState extends State<_ManagementPage> {
       MaterialPageRoute(
         builder: (_) => _MetadataTaskListScreen(
           title: folder.name,
-          subtitle: '폴더 작업',
-          icon: Icons.folder_rounded,
+          subtitle: folder.archivedAt == null ? '목록의 할 일' : '보관된 목록의 할 일',
+          icon: Icons.square_rounded,
           iconColor: _colorFromHex(folder.color ?? '#22C55E'),
           tasks: widget.tasks.where(matches).toList(),
           reloadTasks: widget.loadTasks,
@@ -1468,7 +1585,7 @@ class _ManagementPageState extends State<_ManagementPage> {
 
   bool _isTagHidden(String id) => widget.settings.hiddenTagIds.contains(id);
   bool _isFolderHidden(String id) =>
-      widget.settings.hiddenFolderIds.contains(id);
+      id != inboxListId && widget.settings.hiddenFolderIds.contains(id);
   Future<void> _setFolderHidden(String id, bool hidden) {
     final ids = {...widget.settings.hiddenFolderIds};
     if (hidden) {
@@ -1484,17 +1601,36 @@ class _ManagementPageState extends State<_ManagementPage> {
   Future<void> _moveMetadataToRoot(
     _MetadataDragItem item,
     List<Folder> folders,
-  ) async {}
+  ) => _moveList(item, null);
+
+  bool _canMoveList(_MetadataDragItem item) =>
+      _grouping != null &&
+      item.type == _MetadataDragType.folder &&
+      item.id != inboxListId;
+
+  Future<void> _moveList(
+    _MetadataDragItem item,
+    String? groupId, {
+    String? beforeListId,
+  }) async {
+    if (!_canMoveList(item)) return;
+    try {
+      await _grouping!.moveList(item.id, groupId, beforeListId: beforeListId);
+      if (!mounted) return;
+      if (groupId != null) _expandedGroupIds.add(groupId);
+      _refreshMetadata();
+    } catch (_) {
+      if (mounted) _showSnackBar(context, '목록을 이동하지 못했습니다. 다시 시도해주세요.');
+    }
+  }
+
   Future<void> _moveMetadataBeforeFolder(
     _MetadataDragItem item,
     Folder target,
     List<Folder> folders,
   ) async {
-    if (item.type != _MetadataDragType.folder || item.id == target.id) return;
-    final ids = folders.map((f) => f.id).toList()..remove(item.id);
-    ids.insert(ids.indexOf(target.id), item.id);
-    await widget.folderRepository.updateFolderOrder(ids);
-    _refreshMetadata();
+    if (item.id == target.id) return;
+    await _moveList(item, target.groupId, beforeListId: target.id);
   }
 
   Future<void> _moveMetadataBeforeTag(
@@ -1620,7 +1756,7 @@ class _ManagementPageState extends State<_ManagementPage> {
   Future<void> _createFolder(List<Folder> folders) async {
     final result = await showDialog<_FolderFormResult>(
       context: context,
-      builder: (_) => _FolderEditDialog(folders: folders),
+      builder: (_) => _FolderEditDialog(folders: folders, groups: _groups),
     );
     if (result == null || !mounted) {
       return;
@@ -1634,6 +1770,7 @@ class _ManagementPageState extends State<_ManagementPage> {
         color: result.color,
         icon: 'folder',
         parentFolderId: result.parentFolderId,
+        groupId: result.groupId,
         sortOrder:
             (folders.isEmpty
                 ? -1
@@ -1648,8 +1785,9 @@ class _ManagementPageState extends State<_ManagementPage> {
     if (!mounted) {
       return;
     }
+    if (result.groupId != null) _expandedGroupIds.add(result.groupId!);
     _refreshMetadata();
-    _showSnackBar(context, '폴더를 추가했습니다.');
+    _showSnackBar(context, '목록을 추가했습니다.');
   }
 
   Future<void> _editFolder(Folder folder, List<Folder> folders) async {
@@ -1658,6 +1796,7 @@ class _ManagementPageState extends State<_ManagementPage> {
       builder: (_) => _FolderEditDialog(
         folder: folder,
         folders: folders,
+        groups: _groups,
         isHidden: _isFolderHidden(folder.id),
       ),
     );
@@ -1667,8 +1806,9 @@ class _ManagementPageState extends State<_ManagementPage> {
 
     if (result.deleteRequested) {
       final confirmed = await _confirmDelete(
-        title: '폴더 삭제',
-        message: '폴더를 삭제해도 작업은 삭제되지 않고, 연결만 해제됩니다.',
+        title: '목록 보관',
+        confirmLabel: '보관',
+        message: '목록을 보관해도 모든 할 일과 완료·휴지통 항목의 소속이 유지됩니다. 나중에 복원할 수 있습니다.',
       );
       if (!confirmed || !mounted) {
         return;
@@ -1679,7 +1819,7 @@ class _ManagementPageState extends State<_ManagementPage> {
         return;
       }
       _refreshMetadata();
-      _showSnackBar(context, '폴더를 삭제했습니다.');
+      _showSnackBar(context, '목록을 보관했습니다.');
       return;
     }
 
@@ -1691,6 +1831,7 @@ class _ManagementPageState extends State<_ManagementPage> {
         color: result.color,
         icon: folder.icon ?? 'folder',
         parentFolderId: result.parentFolderId,
+        groupId: result.groupId,
         sortOrder: result.parentFolderId == folder.parentFolderId
             ? folder.sortOrder
             : (folders.isEmpty
@@ -1707,13 +1848,15 @@ class _ManagementPageState extends State<_ManagementPage> {
     if (!mounted) {
       return;
     }
+    if (result.groupId != null) _expandedGroupIds.add(result.groupId!);
     _refreshMetadata();
-    _showSnackBar(context, '폴더를 수정했습니다.');
+    _showSnackBar(context, '목록을 수정했습니다.');
   }
 
   Future<bool> _confirmDelete({
     required String title,
     required String message,
+    String confirmLabel = '삭제',
   }) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -1728,7 +1871,7 @@ class _ManagementPageState extends State<_ManagementPage> {
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('삭제'),
+              child: Text(confirmLabel),
             ),
           ],
         );
@@ -1880,7 +2023,7 @@ class _MetadataTaskListScreenState extends State<_MetadataTaskListScreen> {
             if (widget.availableTags.isNotEmpty) ...[
               DropdownButtonFormField<String>(
                 initialValue: _selectedTagId,
-                decoration: const InputDecoration(labelText: '폴더 안에서 태그로 찾기'),
+                decoration: const InputDecoration(labelText: '이 목록에서 태그로 찾기'),
                 items: [
                   const DropdownMenuItem<String>(
                     value: null,
@@ -4011,6 +4154,7 @@ class _ManagementSection extends StatelessWidget {
 
 class _ManagementRow extends StatelessWidget {
   const _ManagementRow({
+    super.key,
     required this.icon,
     required this.iconColor,
     required this.title,
@@ -4021,6 +4165,8 @@ class _ManagementRow extends StatelessWidget {
     this.onTap,
     this.onEdit,
     this.editTooltip,
+    this.expanded,
+    this.canAccept,
   });
 
   final IconData icon;
@@ -4033,6 +4179,8 @@ class _ManagementRow extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onEdit;
   final String? editTooltip;
+  final bool? expanded;
+  final bool Function(_MetadataDragItem)? canAccept;
 
   @override
   Widget build(BuildContext context) {
@@ -4041,7 +4189,25 @@ class _ManagementRow extends StatelessWidget {
       contentPadding: EdgeInsets.only(left: 16 + depth * 20, right: 8),
       leading: Icon(icon, color: iconColor),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-      trailing: onEdit != null
+      trailing: expanded != null
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (trailing != null) Text(trailing!),
+                Icon(
+                  expanded!
+                      ? Icons.expand_more_rounded
+                      : Icons.chevron_right_rounded,
+                ),
+                if (onEdit != null)
+                  IconButton(
+                    onPressed: onEdit,
+                    icon: const Icon(Icons.edit_outlined),
+                    tooltip: editTooltip ?? '편집',
+                  ),
+              ],
+            )
+          : onEdit != null
           ? IconButton(
               onPressed: onEdit,
               icon: const Icon(Icons.edit_outlined),
@@ -4073,10 +4239,11 @@ class _ManagementRow extends StatelessWidget {
     final accept = onAccept;
     if (accept != null) {
       row = DragTarget<_MetadataDragItem>(
-        onWillAcceptWithDetails: (details) => details.data != dragItem,
+        onWillAcceptWithDetails: (details) =>
+            canAccept?.call(details.data) ?? (details.data != dragItem),
         onAcceptWithDetails: (details) => accept(details.data),
         builder: (context, candidateData, rejectedData) {
-          return ColoredBox(
+          return Material(
             color: candidateData.isEmpty
                 ? Colors.transparent
                 : AppTheme.primaryBlue.withValues(alpha: 0.08),
@@ -4106,7 +4273,11 @@ class _ManagementRow extends StatelessWidget {
 }
 
 class _MetadataRootDropTarget extends StatelessWidget {
-  const _MetadataRootDropTarget({required this.onAccept, required this.child});
+  const _MetadataRootDropTarget({
+    super.key,
+    required this.onAccept,
+    required this.child,
+  });
 
   final ValueChanged<_MetadataDragItem> onAccept;
   final Widget child;
@@ -4114,9 +4285,12 @@ class _MetadataRootDropTarget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DragTarget<_MetadataDragItem>(
+      onWillAcceptWithDetails: (details) =>
+          details.data.type == _MetadataDragType.folder &&
+          details.data.id != inboxListId,
       onAcceptWithDetails: (details) => onAccept(details.data),
       builder: (context, candidateData, rejectedData) {
-        return ColoredBox(
+        return Material(
           color: candidateData.isEmpty
               ? Colors.transparent
               : AppTheme.primaryBlue.withValues(alpha: 0.06),
@@ -4336,16 +4510,64 @@ class _TagEditDialogState extends State<_TagEditDialog> {
   }
 }
 
+class _FolderGroupDialog extends StatefulWidget {
+  const _FolderGroupDialog({this.group});
+  final FolderGroup? group;
+  @override
+  State<_FolderGroupDialog> createState() => _FolderGroupDialogState();
+}
+
+class _FolderGroupDialogState extends State<_FolderGroupDialog> {
+  late final TextEditingController _name = TextEditingController(
+    text: widget.group?.name ?? '',
+  );
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Text(widget.group == null ? '상위 폴더 추가' : '상위 폴더 수정'),
+    content: TextField(
+      controller: _name,
+      decoration: const InputDecoration(labelText: '폴더 이름'),
+    ),
+    actions: [
+      if (widget.group != null)
+        TextButton(
+          onPressed: () => Navigator.pop(context, ('', true)),
+          child: const Text('폴더 삭제'),
+        ),
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('취소'),
+      ),
+      FilledButton(
+        onPressed: () {
+          if (_name.text.trim().isNotEmpty) {
+            Navigator.pop(context, (_name.text.trim(), false));
+          }
+        },
+        child: const Text('저장'),
+      ),
+    ],
+  );
+}
+
 class _FolderEditDialog extends StatefulWidget {
   const _FolderEditDialog({
     required this.folders,
     this.folder,
     this.isHidden = false,
+    this.groups = const [],
   });
 
   final Folder? folder;
   final List<Folder> folders;
   final bool isHidden;
+  final List<FolderGroup> groups;
 
   @override
   State<_FolderEditDialog> createState() => _FolderEditDialogState();
@@ -4356,6 +4578,7 @@ class _FolderEditDialogState extends State<_FolderEditDialog> {
   late final TextEditingController _colorController;
   late bool _isHidden;
   String? _parentFolderId;
+  String? _groupId;
   String? _errorText;
 
   @override
@@ -4366,6 +4589,7 @@ class _FolderEditDialogState extends State<_FolderEditDialog> {
       text: _normalizeHex(widget.folder?.color ?? '#22C55E'),
     );
     _parentFolderId = null;
+    _groupId = widget.folder?.groupId;
     _isHidden = widget.isHidden;
   }
 
@@ -4382,8 +4606,9 @@ class _FolderEditDialogState extends State<_FolderEditDialog> {
       _colorController.text,
       fallback: AppTheme.successGreen,
     );
+    final isInbox = widget.folder?.id == inboxListId;
     return AlertDialog(
-      title: Text(widget.folder == null ? '폴더 추가' : '폴더 수정'),
+      title: Text(widget.folder == null ? '목록 추가' : '목록 수정'),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -4391,8 +4616,23 @@ class _FolderEditDialogState extends State<_FolderEditDialog> {
           children: [
             TextField(
               controller: _nameController,
-              decoration: const InputDecoration(labelText: '폴더 이름'),
+              enabled: !isInbox,
+              decoration: const InputDecoration(labelText: '목록 이름'),
               textInputAction: TextInputAction.next,
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              initialValue: _groupId ?? '',
+              decoration: const InputDecoration(labelText: '상위 폴더'),
+              items: [
+                const DropdownMenuItem(value: '', child: Text('폴더 밖')),
+                for (final group in widget.groups)
+                  DropdownMenuItem(value: group.id, child: Text(group.name)),
+              ],
+              onChanged: isInbox
+                  ? null
+                  : (value) =>
+                        setState(() => _groupId = value == '' ? null : value),
             ),
             const SizedBox(height: 16),
             const Text('색상', style: TextStyle(fontWeight: FontWeight.w900)),
@@ -4424,7 +4664,7 @@ class _FolderEditDialogState extends State<_FolderEditDialog> {
                 prefixIcon: Padding(
                   padding: const EdgeInsets.all(12),
                   child: Icon(
-                    Icons.folder_rounded,
+                    Icons.square_rounded,
                     color: selectedColor,
                     size: 22,
                   ),
@@ -4436,7 +4676,7 @@ class _FolderEditDialogState extends State<_FolderEditDialog> {
                 }
               },
             ),
-            if (widget.folder != null) ...[
+            if (widget.folder != null && !isInbox) ...[
               const SizedBox(height: 12),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
@@ -4453,12 +4693,12 @@ class _FolderEditDialogState extends State<_FolderEditDialog> {
         ),
       ),
       actions: [
-        if (widget.folder != null)
+        if (widget.folder != null && !isInbox)
           TextButton(
             onPressed: () {
               Navigator.of(context).pop(_FolderFormResult.delete());
             },
-            child: const Text('삭제'),
+            child: const Text('목록 보관'),
           ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
@@ -4486,6 +4726,7 @@ class _FolderEditDialogState extends State<_FolderEditDialog> {
         name: name,
         color: color,
         parentFolderId: _parentFolderId,
+        groupId: _groupId,
         isHidden: _isHidden,
       ),
     );
@@ -4554,6 +4795,7 @@ class _FolderFormResult {
     required this.name,
     required this.color,
     this.parentFolderId,
+    this.groupId,
     this.isHidden = false,
   }) : deleteRequested = false;
 
@@ -4561,12 +4803,14 @@ class _FolderFormResult {
     : name = '',
       color = '',
       parentFolderId = null,
+      groupId = null,
       isHidden = false,
       deleteRequested = true;
 
   final String name;
   final String color;
   final String? parentFolderId;
+  final String? groupId;
   final bool isHidden;
   final bool deleteRequested;
 }

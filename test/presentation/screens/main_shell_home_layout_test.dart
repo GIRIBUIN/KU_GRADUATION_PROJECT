@@ -433,6 +433,9 @@ class _Repositories extends Fake
   Future<List<Folder>> getFolders() async => [];
 
   @override
+  Future<Folder?> getFolderById(String id) async => null;
+
+  @override
   Future<List<Tag>> getTags() async => [
     Tag(
       id: 'tag-1',

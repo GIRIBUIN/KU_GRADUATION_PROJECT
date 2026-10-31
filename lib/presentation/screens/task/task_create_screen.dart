@@ -1,4 +1,5 @@
 import '../../../core/utils/entity_id.dart';
+import '../../../core/utils/list_defaults.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -46,7 +47,7 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
   final List<_DraftSubTask> _subTasks = [];
   List<Tag> _tags = const [];
   List<Folder> _folders = const [];
-  String? _selectedFolderId;
+  String? _selectedFolderId = inboxListId;
   final Set<String> _selectedTagIds = {};
 
   DateTime? _dueDate;
@@ -201,8 +202,9 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
               FolderPickerSection(
                 folders: _folders,
                 selectedId: _selectedFolderId,
-                onSelect: (folder) =>
-                    setState(() => _selectedFolderId = folder?.id),
+                onSelect: (folder) => setState(
+                  () => _selectedFolderId = folder?.id ?? inboxListId,
+                ),
                 onAdd: _createFolder,
               ),
               const SizedBox(height: 22),
@@ -270,7 +272,7 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
         _memoController.text.trim().isNotEmpty ||
         _dueDate != widget.initialDueDate ||
         _priority != null ||
-        _selectedFolderId != null ||
+        (_selectedFolderId != null && _selectedFolderId != inboxListId) ||
         _subTasks.isNotEmpty ||
         _selectedTagIds.isNotEmpty;
   }
@@ -298,7 +300,7 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
           ? null
           : _memoController.text.trim(),
       tagIds: _selectedTagIds.toList(),
-      folderIds: _selectedFolderId == null ? const [] : [_selectedFolderId!],
+      folderIds: [_selectedFolderId ?? inboxListId],
       createdAt: now,
       updatedAt: now,
     );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../data/models/task_models.dart';
+import '../../core/utils/list_defaults.dart';
 
 const metadataColorOptions = [
   '#EF4444',
@@ -91,24 +92,19 @@ class FolderPickerSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _MetadataPickerFrame(
-      title: '폴더',
-      addTooltip: '폴더 추가',
+      title: '목록',
+      addTooltip: '목록 추가',
       onAdd: onAdd,
       child: folders.isEmpty
-          ? const _EmptyPickerText(message: '폴더가 없습니다. + 버튼으로 추가할 수 있습니다.')
+          ? const _EmptyPickerText(message: '목록을 불러오는 중입니다.')
           : SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  _ClearFolderChip(
-                    selected: selectedId == null,
-                    onTap: () => onSelect(null),
-                  ),
-                  const SizedBox(width: 8),
                   for (final folder in folders) ...[
                     _FolderChoiceChip(
                       folder: folder,
-                      selected: selectedId == folder.id,
+                      selected: (selectedId ?? inboxListId) == folder.id,
                       onTap: () => onSelect(folder),
                     ),
                     const SizedBox(width: 8),
@@ -139,7 +135,7 @@ class TaskMetadataChips extends StatelessWidget {
         _SmallMetadataChip(
           label: folder.name,
           color: colorFromHex(folder.color, fallback: AppTheme.successGreen),
-          icon: Icons.folder_rounded,
+          icon: Icons.square_rounded,
         ),
       for (final tag in tags)
         _SmallMetadataChip(
@@ -298,31 +294,12 @@ class _FolderChoiceChip extends StatelessWidget {
     return FilterChip(
       selected: selected,
       onSelected: (_) => onTap(),
-      avatar: Icon(Icons.folder_rounded, color: color, size: 18),
-      label: Text(folder.name),
+      avatar: Icon(Icons.square_rounded, color: color, size: 18),
+      label: Text('${folder.name}${folder.archivedAt == null ? "" : " (보관됨)"}'),
       selectedColor: AppTheme.primaryBlue.withValues(alpha: 0.1),
       side: BorderSide(
         color: selected ? AppTheme.primaryBlue : color.withValues(alpha: 0.35),
       ),
-    );
-  }
-}
-
-class _ClearFolderChip extends StatelessWidget {
-  const _ClearFolderChip({required this.selected, required this.onTap});
-
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return FilterChip(
-      selected: selected,
-      onSelected: (_) => onTap(),
-      avatar: const Icon(Icons.block_rounded, size: 16),
-      label: const Text('없음'),
-      selectedColor: AppTheme.primaryBlue.withValues(alpha: 0.1),
-      side: BorderSide(color: selected ? AppTheme.primaryBlue : AppTheme.line),
     );
   }
 }
@@ -468,15 +445,15 @@ class _FolderCreateDialogState extends State<_FolderCreateDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('폴더 추가'),
+      title: const Text('목록 추가'),
       content: SingleChildScrollView(
         child: _MetadataFormBody(
           nameController: _nameController,
           colorController: _colorController,
-          nameLabel: '폴더 이름',
+          nameLabel: '목록 이름',
           initialColor: AppTheme.successGreen,
           errorText: _errorText,
-          icon: Icons.folder_rounded,
+          icon: Icons.square_rounded,
           onColorChanged: () => setState(() => _errorText = null),
         ),
       ),

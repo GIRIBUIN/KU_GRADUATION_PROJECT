@@ -1,4 +1,5 @@
 import '../../../core/utils/entity_id.dart';
+import '../../../core/utils/list_defaults.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -80,7 +81,11 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       widget.taskId,
     );
     final tags = await widget.tagRepository.getTags();
-    final folders = await widget.folderRepository.getFolders();
+    final folders = [...await widget.folderRepository.getFolders()];
+    if (task != null && !folders.any((list) => list.id == task.listId)) {
+      final retained = await widget.folderRepository.getFolderById(task.listId);
+      if (retained != null) folders.add(retained);
+    }
 
     if (!mounted) {
       return;
@@ -91,7 +96,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       _subTasks = subTasks;
       _tags = tags;
       _folders = folders;
-      _selectedFolderId = task?.folderIds.firstOrNull;
+      _selectedFolderId = task?.listId ?? inboxListId;
       _selectedTagIds
         ..clear()
         ..addAll(task?.tagIds ?? const []);
@@ -223,8 +228,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     FolderPickerSection(
                       folders: _folders,
                       selectedId: _selectedFolderId,
-                      onSelect: (folder) =>
-                          setState(() => _selectedFolderId = folder?.id),
+                      onSelect: (folder) => setState(
+                        () => _selectedFolderId = folder?.id ?? inboxListId,
+                      ),
                       onAdd: _createFolder,
                     ),
                     const SizedBox(height: 22),
@@ -293,7 +299,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           : _memoController.text.trim(),
       parentTaskId: task.parentTaskId,
       tagIds: _selectedTagIds.toList(growable: false),
-      folderIds: _selectedFolderId == null ? const [] : [_selectedFolderId!],
+      folderIds: [_selectedFolderId ?? inboxListId],
       ecampus: task.ecampus,
       sortOrder: task.sortOrder,
       createdAt: task.createdAt,

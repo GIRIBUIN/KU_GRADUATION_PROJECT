@@ -315,7 +315,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('scope-list-kutodo:inbox')));
       await tester.pumpAndSettle();
       expect(row('미지정 일정'), findsOneWidget);
-      await tester.dragFrom(const Offset(1, 300), const Offset(270, 0));
+      await tester.flingFrom(tester.getCenter(row('미지정 일정')), const Offset(150, 0), 1000);
       await tester.pumpAndSettle();
       expect(
         tester
@@ -330,6 +330,60 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('drawer-settings')), findsNothing);
       expect(row('미지정 일정'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await finish(tester);
+    },
+  );
+
+  testWidgets(
+    'wide Drawer gesture preserves vertical scrolling, row taps and checkbox actions',
+    (tester) async {
+      for (var i = 0; i < 18; i++) {
+        await add('스크롤 일정 $i', due: today);
+      }
+      await pumpApp(tester);
+      final homeScroll = find
+          .ancestor(of: row('스크롤 일정 0'), matching: find.byType(Scrollable))
+          .first;
+      final scrollState = tester.state<ScrollableState>(homeScroll);
+      // Predominantly vertical motion must stay with the task list.
+      await tester.dragFrom(const Offset(180, 450), const Offset(12, -250));
+      await tester.pumpAndSettle();
+      expect(scrollState.position.pixels, greaterThan(0));
+      expect(find.byKey(const ValueKey('drawer-settings')), findsNothing);
+      await tester.ensureVisible(row('스크롤 일정 0'));
+      await tester.pumpAndSettle();
+      scrollState.position.jumpTo(0);
+      await tester.pumpAndSettle();
+      // A leftward swipe outside rows does not mutate or open a task.
+      await tester.dragFrom(
+        tester.getTopLeft(find.byKey(const ValueKey('home-section-period'))) +
+            const Offset(220, 16),
+        const Offset(-150, 0),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('drawer-settings')), findsNothing);
+      expect(find.byType(TaskDetailScreen), findsNothing);
+      expect((await tasks.getTaskById('스크롤 일정 0'))!.status, TaskStatus.active);
+      await tester.tap(
+        find.descendant(of: row('스크롤 일정 0'), matching: find.byType(Checkbox)),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        (await tasks.getTaskById('스크롤 일정 0'))!.status,
+        TaskStatus.completed,
+      );
+      expect(find.byKey(const ValueKey('drawer-settings')), findsNothing);
+      await tester.tap(row('스크롤 일정 1'));
+      await tester.pumpAndSettle();
+      expect(find.byType(TaskDetailScreen), findsOneWidget);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect((await tasks.getTasks()).length, 17);
+      expect(
+        (await tasks.getTaskById('스크롤 일정 0'))!.status,
+        TaskStatus.completed,
+      );
       expect(tester.takeException(), isNull);
       await finish(tester);
     },

@@ -637,6 +637,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
       key: _scaffoldKey,
       drawer: _drawer(),
       drawerEnableOpenDragGesture: true,
+      drawerEdgeDragWidth: MediaQuery.sizeOf(context).width,
       appBar: AppBar(
         automaticallyImplyLeading: false,
         titleSpacing: 0,

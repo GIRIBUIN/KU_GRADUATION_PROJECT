@@ -1,0 +1,52 @@
+{
+  "recorded_at_utc": "2026-10-30T05:27:53.7989768Z",
+  "git_base": "bfbb467ca71a84aa4c8633c7b1ac6791efaf06d4",
+  "uncommitted_changes": true,
+  "schema_version": 6,
+  "scope": "Flutter eCampus import review, post-commit notifications, session disposal, manual missing review; no cross-device sync",
+  "tests": {
+    "added": 36,
+    "failed": 0,
+    "command": "flutter test --no-pub --concurrency=1 --machine test/data test/presentation",
+    "elapsed_ms": 23912,
+    "passed": 161,
+    "raw": "review-tests-20261030.jsonl"
+  },
+  "analysis": {
+    "raw": "review-analyze-20261030.txt",
+    "existing_info": 1,
+    "warnings": 0,
+    "command": "flutter analyze --no-pub --no-fatal-infos",
+    "errors": 0
+  },
+  "android_build": {
+    "raw": "review-build-20261030.txt",
+    "bytes": 192184738,
+    "command": "flutter build apk --debug --no-pub",
+    "success": true,
+    "apk": "build/app/outputs/flutter-apk/app-debug.apk",
+    "sha256": "9b1b06ee6c61c71ec7650e5e9cb951477b8566db6429fce64b0bf448a735db0a"
+  },
+  "source_git_blob_hashes": {
+    "lib/data/models/ecampus_models.dart": "945e134ee62c3bd2620523f535c825de0b7ef190",
+    "lib/data/services/default_ecampus_sync_service.dart": "9337d934fc2ce0d55a28542e3ffeb464f3230721",
+    "lib/data/services/ecampus_sync_apply_service.dart": "e6580effee3dd282dc9729249c592fe71fa26097",
+    "lib/data/services/ecampus_sync_classifier.dart": "807aa6ba0cf8833e5c08259fbcc8b5cb6bb07e15",
+    "lib/data/services/ecampus_todo_parser.dart": "63ac9ca16125785017d328607453a6b81f957346",
+    "lib/data/services/http_ecampus_auth_service.dart": "00d8eb1279188bfdb17442af909fc5bc58480f54",
+    "lib/presentation/screens/main/main_shell_screen.dart": "2fb78ade18d27394f007d1c5ff0c436b35110862",
+    "lib/presentation/screens/sync/ecampus_sync_preview_screen.dart": "ec6d3acceaa4f221a199dcb867bb21ce2e50c586",
+    "lib/presentation/screens/sync/ecampus_sync_progress_screen.dart": "689bc913081db601abb69acd23953810fda47b03",
+    "lib/presentation/services/in_app_webview_ecampus_cookie_store.dart": "5f7e96305c787cbc8327ca2d9db0add2527fdcd9",
+    "test/data/services/http_ecampus_auth_service_test.dart": "144d4a5b803be1d90df89002303a505d4611342b",
+    "test/presentation/screens/database_v6_ui_test.dart": "948fa5df2f10919ca0020432927849c974f95fac",
+    "lib/presentation/services/ecampus_notification_updater.dart": "8c910f136e3a231f3d54120f86d41ce0c85a64cf",
+    "test/data/services/ecampus_review_v6_test.dart": "c1f518ac827fce6f069cbedca0406c4041d6faf9",
+    "test/presentation/screens/ecampus_review_flow_test.dart": "d4acdb36ce06a238120395927386a4e55a20976b"
+  },
+  "not_performed": [
+    "real-device installation or execution of this APK",
+    "real eCampus login/network verification",
+    "iOS build or execution"
+  ]
+}

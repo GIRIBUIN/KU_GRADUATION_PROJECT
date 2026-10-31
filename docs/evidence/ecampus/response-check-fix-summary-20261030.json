@@ -1,0 +1,48 @@
+{
+  "recorded_at_utc": "2026-10-30T12:44:37.7376493Z",
+  "git_base": "bfbb467ca71a84aa4c8633c7b1ac6791efaf06d4",
+  "uncommitted_changes": true,
+  "schema_version": 6,
+  "scope": "Fix false incomplete-response detection and display reason; preserve missing review safeguards",
+  "user_response_html_inspected": false,
+  "tests": {
+    "elapsed_ms": 25626,
+    "failed": 0,
+    "command": "flutter test --no-pub --concurrency=1 --machine test/data test/presentation",
+    "added_since_review": 12,
+    "raw": "response-check-fix-tests-20261030.jsonl",
+    "passed": 173
+  },
+  "analysis": {
+    "existing_info": 1,
+    "raw": "response-check-fix-analyze-20261030.txt",
+    "errors": 0,
+    "warnings": 0
+  },
+  "android_build": {
+    "bytes": 192186466,
+    "raw": "response-check-fix-build-20261030.txt",
+    "success": true,
+    "apk": "build/app/outputs/flutter-apk/app-debug.apk",
+    "sha256": "e8e1a3c8aa83052366838b051e790bd44cfa108a7badfb99e68160edbf9950e9"
+  },
+  "source_git_blob_hashes": {
+    "lib/data/models/ecampus_models.dart": "dad149fdc2ffbe92f35a0f385de787a5ff1ff02f",
+    "lib/data/services/default_ecampus_sync_service.dart": "8c9ede45e520cbb37a91fa68739c1a870d19be6a",
+    "lib/data/services/ecampus_sync_apply_service.dart": "e6580effee3dd282dc9729249c592fe71fa26097",
+    "lib/data/services/ecampus_sync_classifier.dart": "807aa6ba0cf8833e5c08259fbcc8b5cb6bb07e15",
+    "lib/data/services/ecampus_todo_parser.dart": "41b85e7d248beb78bea8e4a337bee76ee32c7617",
+    "lib/data/services/http_ecampus_auth_service.dart": "00d8eb1279188bfdb17442af909fc5bc58480f54",
+    "lib/presentation/screens/main/main_shell_screen.dart": "2fb78ade18d27394f007d1c5ff0c436b35110862",
+    "lib/presentation/screens/sync/ecampus_sync_preview_screen.dart": "2f6f5b542d1df6d069ee8133f6bb0a637494faca",
+    "lib/presentation/screens/sync/ecampus_sync_progress_screen.dart": "689bc913081db601abb69acd23953810fda47b03",
+    "lib/presentation/services/in_app_webview_ecampus_cookie_store.dart": "5f7e96305c787cbc8327ca2d9db0add2527fdcd9",
+    "test/data/services/ecampus_todo_parser_test.dart": "f67277c1995d37306cec8f03a79fa8f99e9da0e7",
+    "test/data/services/http_ecampus_auth_service_test.dart": "144d4a5b803be1d90df89002303a505d4611342b",
+    "test/presentation/screens/database_v6_ui_test.dart": "948fa5df2f10919ca0020432927849c974f95fac",
+    "lib/presentation/services/ecampus_notification_updater.dart": "8c910f136e3a231f3d54120f86d41ce0c85a64cf",
+    "test/data/services/ecampus_review_v6_test.dart": "4e71c7ba98df4e5e1cc84e13cd7b0d5f01b900e4",
+    "test/presentation/screens/ecampus_review_flow_test.dart": "d4acdb36ce06a238120395927386a4e55a20976b"
+  },
+  "device_installation_performed": false
+}

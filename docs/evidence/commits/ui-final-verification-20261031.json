@@ -1,0 +1,96 @@
+{
+  "recorded_at_utc": "2026-10-31T09:02:49.069850+00:00",
+  "source_commit": "80f46601eab4dd6288d8ff59f7c6f5da4a1ca4e6",
+  "scope": "Documentation and existing validation artifacts only; no application code or tests changed",
+  "code_commits": [
+    {
+      "commit": "f3a67357f50d0e6441195524bf2d28093c5c0313",
+      "title": "feat(home): support single dates and inclusive date ranges"
+    },
+    {
+      "commit": "ceefe8e6b72538491d8e6622b736aafd8a60c9a7",
+      "title": "feat(drawer): manage visibility and contextual metadata actions"
+    },
+    {
+      "commit": "c74dce5b8f77c07cf4a4f8dfb3c9cedd3c3b4ede",
+      "title": "feat(home): open the Drawer from interior gestures"
+    },
+    {
+      "commit": "670f535a5d4aa40bde42f16821c53bfaf184f0d1",
+      "title": "feat(tasks): open shared task details in a bottom sheet"
+    },
+    {
+      "commit": "321ea3dcea9dacdc8405affa5150e41694945f63",
+      "title": "style(home): wrap task titles and distinguish list paths"
+    },
+    {
+      "commit": "9d627922e14f5c452c3a79be4e494a8f601637c1",
+      "title": "feat(settings): configure persistent task swipe actions"
+    },
+    {
+      "commit": "521f0a9e0887e89d4d664b20cd370bafc941f9a7",
+      "title": "feat(home): execute configurable swipe actions with Drawer gesture priority"
+    },
+    {
+      "commit": "af254134f623d3382f857e5d27d7b7a8822fd68c",
+      "title": "feat(trash): add scoped filters and checkbox batch restore and delete"
+    },
+    {
+      "commit": "b508c1a93673e99dfd8b129c7213252bc48e90a8",
+      "title": "refactor(ecampus): open login inline and retain import session cleanup"
+    },
+    {
+      "commit": "7b5ba7f26e8c865d5e0955eef519bd0cd56d4df7",
+      "title": "test(home): verify date scopes and deadline boundary policy"
+    },
+    {
+      "commit": "80f46601eab4dd6288d8ff59f7c6f5da4a1ca4e6",
+      "title": "fix(ui): simplify empty task list messages"
+    }
+  ],
+  "tests": {
+    "command": "C:\\flutter\\bin\\flutter.bat test --no-pub --concurrency=1 --file-reporter=json:docs/evidence/commits/ui-final-tests-20261031.jsonl test/data test/presentation",
+    "raw": "ui-final-tests-20261031.jsonl",
+    "sha256_lf_normalized": "21ac46ab737638b6ad6e5e57f80fc1305e7eb1522201f607b70fbf760f5e9456",
+    "passed": 247,
+    "failed": 0,
+    "elapsed_ms": 48813,
+    "rerun_during_documentation_publication": false,
+    "basis": "Existing pre-split final test report; all 16 changed source/test files match the saved final backup and current source commit",
+    "individual_intermediate_commits_retested": false
+  },
+  "analysis": {
+    "errors": 0,
+    "warnings": 0,
+    "info": 1,
+    "existing_info": "deprecated_member_use: onReorder in main_shell_screen.dart:3161",
+    "basis": "Read-only flutter analyze --no-pub executed during the preceding commit review; analyzer exits 1 because of the info diagnostic",
+    "rerun_during_documentation_publication": false
+  },
+  "android": {
+    "build_report": "../home-ui/empty-copy-build-20261031.txt",
+    "build_summary": "../home-ui/empty-copy-summary-20261031.json",
+    "build_rerun": false,
+    "installed_on_device": false,
+    "real_school_login_verified": false
+  },
+  "source_git_blob_hashes": {
+    "lib/data/local/mappers/metadata_mappers.dart": "dfe55f9d24140f2af2aa72105f103757c173a18f",
+    "lib/data/models/task_swipe_options.dart": "7acf7ee2aa787e451813276c7ff784e22d298eaa",
+    "lib/data/repositories/settings_repository.dart": "3b3c9492d7fc891870ee94e7cf5053f95cb4e867",
+    "lib/presentation/screens/login/ecampus_login_webview_screen.dart": "33a7651ccd8a75cb5082cee957ba8f71d7bd5c53",
+    "lib/presentation/screens/main/main_shell_screen.dart": "4a228652f1e84ba5f0509f5a115d8ef09c804ce2",
+    "lib/presentation/screens/main/mobile_home_page.dart": "c0345bd3ddec9a03ba885c41ee95b64af2e50c26",
+    "lib/presentation/screens/main/task_swipe_settings_sheet.dart": "0969cdf36929d891bb40435d54ce717c7a432919",
+    "lib/presentation/screens/sync/ecampus_sync_progress_screen.dart": "8e1764f383d328499d18a0e1da93e6d9e7f0aad2",
+    "lib/presentation/screens/task/task_create_screen.dart": "f8dc8817b7867d7f58232010bbbe5f38148f0bcb",
+    "lib/presentation/screens/task/task_detail_screen.dart": "c56243f5b55b87ac680d9f0c7fe3b0e2ae6ab03e",
+    "test/data/repositories/drift_metadata_repositories_test.dart": "0ffce286be6bf94874ae1349dc367f5fceba3786",
+    "test/data/services/home_task_summary_test.dart": "0ead1dfe6d24ffa180b4c0efc2098729db735689",
+    "test/presentation/screens/ecampus_review_flow_test.dart": "018ed6fb92fe687c5ae60639a768f4b30c84b0f9",
+    "test/presentation/screens/list_groups_test.dart": "d94121497e19d0decb5d5f8227ea1e1f21af6510",
+    "test/presentation/screens/main_shell_home_layout_test.dart": "96e4055d84f67d371dbde7b201f984d48072d55b",
+    "test/presentation/screens/mobile_home_test.dart": "05b08f36e3e108d6d0e5a2851c62ff19ddd2f528"
+  },
+  "historical_artifacts": "Original intermediate failures and repeated capture runs are preserved. Their uncommitted_changes fields describe the recording time. Test counts from repeated runs are not added together."
+}

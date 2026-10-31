@@ -1,0 +1,100 @@
+{
+  "recorded_at_utc": "2026-10-31T11:07:05.038973+00:00",
+  "git_base": "12ed8164ca235b21be3d82870610ad45695b65bc",
+  "uncommitted_changes": true,
+  "scope": "Replace the Settings screen with an anchored context menu and compact autosaving bottom sheets; remove Settings-only eCampus controls and helpers.",
+  "final_related_tests": {
+    "raw": "settings-popup-final-tests-20261031.jsonl",
+    "passed": 83,
+    "failed": 0,
+    "success": true,
+    "elapsed_ms": 31558
+  },
+  "final_capture_tests": {
+    "raw": "settings-popup-capture-tests-20261031.jsonl",
+    "passed": 3,
+    "failed": 0,
+    "success": true,
+    "elapsed_ms": 5251
+  },
+  "final_shell_tests": {
+    "raw": "settings-popup-shell-final-tests-20261031.jsonl",
+    "passed": 6,
+    "failed": 0,
+    "success": true,
+    "elapsed_ms": 4352
+  },
+  "counts_overlap": true,
+  "coverage_note": "83 related tests passed after the final dropdown layout fix. A mounted guard was then added to the parent settings callback; the affected 3 menu/capture tests and 6 shell tests passed again. They overlap with the 83 tests and are not additive.",
+  "earlier_runs": [
+    {
+      "raw": "settings-popup-first-tests-20261031.jsonl",
+      "passed": 2,
+      "failed": 2,
+      "success": false,
+      "elapsed_ms": 6561
+    },
+    {
+      "raw": "settings-popup-new-verified-tests-20261031.jsonl",
+      "passed": 3,
+      "failed": 1,
+      "success": false,
+      "elapsed_ms": 5815
+    },
+    {
+      "raw": "settings-popup-controls-tests-20261031.jsonl",
+      "passed": 3,
+      "failed": 1,
+      "success": false,
+      "elapsed_ms": 5987
+    }
+  ],
+  "earlier_runs_note": "Intermediate failures are preserved. Initial popup tests used an ambiguous label finder; later retries exposed snackbar visibility/queuing and a stale slider coordinate after an error changed sheet height. Final passing runs are listed separately.",
+  "analysis": {
+    "raw": "settings-popup-analyze-20261031.txt",
+    "errors": 0,
+    "warnings": 0,
+    "info": 0,
+    "exit_code": 0,
+    "capture_method": "Exact stdout copied from direct flutter analyze --no-pub tool output"
+  },
+  "behavior": {
+    "notification_toggle": "Existing defaultNotificationEnabled for new tasks; enabling requests existing notification permission; no bulk change to existing Task reminders.",
+    "swipe": "Two sections (tasks, trash), two direction selectors each. Saves on selection, using latest settings and replacing only one direction.",
+    "sliders": "Existing notification offsets (minutes) and urgent 1..14 days. Drag updates display; release saves. No Apply/Save/Cancel buttons.",
+    "errors": "Failed save retains last saved value and allows retry. Sheets show only error feedback; popup toggle reports failure through existing snackbar pattern.",
+    "dismissal": "Standard outside touch, back and drag dismissal; committed changes persist.",
+    "preserved": "Saved home period/view and hidden list/tag preferences, Task CRUD, notification service, calendar/widget handlers."
+  },
+  "deleted_sources": [
+    "lib/presentation/screens/settings/settings_screen.dart"
+  ],
+  "protected_paths_unchanged": [
+    "lib/data",
+    "lib/presentation/services",
+    "lib/presentation/screens/sync",
+    "lib/presentation/screens/login"
+  ],
+  "ecampus_note": "Only parent Settings display/session listener/manual cleanup code was removed. Import progress still owns login/logout/session/cookie cleanup. 22 existing eCampus tests use mock login/HTTP, not a real school account.",
+  "full_suite_run": false,
+  "android_build_run": false,
+  "installed_on_device": false,
+  "commit_created": false,
+  "push_run": false,
+  "source_git_blob_hashes": {
+    "lib/presentation/screens/main/home_settings_menu.dart": "fa8a7aac8c87c0e138c169085eba981317be188e",
+    "lib/presentation/screens/main/main_shell_screen.dart": "dbacef762cd7e4518a39cc91acd0ff8fc485a02e",
+    "lib/presentation/screens/main/mobile_home_page.dart": "0f56845b26aff8137a83eb279201a4ff6bd608de",
+    "lib/presentation/screens/main/task_swipe_settings_sheet.dart": "fadf2268d8be13d816a45c661412799e53f1f229",
+    "test/presentation/screens/main_shell_home_layout_test.dart": "4ae6dc33258dc59c16b2bc8b5791e655f530c0b7",
+    "test/presentation/screens/mobile_home_test.dart": "d48913100cacfe2233bdeaa3b1ef41e51d30be27"
+  },
+  "widget_captures": [
+    "settings-popup-settings-menu.png",
+    "settings-popup-settings-large-menu.png",
+    "settings-popup-swipe-settings.png",
+    "settings-popup-swipe-large.png",
+    "settings-popup-notification-time.png",
+    "settings-popup-urgent-days.png"
+  ]
+}

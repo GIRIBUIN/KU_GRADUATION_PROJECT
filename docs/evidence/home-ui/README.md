@@ -1,5 +1,7 @@
 # 모바일 홈 UI 개편 — 2026-10-30
 
+최신 UI-020: 설정 화면을 컨텍스트 메뉴와 즉시 저장 하단창으로 교체했다. 최신 검증은 문서 하단 ‘설정 컨텍스트 메뉴·즉시 저장’를 본다. UI-017~019는 `b8cd8e9`~`12ed816`으로 커밋되어 원격에 반영됐고, 아래의 미커밋 표시는 각 작업 당시 기록이다. 이번 UI-020은 커밋·push하지 않았다.
+
 최신 UI-019: 보관/복원 기능은 제거했고 데이터 전환도 하지 않는다. 목록/태그 숨김은 각각 작은 이름·눈 아이콘 팝업으로 바뀌었다. 아래 UI-018의 보관 복원 설명은 해당 시점 기록이며 최신 동작은 문서 하단 UI-019를 기준으로 한다. 아직 커밋하지 않았다.
 
 추가 변경 UI-018: 일반 기간의 전체 선택 제거, 할 일 구역명, 컨텍스트 메뉴/드래그 분류, 휴지통 전용 전체 기간은 문서 하단에 기록한다. UI-017의 정책 중 이 부분은 UI-018이 최신이다. 아직 커밋하지 않았다.
@@ -256,3 +258,16 @@ C:\flutter\bin\flutter.bat build apk --debug --no-pub
 - 폭과 정렬을 마지막으로 정리한 뒤 [해당 UI 2건 재확인·캡처](visibility-menu-layout-final-tests-20261031.jsonl)도 통과했다. 폭 범위·텍스트/눈 위치와 정렬을 함께 확인했다. 앞의 87건과 중복이므로 합산하지 않는다. [최종 분석](visibility-menu-analyze-20261031.txt) 문제 없음, [요약·소스 해시](visibility-menu-summary-20261031.json). widget 렌더: [목록 숨김](visibility-menu-list-visibility.png) · [태그 숨김](visibility-menu-tag-visibility.png).
 - 중간 원본은 보존한다. first-tests는 PopupMenu의 intrinsic layout과 ListView 충돌을 감지한 실행이며 고정 폭·SingleChildScrollView/Column으로 해결했다. new-verified는 관련 4건 통과, final-capture는 초기 여백 보완 후 2건 통과, layout-tests는 ListTile에서 간단한 Row로 변경한 뒤 테스트의 옛 캐스트를 갱신하기 전 실행이다. 최종은 final-tests와 layout-final-tests다.
 - Android 직접 확인: 목록/태그별 눈 메뉴 → 각 대상만 나오고 미지정/경로/문구가 없는지 → 눈 활성/비활성 즉시 변경 → 메뉴 밖/뒤로 닫기 → 재실행 후 숨김 유지 → 긴 이름·큰 글씨·많은 항목의 폭/스크롤 → Task 소속과 완료·휴지통 상태 보존 → 보관/복원 메뉴 없음 확인. 실제 설치·APK 빌드·전체 테스트·커밋·push는 수행하지 않았다.
+
+## 설정 컨텍스트 메뉴·즉시 저장 — 2026-10-31
+
+- UI-020. 별도 설정 페이지와 미사용 `settings/settings_screen.dart`를 제거했다. Drawer 설정을 누르면 스와이프·알림 토글 아이콘·알림 시점(알림 켜짐일 때만)·마감 임박의 컨텍스트 메뉴를 연다. Drawer의 기존 기능·색상 테마와 SettingsRepository를 재사용한다.
+- 스와이프 하단창은 중앙 제목과 할 일/휴지통 두 구역, 각 오른쪽/왼쪽 선택만 제공한다. 변경 즉시 해당 방향만 최신 설정에 병합해 저장한다. 저장·취소·설명은 제거하고 큰 글씨의 긴 선택값도 전부 보이게 했다.
+- 알림 시점·마감 임박은 작은 슬라이더 하단창이다. 움직이는 중에는 표시만 바꾸고 손을 놓으면 저장한다. 기존 알림 후보(마감 시각~3일 전), 임박 1~14일 범위를 유지한다. 저장 실패는 이전 값으로 돌아가고 같은 컨트롤에서 재시도한다. 기간·보기·숨김 설정을 함께 덮어쓰지 않는다.
+- 알림 토글은 기존 `defaultNotificationEnabled` 의미(새 Task의 기본값)를 유지한다. 켤 때 기존 권한 요청을 호출하며 기존 일정의 예약을 일괄 취소/재예약하는 전역 기능은 추가하지 않았다.
+- 설정 전용 eCampus 가져오기/로그인/세션/마지막 가져오기/수동 쿠키 정리 UI와 보조 handler만 제거했다. 실제 가져오기 컨트롤러·로그인·auth/cookie 서비스는 변경하지 않았고 가져오기 종료/취소/실패 정리는 그대로다. DB·migration·repository 계약도 변경하지 않았다.
+- 변경 코드: `main_shell_screen.dart`, `mobile_home_page.dart`, `task_swipe_settings_sheet.dart`, 신규 `home_settings_menu.dart`, 삭제 `settings/settings_screen.dart`; 기존 UI 테스트 2개 파일 갱신.
+- [최종 관련 83건 통과](settings-popup-final-tests-20261031.jsonl): 홈 49 + 홈/캘린더/위젯 6 + 목록 6 + eCampus 22. 마지막 부모 callback의 mounted 보호 뒤 [UI 3건/캡처](settings-popup-capture-tests-20261031.jsonl)와 [shell 6건](settings-popup-shell-final-tests-20261031.jsonl) 재확인도 통과했다. 중복 검증이므로 합산하지 않는다. [분석](settings-popup-analyze-20261031.txt) 문제 없음. [요약·소스 해시](settings-popup-summary-20261031.json).
+- 중간 실패 원본(first/new-verified/controls)은 보존한다. 중복 라벨 finder, 오류 안내 위치/누적, 오류 문구로 높이가 바뀐 뒤 테스트가 옛 slider 좌표를 사용하던 문제를 수정했다. 통과 여부는 final/capture/shell 로그를 기준으로 한다.
+- widget 렌더: [메뉴](settings-popup-settings-menu.png) · [큰 글씨 메뉴](settings-popup-settings-large-menu.png) · [스와이프](settings-popup-swipe-settings.png) · [큰 글씨 스와이프](settings-popup-swipe-large.png) · [알림 시점](settings-popup-notification-time.png) · [마감 임박](settings-popup-urgent-days.png). 실제 Android 캡처가 아니며 eCampus 테스트도 모의 로그인/응답이다.
+- Android 직접 확인: 설정 탭이 화면 전환 없이 메뉴 열기 → 알림 켬/끔과 알림 시점 항목 표시 → 네 방향 변경 후 저장 버튼 없이 실제 Task/휴지통 스와이프 → 슬라이더 놓기/닫기/재실행 후 값 유지 → 기존 기간·보기·숨김 유지 → 큰 글씨/작은 화면 → 홈 가져오기 후 재로그인/취소/세션 정리 확인. 전체 테스트·APK 빌드·실기기 설치·커밋·push는 하지 않았다.

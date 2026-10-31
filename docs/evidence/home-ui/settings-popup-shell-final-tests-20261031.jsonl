@@ -1,0 +1,23 @@
+{"protocolVersion":"0.1.1","runnerVersion":null,"pid":19932,"type":"start","time":0}
+{"suite":{"id":0,"platform":"vm","path":"D:/_workspace/repos/kutodo/test/presentation/screens/main_shell_home_layout_test.dart"},"type":"suite","time":0}
+{"test":{"id":1,"name":"loading D:/_workspace/repos/kutodo/test/presentation/screens/main_shell_home_layout_test.dart","suiteID":0,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":0}
+{"count":1,"time":2,"type":"allSuites"}
+{"testID":1,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":1390}
+{"group":{"id":2,"suiteID":0,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":6,"line":null,"column":null,"url":null},"type":"group","time":1391}
+{"test":{"id":3,"name":"(setUpAll)","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":26,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/presentation/screens/main_shell_home_layout_test.dart"},"type":"testStart","time":1392}
+{"testID":3,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":1408}
+{"test":{"id":4,"name":"applies weekly widget completion before reloading the calendar on resume","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":94,"root_column":5,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/screens/main_shell_home_layout_test.dart"},"type":"testStart","time":1408}
+{"testID":4,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2342}
+{"test":{"id":5,"name":"applies weekly widget uncompletion before reloading the calendar on resume","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":94,"root_column":5,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/screens/main_shell_home_layout_test.dart"},"type":"testStart","time":2342}
+{"testID":5,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2610}
+{"test":{"id":6,"name":"settings changes preserve saved view and existing home preferences","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":148,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/screens/main_shell_home_layout_test.dart"},"type":"testStart","time":2611}
+{"testID":6,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2980}
+{"test":{"id":7,"name":"creates and edits calendar tasks in the shared app repository","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":178,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/screens/main_shell_home_layout_test.dart"},"type":"testStart","time":2980}
+{"testID":7,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":3888}
+{"test":{"id":8,"name":"a prefilled calendar date alone can be cancelled without a draft prompt","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":234,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/screens/main_shell_home_layout_test.dart"},"type":"testStart","time":3888}
+{"testID":8,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":4176}
+{"test":{"id":9,"name":"new home sections remain available with legacy layouts; calendar has its own tab","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":254,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/screens/main_shell_home_layout_test.dart"},"type":"testStart","time":4177}
+{"testID":9,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":4326}
+{"test":{"id":10,"name":"(tearDownAll)","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":4326}
+{"testID":10,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":4327}
+{"success":true,"type":"done","time":4352}

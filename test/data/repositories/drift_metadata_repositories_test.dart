@@ -7,6 +7,7 @@ import 'package:ku_task_management/data/local/app_database.dart'
     show AppDatabase, TaskTagsCompanion, TasksCompanion;
 import 'package:ku_task_management/data/models/task_models.dart';
 import 'package:ku_task_management/data/models/home_section.dart';
+import 'package:ku_task_management/data/models/home_view_options.dart';
 import 'package:ku_task_management/data/local/mappers/metadata_mappers.dart';
 import 'package:ku_task_management/data/repositories/drift_folder_repository.dart';
 import 'package:ku_task_management/data/repositories/drift_notification_repository.dart';
@@ -238,7 +239,7 @@ void main() {
       expect(saved.tagFolderIds, isEmpty);
       expect(saved.tagSortOrders, {'tag-2': 1});
       expect(saved.ecampusFolderId, 'folder-ecampus');
-      expect((await database.select(database.appSettings).get()).length, 12);
+      expect((await database.select(database.appSettings).get()).length, 13);
 
       final restartedRepository = DriftSettingsRepository(database: database);
       final persisted = await restartedRepository.getSettings();
@@ -294,6 +295,12 @@ void main() {
           settings.copyWith(
             homeSectionOrder: order,
             hiddenHomeSections: {HomeSection.todayTasks},
+            homeView: const HomeViewOptions(
+              sort: HomeSort.newest,
+              statuses: {TaskStatus.active},
+              priorities: {TaskPriority.high},
+              tagIds: {'tag-a', 'tag-b'},
+            ),
           ),
         );
       } finally {
@@ -307,6 +314,10 @@ void main() {
         ).getSettings();
         expect(loaded.homeSectionOrder, order);
         expect(loaded.hiddenHomeSections, {HomeSection.todayTasks});
+        expect(loaded.homeView.sort, HomeSort.newest);
+        expect(loaded.homeView.statuses, {TaskStatus.active});
+        expect(loaded.homeView.priorities, {TaskPriority.high});
+        expect(loaded.homeView.tagIds, {'tag-a', 'tag-b'});
       } finally {
         await database.close();
         await directory.delete(recursive: true);
@@ -316,6 +327,30 @@ void main() {
 
   group('home layout settings compatibility', () {
     const mapper = AppSettingsMapper();
+
+    test(
+      'view settings tolerate old or malformed values and retain an explicit empty status selection',
+      () {
+        expect(mapper.fromMap({}).homeView.isDefault, isTrue);
+        expect(
+          mapper.fromMap({'homeView': '{broken'}).homeView.isDefault,
+          isTrue,
+        );
+        expect(mapper.fromMap({'homeView': '[]'}).homeView.isDefault, isTrue);
+        expect(
+          mapper
+              .fromMap({'homeView': '{"sort":"future","statuses":false}'})
+              .homeView
+              .isDefault,
+          isTrue,
+        );
+        final empty = mapper.fromMap({
+          'homeView': const HomeViewOptions(statuses: {}).encode(),
+        });
+        expect(empty.homeView.statuses, isEmpty);
+        expect(empty.copyWith(urgentDueDays: 7).homeView.statuses, isEmpty);
+      },
+    );
 
     test('loads legacy settings with the four original visible sections', () {
       final settings = mapper.fromMap({'urgentDueDays': '7'});

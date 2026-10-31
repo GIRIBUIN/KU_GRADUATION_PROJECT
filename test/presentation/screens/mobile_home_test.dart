@@ -499,7 +499,7 @@ void main() {
       expect(find.text('기타'), findsOneWidget);
       expect(find.text('보관'), findsNothing);
       final actionX = [
-        for (final label in ['숨김 보기', '폴더 추가', '목록 추가'])
+        for (final label in ['숨김 관리', '폴더 추가', '목록 추가'])
           tester.getCenter(find.byTooltip(label)).dx,
       ];
       expect(actionX, orderedEquals([...actionX]..sort()));
@@ -562,12 +562,14 @@ void main() {
   );
 
   testWidgets(
-    'hidden metadata toggle keeps default list visible and does not change scope or saved settings',
+    'visibility manager persists individual choices, protects Inbox and preserves tasks and other settings',
     (tester) async {
       await settings.saveSettings(
         (await settings.getSettings()).copyWith(
           hiddenFolderIds: {'course', inboxListId},
           hiddenTagIds: {'tag-a'},
+          urgentDueDays: 7,
+          homeView: const HomeViewOptions(sort: HomeSort.dueLate),
         ),
       );
       await add('숨긴 목록의 과제', due: today, list: 'course', tagIds: ['tag-a']);
@@ -586,7 +588,31 @@ void main() {
         find.byKey(const ValueKey('scope-list-kutodo:inbox')),
         findsOneWidget,
       );
-      await tester.tap(find.byTooltip('숨김 보기'));
+      await tester.tap(find.byTooltip('숨김 관리'));
+      await tester.pumpAndSettle();
+      final listSwitch = find.byKey(const ValueKey('visibility-list-course'));
+      final tagSwitch = find.byKey(const ValueKey('visibility-tag-tag-a'));
+      final inboxSwitch = tester.widget<SwitchListTile>(
+        find.byKey(const ValueKey('visibility-list-kutodo:inbox')),
+      );
+      expect(inboxSwitch.value, isFalse);
+      expect(inboxSwitch.onChanged, isNull);
+      expect(tester.widget<SwitchListTile>(listSwitch).value, isTrue);
+      await tester.tap(listSwitch);
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        tagSwitch,
+        100,
+        scrollable: find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.byType(Scrollable),
+        ),
+      );
+      await tester.ensureVisible(tagSwitch);
+      await tester.tap(tagSwitch);
+      await tester.pumpAndSettle();
+      await capture(tester, 'visibility');
+      await tester.tap(find.widgetWithText(TextButton, '닫기'));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('scope-list-course')), findsOneWidget);
       expect(find.byKey(const ValueKey('scope-tag-tag-a')), findsOneWidget);
@@ -597,14 +623,184 @@ void main() {
         isTrue,
       );
       expect(row('숨긴 목록의 과제'), findsOneWidget);
-      await tester.tap(find.byTooltip('숨김 가리기'));
+      await tester.tap(find.byKey(const ValueKey('scope-list-course')));
+      await tester.pumpAndSettle();
+      await openDrawer(tester);
+      await tester.tap(find.byTooltip('숨김 관리'));
+      await tester.pumpAndSettle();
+      await tester.tap(listSwitch);
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        tagSwitch,
+        100,
+        scrollable: find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.byType(Scrollable),
+        ),
+      );
+      await tester.ensureVisible(tagSwitch);
+      await tester.tap(tagSwitch);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, '닫기'));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('scope-list-course')), findsNothing);
+      expect(find.byKey(const ValueKey('scope-tag-tag-a')), findsNothing);
+      // Hiding only changes navigation visibility, including a selected list.
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(row('숨긴 목록의 과제'), findsOneWidget);
       expect((await settings.getSettings()).hiddenFolderIds, {
         'course',
         inboxListId,
       });
       expect((await settings.getSettings()).hiddenTagIds, {'tag-a'});
+      expect((await settings.getSettings()).urgentDueDays, 7);
+      expect((await settings.getSettings()).homeView.sort, HomeSort.dueLate);
+      expect((await tasks.getTasks()).single.listId, 'course');
+      await restart(tester);
+      await openDrawer(tester);
+      expect(find.byKey(const ValueKey('scope-tag-tag-a')), findsNothing);
+      await tester.tap(find.byTooltip('숨김 관리'));
+      await tester.pumpAndSettle();
+      expect(tester.widget<SwitchListTile>(listSwitch).value, isTrue);
+      expect(tester.takeException(), isNull);
+      await finish(tester);
+    },
+  );
+
+  testWidgets(
+    'folder long press reuses edit and preselects parent for a new list',
+    (tester) async {
+      await pumpApp(tester);
+      await openDrawer(tester);
+      final folder = find.byKey(const ValueKey('drawer-folder-school'));
+      await tester.longPress(folder);
+      await tester.pumpAndSettle();
+      expect(find.text('폴더 편집'), findsOneWidget);
+      await tester.tap(find.text('폴더 편집'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.widgetWithText(TextField, '학교'), '학교 폴더');
+      await tester.tap(find.widgetWithText(FilledButton, '저장'));
+      await tester.pumpAndSettle();
+      expect((await lists.getGroups()).single.name, '학교 폴더');
+      expect(find.byType(Drawer), findsOneWidget);
+      await tester.longPress(folder);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ListTile, '목록 추가'));
+      await tester.pumpAndSettle();
+      expect(find.text('학교 폴더').last, findsOneWidget);
+      await tester.enterText(find.byType(TextField).first, '자료구조');
+      await tester.tap(find.widgetWithText(FilledButton, '저장'));
+      await tester.pumpAndSettle();
+      expect(
+        (await lists.getFolders()).singleWhere((l) => l.name == '자료구조').groupId,
+        'school',
+      );
+      expect(await tasks.getTasks(), isEmpty);
+      expect(
+        tester
+            .widget<ListTile>(find.byKey(const ValueKey('scope-all-')))
+            .selected,
+        isTrue,
+      );
+      expect(tester.takeException(), isNull);
+      await finish(tester);
+    },
+  );
+
+  testWidgets(
+    'list long press edits that list and quick adds into it without triggering folder actions',
+    (tester) async {
+      await pumpApp(tester);
+      await openDrawer(tester);
+      await tester.tap(find.byKey(const ValueKey('drawer-folder-school')));
+      await tester.pumpAndSettle();
+      final list = find.byKey(const ValueKey('scope-list-course'));
+      await tester.longPress(list);
+      await tester.pumpAndSettle();
+      expect(find.text('폴더 편집'), findsNothing);
+      await tester.tap(find.text('목록 편집'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.widgetWithText(TextField, '운영체제'), 'OS');
+      await tester.tap(find.widgetWithText(FilledButton, '저장'));
+      await tester.pumpAndSettle();
+      expect(
+        (await lists.getFolders()).singleWhere((l) => l.id == 'course').name,
+        'OS',
+      );
+      await tester.longPress(list);
+      await tester.pumpAndSettle();
+      await capture(tester, 'list-actions');
+      await tester.tap(find.text('할 일 추가'));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<FilterChip>(find.widgetWithText(FilterChip, 'OS'))
+            .selected,
+        isTrue,
+      );
+      await tester.tap(find.byTooltip('빠른 추가 닫기'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(await tasks.getTasks(), isEmpty);
+      await tester.longPress(list);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('할 일 추가'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), '목록에서 추가');
+      await tester.tap(find.widgetWithText(FilledButton, '추가'));
+      await tester.pumpAndSettle();
+      final created = (await tasks.getTasks()).single;
+      expect(created.listId, 'course');
+      expect(created.tagIds, isEmpty);
+      expect(created.origin, TaskOrigin.personal);
+      expect(tester.takeException(), isNull);
+      await finish(tester);
+    },
+  );
+
+  testWidgets(
+    'tag long press edits that tag and preserves it through detailed create',
+    (tester) async {
+      await pumpApp(tester);
+      await openDrawer(tester);
+      final tag = find.byKey(const ValueKey('scope-tag-tag-a'));
+      await tester.ensureVisible(tag);
+      await tester.longPress(tag);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('태그 편집'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.widgetWithText(TextField, '과제'), '학교 과제');
+      await tester.tap(find.widgetWithText(FilledButton, '저장'));
+      await tester.pumpAndSettle();
+      expect(
+        (await tags.getTags()).singleWhere((t) => t.id == 'tag-a').name,
+        '학교 과제',
+      );
+      await tester.ensureVisible(tag);
+      await tester.longPress(tag);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('할 일 추가'));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<FilterChip>(find.widgetWithText(FilterChip, '학교 과제'))
+            .selected,
+        isTrue,
+      );
+      await tester.enterText(find.byType(TextField), '태그에서 추가');
+      await tester.tap(find.text('상세 설정'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TaskCreateScreen>(find.byType(TaskCreateScreen)).quickAdd,
+        isFalse,
+      );
+      await tester.tap(find.text('저장').first);
+      await tester.pumpAndSettle();
+      final created = (await tasks.getTasks()).single;
+      expect(created.listId, inboxListId);
+      expect(created.tagIds, ['tag-a']);
+      expect(find.byType(TaskCreateScreen), findsNothing);
       expect(tester.takeException(), isNull);
       await finish(tester);
     },

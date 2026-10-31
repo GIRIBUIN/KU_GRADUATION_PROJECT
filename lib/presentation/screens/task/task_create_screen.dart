@@ -27,6 +27,8 @@ class TaskCreateScreen extends StatefulWidget {
     this.initialDueDate,
     this.quickAdd = false,
     this.initialDraft,
+    this.initialListId,
+    this.initialTagIds = const [],
   });
 
   final TaskRepository taskRepository;
@@ -39,6 +41,8 @@ class TaskCreateScreen extends StatefulWidget {
   final DateTime? initialDueDate;
   final bool quickAdd;
   final Task? initialDraft;
+  final String? initialListId;
+  final List<String> initialTagIds;
 
   @override
   State<TaskCreateScreen> createState() => _TaskCreateScreenState();
@@ -78,8 +82,8 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
     _titleController.text = draft?.title ?? '';
     _memoController.text = draft?.memo ?? '';
     _priority = draft?.priority;
-    _selectedFolderId = draft?.listId ?? inboxListId;
-    _selectedTagIds.addAll(draft?.tagIds ?? const []);
+    _selectedFolderId = draft?.listId ?? widget.initialListId ?? inboxListId;
+    _selectedTagIds.addAll(draft?.tagIds ?? widget.initialTagIds);
     _loadDefaults();
   }
 
@@ -429,9 +433,11 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
         _memoController.text.trim().isNotEmpty ||
         _dueDate != widget.initialDueDate ||
         _priority != null ||
-        (_selectedFolderId != null && _selectedFolderId != inboxListId) ||
+        (_selectedFolderId != null &&
+            _selectedFolderId != (widget.initialListId ?? inboxListId)) ||
         _subTasks.isNotEmpty ||
-        _selectedTagIds.isNotEmpty;
+        _selectedTagIds.length != widget.initialTagIds.length ||
+        _selectedTagIds.any((id) => !widget.initialTagIds.contains(id));
   }
 
   Future<void> _saveTask() async {

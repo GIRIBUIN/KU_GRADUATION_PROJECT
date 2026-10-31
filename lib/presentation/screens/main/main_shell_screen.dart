@@ -449,7 +449,7 @@ class _MainShellScreenState extends State<MainShellScreen>
   }
 
   // Drawer actions reuse management dialogs and their repository save handlers.
-  Future<void> _addFromDrawer(_DrawerAdd kind) async {
+  Future<void> _addFromDrawer(_DrawerAdd kind, {String? groupId}) async {
     final manager = _metadataManagerKey.currentState;
     if (manager == null) return;
     try {
@@ -459,7 +459,7 @@ class _MainShellScreenState extends State<MainShellScreen>
         final lists = await manager._loadLists();
         if (!mounted || !manager.mounted) return;
         if (kind == _DrawerAdd.list) {
-          await manager._createFolder(lists);
+          await manager._createFolder(lists, initialGroupId: groupId);
         } else {
           await manager._createTag(lists);
         }
@@ -469,7 +469,32 @@ class _MainShellScreenState extends State<MainShellScreen>
     }
   }
 
-  Future<void> _openQuickAdd() async {
+  Future<void> _editFromDrawer({
+    FolderGroup? group,
+    Folder? list,
+    Tag? tag,
+  }) async {
+    final manager = _metadataManagerKey.currentState;
+    if (manager == null) return;
+    try {
+      final lists = await manager._loadLists();
+      if (!mounted || !manager.mounted) return;
+      if (group != null) {
+        await manager._editGroup(group);
+      } else if (list != null) {
+        await manager._editFolder(list, lists);
+      } else if (tag != null) {
+        await manager._editTag(tag, lists);
+      }
+    } catch (_) {
+      if (mounted) _showSnackBar(context, '항목을 수정하지 못했습니다. 다시 시도해주세요.');
+    }
+  }
+
+  Future<void> _openQuickAdd({
+    String? listId,
+    List<String> tagIds = const [],
+  }) async {
     await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -478,6 +503,8 @@ class _MainShellScreenState extends State<MainShellScreen>
       enableDrag: false,
       builder: (_) => TaskCreateScreen(
         quickAdd: true,
+        initialListId: listId,
+        initialTagIds: tagIds,
         taskRepository: widget.taskRepository,
         subTaskRepository: widget.subTaskRepository,
         notificationRepository: widget.notificationRepository,
@@ -543,6 +570,13 @@ class _MainShellScreenState extends State<MainShellScreen>
                         : null,
                     onAddList: () => _addFromDrawer(_DrawerAdd.list),
                     onAddTag: () => _addFromDrawer(_DrawerAdd.tag),
+                    onEditFolder: (group) => _editFromDrawer(group: group),
+                    onAddListToFolder: (group) =>
+                        _addFromDrawer(_DrawerAdd.list, groupId: group.id),
+                    onEditList: (list) => _editFromDrawer(list: list),
+                    onAddTaskToList: (list) => _openQuickAdd(listId: list.id),
+                    onEditTag: (tag) => _editFromDrawer(tag: tag),
+                    onAddTaskWithTag: (tag) => _openQuickAdd(tagIds: [tag.id]),
                     onToggleTask: _toggleTaskCompletion,
                     onOpenTask: _openTaskDetail,
                     onRestoreTask: _restoreTask,
@@ -1611,10 +1645,17 @@ class _ManagementPageState extends State<_ManagementPage> {
     _showSnackBar(context, '태그를 수정했습니다.');
   }
 
-  Future<void> _createFolder(List<Folder> folders) async {
+  Future<void> _createFolder(
+    List<Folder> folders, {
+    String? initialGroupId,
+  }) async {
     final result = await showDialog<_FolderFormResult>(
       context: context,
-      builder: (_) => _FolderEditDialog(folders: folders, groups: _groups),
+      builder: (_) => _FolderEditDialog(
+        folders: folders,
+        groups: _groups,
+        initialGroupId: initialGroupId,
+      ),
     );
     if (result == null || !mounted) {
       return;
@@ -4080,12 +4121,14 @@ class _FolderEditDialog extends StatefulWidget {
     this.folder,
     this.isHidden = false,
     this.groups = const [],
+    this.initialGroupId,
   });
 
   final Folder? folder;
   final List<Folder> folders;
   final bool isHidden;
   final List<FolderGroup> groups;
+  final String? initialGroupId;
 
   @override
   State<_FolderEditDialog> createState() => _FolderEditDialogState();
@@ -4107,7 +4150,7 @@ class _FolderEditDialogState extends State<_FolderEditDialog> {
       text: _normalizeHex(widget.folder?.color ?? '#22C55E'),
     );
     _parentFolderId = null;
-    _groupId = widget.folder?.groupId;
+    _groupId = widget.folder?.groupId ?? widget.initialGroupId;
     _isHidden = widget.isHidden;
   }
 

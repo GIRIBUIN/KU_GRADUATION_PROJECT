@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 import '../../../core/utils/list_defaults.dart';
 
 import '../../models/home_section.dart';
+import '../../models/home_period_preference.dart';
 import '../../models/home_view_options.dart';
 import '../../models/task_swipe_options.dart';
 import '../../models/task_models.dart' as models;
@@ -145,6 +146,7 @@ class AppSettingsMapper {
       ecampusFolderId: _emptyToNull(values[ecampusFolderIdKey]),
       homeView: HomeViewOptions.decode(values['homeView']),
       taskSwipes: TaskSwipeOptions.decode(values['taskSwipes']),
+      homePeriod: HomePeriodPreference.decode(values['homePeriod']),
     );
   }
 
@@ -171,6 +173,7 @@ class AppSettingsMapper {
       ecampusFolderIdKey: settings.ecampusFolderId ?? '',
       'homeView': settings.homeView.encode(),
       'taskSwipes': settings.taskSwipes.encode(),
+      'homePeriod': settings.homePeriod.encode(),
     };
   }
 

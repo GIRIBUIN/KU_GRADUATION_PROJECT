@@ -9,6 +9,7 @@ import 'package:ku_task_management/data/models/task_models.dart';
 import 'package:ku_task_management/data/models/task_swipe_options.dart';
 import 'package:ku_task_management/data/models/home_section.dart';
 import 'package:ku_task_management/data/models/home_view_options.dart';
+import 'package:ku_task_management/data/models/home_period_preference.dart';
 import 'package:ku_task_management/data/local/mappers/metadata_mappers.dart';
 import 'package:ku_task_management/data/repositories/drift_folder_repository.dart';
 import 'package:ku_task_management/data/repositories/drift_notification_repository.dart';
@@ -248,7 +249,7 @@ void main() {
       expect(saved.tagFolderIds, isEmpty);
       expect(saved.tagSortOrders, {'tag-2': 1});
       expect(saved.ecampusFolderId, 'folder-ecampus');
-      expect((await database.select(database.appSettings).get()).length, 14);
+      expect((await database.select(database.appSettings).get()).length, 15);
 
       final restartedRepository = DriftSettingsRepository(database: database);
       final persisted = await restartedRepository.getSettings();
@@ -302,6 +303,11 @@ void main() {
       try {
         await firstRepository.saveSettings(
           settings.copyWith(
+            homePeriod: HomePeriodPreference(
+              mode: HomePeriod.custom,
+              start: DateTime(2030, 11, 12),
+              end: DateTime(2030, 11, 14),
+            ),
             homeSectionOrder: order,
             hiddenHomeSections: {HomeSection.todayTasks},
             taskSwipes: const TaskSwipeOptions(
@@ -327,6 +333,13 @@ void main() {
         final loaded = await DriftSettingsRepository(
           database: database,
         ).getSettings();
+        expect(loaded.homePeriod.mode, HomePeriod.custom);
+        expect(loaded.homePeriod.start, DateTime(2030, 11, 12));
+        expect(loaded.homePeriod.end, DateTime(2030, 11, 14));
+        final updated = await DriftSettingsRepository(
+          database: database,
+        ).saveSettings(loaded.copyWith(urgentDueDays: 7));
+        expect(updated.homePeriod.encode(), loaded.homePeriod.encode());
         expect(loaded.homeSectionOrder, order);
         expect(loaded.hiddenHomeSections, {HomeSection.todayTasks});
         expect(loaded.homeView.sort, HomeSort.newest);
@@ -351,6 +364,51 @@ void main() {
 
   group('home layout settings compatibility', () {
     const mapper = AppSettingsMapper();
+
+    test(
+      'period preferences tolerate old or invalid data and preserve valid date ranges',
+      () {
+        for (final raw in [
+          null,
+          '{broken',
+          '[]',
+          '{}',
+          '{"mode":"unknown"}',
+          '{"mode":"custom"}',
+          '{"mode":"custom","start":"2030-11-14","end":"2030-11-12"}',
+          '{"mode":"custom","start":"2030-02-30","end":"2030-03-02"}',
+          '{"mode":"custom","start":"1999-12-31","end":"2000-01-01"}',
+          '{"mode":"custom","start":12,"end":false}',
+        ]) {
+          expect(HomePeriodPreference.decode(raw).mode, HomePeriod.today);
+        }
+        for (final mode in HomePeriod.values.where(
+          (m) => m != HomePeriod.custom,
+        )) {
+          final preference = HomePeriodPreference(mode: mode);
+          final loaded = mapper.fromMap({'homePeriod': preference.encode()});
+          expect(loaded.homePeriod.mode, mode);
+          expect(
+            mapper
+                .fromMap(mapper.toMap(loaded.copyWith(urgentDueDays: 7)))
+                .homePeriod
+                .mode,
+            mode,
+          );
+        }
+        for (final endDay in [12, 14]) {
+          final preference = HomePeriodPreference(
+            mode: HomePeriod.custom,
+            start: DateTime(2030, 11, 12),
+            end: DateTime(2030, 11, endDay),
+          );
+          final loaded = HomePeriodPreference.decode(preference.encode());
+          expect(loaded.start, preference.start);
+          expect(loaded.end, preference.end);
+        }
+        expect(mapper.fromMap({}).homePeriod.mode, HomePeriod.today);
+      },
+    );
 
     test(
       'swipe settings accept old data, reject invalid domains, and preserve unrelated fields',

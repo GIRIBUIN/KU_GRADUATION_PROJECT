@@ -329,19 +329,6 @@ class _MainShellScreenState extends State<MainShellScreen>
     _showSnackBar(context, '삭제된 작업으로 이동했습니다.');
   }
 
-  Future<void> _deleteCompletedTasks(List<Task> tasks) async {
-    for (final task in tasks) {
-      await widget.taskRepository.markDeleted(task.id);
-      await _cancelTaskNotification(task.id);
-    }
-    if (!mounted) {
-      return;
-    }
-
-    _refreshTasks();
-    _showSnackBar(context, '완료된 작업을 삭제된 작업으로 이동했습니다.');
-  }
-
   Future<void> _restoreTask(Task task) async {
     final restoredTask = await widget.taskRepository.restoreTask(task.id);
     if (!mounted) {
@@ -376,12 +363,6 @@ class _MainShellScreenState extends State<MainShellScreen>
 
     _refreshTasks();
     _showSnackBar(context, '작업을 영구 삭제했습니다.');
-  }
-
-  Future<void> _reorderTasks(List<Task> orderedTasks) async {
-    await widget.taskRepository.updateTaskOrder(
-      orderedTasks.map((task) => task.id).toList(growable: false),
-    );
   }
 
   Future<void> _scheduleTaskNotification(Task task) async {
@@ -641,20 +622,6 @@ class _MainShellScreenState extends State<MainShellScreen>
                     onClearEcampusSession: _clearEcampusSession,
                     localNotificationService: widget.localNotificationService,
                     onManageMetadata: () => setState(() => _selectedIndex = 2),
-                    onManageTasks: () => setState(() => _selectedIndex = 4),
-                  ),
-                  _TaskListPage(
-                    tasks: tasks,
-                    isLoading: isLoading,
-                    metadata: metadata,
-                    onRefresh: _refreshTasks,
-                    onToggleTask: _toggleTaskCompletion,
-                    onDeleteTask: _deleteTask,
-                    onDeleteCompletedTasks: _deleteCompletedTasks,
-                    onRestoreTask: _restoreTask,
-                    onReorderTasks: _reorderTasks,
-                    onOpenTaskDetail: _openTaskDetail,
-                    subTaskRepository: widget.subTaskRepository,
                   ),
                 ];
                 return PopScope(
@@ -675,8 +642,7 @@ class _MainShellScreenState extends State<MainShellScreen>
                             ),
                             title: Text(switch (_selectedIndex) {
                               2 => '목록·태그 관리',
-                              3 => '설정',
-                              _ => '전체 일정 관리',
+                              _ => '설정',
                             }),
                           ),
                     body: IndexedStack(index: _selectedIndex, children: pages),
@@ -719,251 +685,6 @@ class _MainShellScreenState extends State<MainShellScreen>
         );
       },
     );
-  }
-}
-
-class _TaskListPage extends StatefulWidget {
-  const _TaskListPage({
-    required this.tasks,
-    required this.isLoading,
-    required this.metadata,
-    required this.onRefresh,
-    required this.onToggleTask,
-    required this.onDeleteTask,
-    required this.onDeleteCompletedTasks,
-    required this.onRestoreTask,
-    required this.onReorderTasks,
-    required this.onOpenTaskDetail,
-    required this.subTaskRepository,
-  });
-
-  final List<Task> tasks;
-  final bool isLoading;
-  final _TaskMetadataLookup metadata;
-  final VoidCallback onRefresh;
-  final ValueChanged<Task> onToggleTask;
-  final ValueChanged<Task> onDeleteTask;
-  final Future<void> Function(List<Task> tasks) onDeleteCompletedTasks;
-  final ValueChanged<Task> onRestoreTask;
-  final Future<void> Function(List<Task> orderedTasks) onReorderTasks;
-  final ValueChanged<Task> onOpenTaskDetail;
-  final SubTaskRepository subTaskRepository;
-
-  @override
-  State<_TaskListPage> createState() => _TaskListPageState();
-}
-
-class _TaskListPageState extends State<_TaskListPage> {
-  var _filter = _TaskFilter.all;
-  var _sort = _TaskSort.userOrder;
-  final Map<String, int> _localSortOrders = {};
-
-  @override
-  Widget build(BuildContext context) {
-    final visibleTasks = _visibleTasks();
-
-    return SafeArea(
-      child: RefreshIndicator(
-        onRefresh: () async => widget.onRefresh(),
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 96),
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    '전체',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-                _SortSelector(
-                  value: _sort,
-                  onChanged: (sort) {
-                    setState(() {
-                      _sort = sort;
-                    });
-                  },
-                ),
-                _FilterSelector(
-                  value: _filter,
-                  onChanged: (filter) {
-                    setState(() {
-                      _filter = filter;
-                    });
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            if (widget.isLoading)
-              const _LoadingBlock()
-            else if (visibleTasks.isEmpty)
-              _EmptyBlock(message: _emptyMessage())
-            else
-              ..._buildTaskSections(visibleTasks),
-          ],
-        ),
-      ),
-    );
-  }
-
-  List<Task> _visibleTasks() {
-    final tasks = widget.tasks
-        .map(_taskWithLocalSortOrder)
-        .where(_matchesFilter)
-        .toList();
-    tasks.sort(_compareTasksBySort(_sort));
-    return tasks;
-  }
-
-  Task _taskWithLocalSortOrder(Task task) {
-    final sortOrder = _localSortOrders[task.id];
-    if (sortOrder == null || sortOrder == task.sortOrder) {
-      return task;
-    }
-    return _copyTaskWithSortOrder(task, sortOrder);
-  }
-
-  bool _matchesFilter(Task task) {
-    return switch (_filter) {
-      _TaskFilter.all => !_isHiddenInMainList(task),
-      _TaskFilter.ecampus =>
-        task.origin == TaskOrigin.ecampus && !_isHiddenInMainList(task),
-      _TaskFilter.personal =>
-        task.origin == TaskOrigin.personal && !_isHiddenInMainList(task),
-      _TaskFilter.incomplete => task.status == TaskStatus.active,
-      _TaskFilter.completed => task.status == TaskStatus.completed,
-      _TaskFilter.overdue =>
-        task.status == TaskStatus.active &&
-            task.dueDate != null &&
-            _isOverdue(task.dueDate!),
-      _TaskFilter.deleted => task.status == TaskStatus.deleted,
-    };
-  }
-
-  String _emptyMessage() {
-    return switch (_filter) {
-      _TaskFilter.overdue => '마감이 지난 작업이 없습니다.',
-      _TaskFilter.deleted => '삭제된 작업이 없습니다.',
-      _TaskFilter.completed => '완료된 작업이 없습니다.',
-      _TaskFilter.incomplete => '해야 할 작업이 없습니다.',
-      _TaskFilter.ecampus => 'e-campus 작업이 없습니다.',
-      _TaskFilter.personal => '개인 작업이 없습니다.',
-      _TaskFilter.all => '일정이 없습니다.',
-    };
-  }
-
-  Future<void> _handleReorderTasks(List<Task> orderedTasks) async {
-    final reorderedTasks = _tasksWithSequentialSortOrder(orderedTasks);
-    setState(() {
-      for (final task in reorderedTasks) {
-        _localSortOrders[task.id] = task.sortOrder;
-      }
-    });
-
-    await widget.onReorderTasks(reorderedTasks);
-  }
-
-  Future<void> _confirmDeleteCompletedTasks(List<Task> tasks) async {
-    if (tasks.isEmpty) {
-      return;
-    }
-
-    final shouldDelete = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('완료 작업 전체 삭제'),
-        content: Text('완료된 작업 ${tasks.length}개를 삭제된 작업으로 이동할까요?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('취소'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('삭제'),
-          ),
-        ],
-      ),
-    );
-    if (shouldDelete == true && mounted) {
-      await widget.onDeleteCompletedTasks(tasks);
-    }
-  }
-
-  List<Widget> _buildTaskSections(List<Task> tasks) {
-    if (_filter == _TaskFilter.deleted) {
-      return [
-        _DeletedTaskList(tasks: tasks, onRestoreTask: widget.onRestoreTask),
-      ];
-    }
-
-    if (_filter == _TaskFilter.incomplete ||
-        _filter == _TaskFilter.completed ||
-        _filter == _TaskFilter.overdue) {
-      return [
-        if (_filter == _TaskFilter.completed) ...[
-          _CompletedBulkDeleteButton(
-            count: tasks.length,
-            onPressed: () => _confirmDeleteCompletedTasks(tasks),
-          ),
-          const SizedBox(height: 10),
-        ],
-        _TaskSectionCard(
-          tasks: tasks,
-          onToggleTask: widget.onToggleTask,
-          onDeleteTask: widget.onDeleteTask,
-          onOpenTaskDetail: widget.onOpenTaskDetail,
-          subTaskRepository: widget.subTaskRepository,
-          onReorderTasks: _handleReorderTasks,
-          enableReorder: _sort == _TaskSort.userOrder,
-          metadata: widget.metadata,
-        ),
-      ];
-    }
-
-    final incompleteTasks = tasks
-        .where((task) => task.status == TaskStatus.active)
-        .toList(growable: false);
-    final completedTasks = tasks
-        .where((task) => task.status == TaskStatus.completed)
-        .toList(growable: false);
-
-    return [
-      _ListSectionHeader(title: '미완료', count: incompleteTasks.length),
-      const SizedBox(height: 10),
-      if (incompleteTasks.isEmpty)
-        const _EmptyBlock(message: '해야 할 작업이 없습니다.')
-      else
-        _TaskSectionCard(
-          tasks: incompleteTasks,
-          onToggleTask: widget.onToggleTask,
-          onDeleteTask: widget.onDeleteTask,
-          onOpenTaskDetail: widget.onOpenTaskDetail,
-          subTaskRepository: widget.subTaskRepository,
-          onReorderTasks: _handleReorderTasks,
-          enableReorder: _sort == _TaskSort.userOrder,
-          metadata: widget.metadata,
-        ),
-      const SizedBox(height: 24),
-      _ListSectionHeader(title: '완료', count: completedTasks.length),
-      const SizedBox(height: 10),
-      if (completedTasks.isEmpty)
-        const _EmptyBlock(message: '완료된 작업이 없습니다.')
-      else
-        _TaskSectionCard(
-          tasks: completedTasks,
-          onToggleTask: widget.onToggleTask,
-          onDeleteTask: widget.onDeleteTask,
-          onOpenTaskDetail: widget.onOpenTaskDetail,
-          subTaskRepository: widget.subTaskRepository,
-          onReorderTasks: _handleReorderTasks,
-          enableReorder: _sort == _TaskSort.userOrder,
-          metadata: widget.metadata,
-        ),
-    ];
   }
 }
 
@@ -2494,7 +2215,6 @@ class _SettingsPage extends StatefulWidget {
     required this.onClearEcampusSession,
     required this.localNotificationService,
     required this.onManageMetadata,
-    required this.onManageTasks,
   });
 
   final SettingsRepository settingsRepository;
@@ -2504,7 +2224,7 @@ class _SettingsPage extends StatefulWidget {
   final ValueChanged<AppSettings> onSettingsChanged;
   final Future<void> Function() onOpenSync;
   final Future<void> Function() onClearEcampusSession;
-  final VoidCallback onManageMetadata, onManageTasks;
+  final VoidCallback onManageMetadata;
   final LocalNotificationService localNotificationService;
 
   @override
@@ -2658,12 +2378,6 @@ class _SettingsPageState extends State<_SettingsPage> {
                     title: '목록·태그 관리',
                     subtitle: '폴더, 목록, 태그와 보관된 목록을 관리합니다.',
                     onTap: widget.onManageMetadata,
-                  ),
-                  _SettingsActionRow(
-                    icon: Icons.format_list_bulleted_rounded,
-                    title: '전체 일정 관리',
-                    subtitle: '날짜 제한 없이 조회하고 순서와 일괄 작업을 관리합니다.',
-                    onTap: widget.onManageTasks,
                   ),
                   _SettingsInfoRow(
                     icon: Icons.access_time_rounded,
@@ -3103,139 +2817,6 @@ class _SubTaskEmptyPreview extends StatelessWidget {
   }
 }
 
-class _TaskSectionCard extends StatefulWidget {
-  const _TaskSectionCard({
-    required this.tasks,
-    required this.onToggleTask,
-    required this.onDeleteTask,
-    required this.onOpenTaskDetail,
-    required this.subTaskRepository,
-    required this.onReorderTasks,
-    required this.enableReorder,
-    required this.metadata,
-  });
-
-  final List<Task> tasks;
-  final ValueChanged<Task> onToggleTask;
-  final ValueChanged<Task> onDeleteTask;
-  final ValueChanged<Task> onOpenTaskDetail;
-  final SubTaskRepository subTaskRepository;
-  final Future<void> Function(List<Task> orderedTasks) onReorderTasks;
-  final bool enableReorder;
-  final _TaskMetadataLookup metadata;
-
-  @override
-  State<_TaskSectionCard> createState() => _TaskSectionCardState();
-}
-
-class _TaskSectionCardState extends State<_TaskSectionCard> {
-  late List<Task> _orderedTasks;
-
-  @override
-  void initState() {
-    super.initState();
-    _orderedTasks = List<Task>.of(widget.tasks);
-  }
-
-  @override
-  void didUpdateWidget(_TaskSectionCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    final previousSignature = _taskListSignature(_orderedTasks);
-    final nextSignature = _taskListSignature(widget.tasks);
-
-    if (previousSignature != nextSignature) {
-      _orderedTasks = List<Task>.of(widget.tasks);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      shape: _taskListCardShape,
-      child: ReorderableListView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        buildDefaultDragHandles: false,
-        itemCount: _orderedTasks.length,
-        onReorder: (oldIndex, newIndex) async {
-          final previousTasks = List<Task>.of(_orderedTasks);
-          final reorderedTasks = List<Task>.of(_orderedTasks);
-          final adjustedNewIndex = newIndex > oldIndex
-              ? newIndex - 1
-              : newIndex;
-          final movedTask = reorderedTasks.removeAt(oldIndex);
-          reorderedTasks.insert(adjustedNewIndex, movedTask);
-          final reorderedTasksWithOrder = _tasksWithSequentialSortOrder(
-            reorderedTasks,
-          );
-
-          setState(() {
-            _orderedTasks = reorderedTasksWithOrder;
-          });
-
-          try {
-            await widget.onReorderTasks(reorderedTasksWithOrder);
-          } catch (_) {
-            if (!context.mounted) {
-              return;
-            }
-            setState(() {
-              _orderedTasks = previousTasks;
-            });
-            _showSnackBar(context, '순서 저장에 실패했습니다.');
-          }
-        },
-        itemBuilder: (context, index) {
-          final task = _orderedTasks[index];
-          return Column(
-            key: ValueKey(task.id),
-            children: [
-              _MaybeReorderableTask(
-                index: index,
-                enabled: widget.enableReorder,
-                child: Dismissible(
-                  key: ValueKey('dismiss_${task.id}'),
-                  direction: DismissDirection.horizontal,
-                  background: const _TaskSwipeBackground(
-                    action: _TaskSwipeAction.edit,
-                    alignment: Alignment.centerLeft,
-                  ),
-                  secondaryBackground: const _TaskSwipeBackground(
-                    action: _TaskSwipeAction.delete,
-                    alignment: Alignment.centerRight,
-                  ),
-                  confirmDismiss: (direction) async {
-                    if (direction == DismissDirection.startToEnd) {
-                      widget.onOpenTaskDetail(task);
-                      return false;
-                    }
-                    return true;
-                  },
-                  onDismissed: (_) {
-                    setState(() {
-                      _orderedTasks.removeWhere((item) => item.id == task.id);
-                    });
-                    widget.onDeleteTask(task);
-                  },
-                  child: _TaskListTile(
-                    task: task,
-                    onToggle: () => widget.onToggleTask(task),
-                    onOpenDetail: () => widget.onOpenTaskDetail(task),
-                    subTaskRepository: widget.subTaskRepository,
-                    metadata: widget.metadata,
-                  ),
-                ),
-              ),
-              if (index != _orderedTasks.length - 1) const Divider(height: 1),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
 enum _TaskSwipeAction { edit, delete }
 
 class _TaskSwipeBackground extends StatelessWidget {
@@ -3255,104 +2836,6 @@ class _TaskSwipeBackground extends StatelessWidget {
       alignment: alignment,
       padding: EdgeInsets.only(left: isLeft ? 20 : 0, right: isLeft ? 0 : 20),
       child: Icon(icon, color: color),
-    );
-  }
-}
-
-class _MaybeReorderableTask extends StatelessWidget {
-  const _MaybeReorderableTask({
-    required this.index,
-    required this.enabled,
-    required this.child,
-  });
-
-  final int index;
-  final bool enabled;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    if (!enabled) {
-      return child;
-    }
-
-    return ReorderableDelayedDragStartListener(index: index, child: child);
-  }
-}
-
-class _DeletedTaskList extends StatelessWidget {
-  const _DeletedTaskList({required this.tasks, required this.onRestoreTask});
-
-  final List<Task> tasks;
-  final ValueChanged<Task> onRestoreTask;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          for (var i = 0; i < tasks.length; i++) ...[
-            _DeletedTaskTile(
-              task: tasks[i],
-              onRestore: () => onRestoreTask(tasks[i]),
-            ),
-            if (i != tasks.length - 1) const Divider(height: 1, indent: 16),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _CompletedBulkDeleteButton extends StatelessWidget {
-  const _CompletedBulkDeleteButton({
-    required this.count,
-    required this.onPressed,
-  });
-
-  final int count;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: TextButton.icon(
-        onPressed: count == 0 ? null : onPressed,
-        icon: const Icon(Icons.delete_sweep_outlined, size: 18),
-        label: Text('완료 전체 삭제 ($count)'),
-      ),
-    );
-  }
-}
-
-class _DeletedTaskTile extends StatelessWidget {
-  const _DeletedTaskTile({required this.task, required this.onRestore});
-
-  final Task task;
-  final VoidCallback onRestore;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      title: Text(
-        task.title,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(fontWeight: FontWeight.w900),
-      ),
-      subtitle: Text(
-        task.ecampus?.sourceCourse ??
-            (task.origin == TaskOrigin.ecampus ? 'e-campus' : '개인'),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      trailing: TextButton.icon(
-        onPressed: onRestore,
-        icon: const Icon(Icons.restore_rounded, size: 18),
-        label: const Text('복구'),
-      ),
     );
   }
 }
@@ -3581,78 +3064,6 @@ class _ListSectionHeader extends StatelessWidget {
   }
 }
 
-class _SortSelector extends StatelessWidget {
-  const _SortSelector({required this.value, required this.onChanged});
-
-  final _TaskSort value;
-  final ValueChanged<_TaskSort> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return MenuAnchor(
-      builder: (context, controller, child) {
-        return IconButton(
-          onPressed: () {
-            if (controller.isOpen) {
-              controller.close();
-            } else {
-              controller.open();
-            }
-          },
-          icon: const Icon(Icons.sort_rounded),
-          tooltip: '정렬: ${value.label}',
-        );
-      },
-      menuChildren: [
-        for (final sort in _TaskSort.values)
-          MenuItemButton(
-            onPressed: () => onChanged(sort),
-            leadingIcon: value == sort
-                ? const Icon(Icons.check_rounded)
-                : const SizedBox.square(dimension: 24),
-            child: Text(sort.label),
-          ),
-      ],
-    );
-  }
-}
-
-class _FilterSelector extends StatelessWidget {
-  const _FilterSelector({required this.value, required this.onChanged});
-
-  final _TaskFilter value;
-  final ValueChanged<_TaskFilter> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return MenuAnchor(
-      builder: (context, controller, child) {
-        return IconButton(
-          onPressed: () {
-            if (controller.isOpen) {
-              controller.close();
-            } else {
-              controller.open();
-            }
-          },
-          icon: const Icon(Icons.filter_list_rounded),
-          tooltip: '보기: ${value.label}',
-        );
-      },
-      menuChildren: [
-        for (final filter in _TaskFilter.values)
-          MenuItemButton(
-            onPressed: () => onChanged(filter),
-            leadingIcon: value == filter
-                ? const Icon(Icons.check_rounded)
-                : const SizedBox.square(dimension: 24),
-            child: Text(filter.label),
-          ),
-      ],
-    );
-  }
-}
-
 class _EmptyBlock extends StatelessWidget {
   const _EmptyBlock({required this.message});
 
@@ -3666,20 +3077,6 @@ class _EmptyBlock extends StatelessWidget {
         child: Center(
           child: Text(message, style: const TextStyle(color: AppTheme.muted)),
         ),
-      ),
-    );
-  }
-}
-
-class _LoadingBlock extends StatelessWidget {
-  const _LoadingBlock();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Card(
-      child: Padding(
-        padding: EdgeInsets.all(24),
-        child: Center(child: CircularProgressIndicator()),
       ),
     );
   }
@@ -4581,31 +3978,6 @@ class _SettingsIcon extends StatelessWidget {
   }
 }
 
-enum _TaskFilter {
-  all('전체'),
-  ecampus('e-campus'),
-  personal('개인'),
-  incomplete('미완료'),
-  completed('완료'),
-  overdue('마감 지남'),
-  deleted('삭제됨');
-
-  const _TaskFilter(this.label);
-
-  final String label;
-}
-
-enum _TaskSort {
-  userOrder('사용자 지정'),
-  dueDate('마감일'),
-  priority('우선순위'),
-  createdAt('생성일');
-
-  const _TaskSort(this.label);
-
-  final String label;
-}
-
 bool _isDueToday(Task task) => isTaskDueToday(task, now: DateTime.now());
 
 bool _isOverdue(DateTime dueDate) {
@@ -4625,33 +3997,6 @@ int _compareDueDate(Task a, Task b) {
     return -1;
   }
   return aDueDate.compareTo(bDueDate);
-}
-
-int Function(Task a, Task b) _compareTasksBySort(_TaskSort sort) {
-  return switch (sort) {
-    _TaskSort.userOrder => _compareUserOrder,
-    _TaskSort.dueDate => _compareDueDate,
-    _TaskSort.priority => _comparePriority,
-    _TaskSort.createdAt => _compareCreatedAt,
-  };
-}
-
-int _compareUserOrder(Task a, Task b) {
-  final order = a.sortOrder.compareTo(b.sortOrder);
-  if (order != 0) {
-    return order;
-  }
-  return a.createdAt.compareTo(b.createdAt);
-}
-
-int _comparePriority(Task a, Task b) {
-  final priority = _priorityRank(
-    b.priority,
-  ).compareTo(_priorityRank(a.priority));
-  if (priority != 0) {
-    return priority;
-  }
-  return _compareDueDate(a, b);
 }
 
 int _compareCreatedAt(Task a, Task b) {
@@ -4690,59 +4035,6 @@ int _metadataStatusRank(TaskStatus status) {
     TaskStatus.deleted => 2,
     TaskStatus.excluded => 3,
   };
-}
-
-int _priorityRank(TaskPriority? priority) {
-  return switch (priority) {
-    TaskPriority.high => 3,
-    TaskPriority.medium => 2,
-    TaskPriority.low => 1,
-    null => 0,
-  };
-}
-
-List<Task> _tasksWithSequentialSortOrder(List<Task> tasks) {
-  return [
-    for (var index = 0; index < tasks.length; index++)
-      _copyTaskWithSortOrder(tasks[index], index),
-  ];
-}
-
-Task _copyTaskWithSortOrder(Task task, int sortOrder) {
-  return Task(
-    id: task.id,
-    origin: task.origin,
-    status: task.status,
-    title: task.title,
-    dueDate: task.dueDate,
-    priority: task.priority,
-    memo: task.memo,
-    parentTaskId: task.parentTaskId,
-    tagIds: task.tagIds,
-    folderIds: task.folderIds,
-    ecampus: task.ecampus,
-    sortOrder: sortOrder,
-    createdAt: task.createdAt,
-    updatedAt: task.updatedAt,
-    completedAt: task.completedAt,
-    deletedAt: task.deletedAt,
-  );
-}
-
-String _taskListSignature(List<Task> tasks) {
-  return tasks
-      .map(
-        (task) => [
-          task.id,
-          task.status.name,
-          task.title,
-          task.dueDate?.microsecondsSinceEpoch ?? '',
-          task.priority?.name ?? '',
-          task.sortOrder,
-          task.updatedAt.microsecondsSinceEpoch,
-        ].join(':'),
-      )
-      .join('|');
 }
 
 const _metadataColorOptions = [

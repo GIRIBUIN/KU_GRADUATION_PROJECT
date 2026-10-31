@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:drift/native.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -11,6 +12,7 @@ import 'package:ku_task_management/core/theme/app_theme.dart';
 import 'package:ku_task_management/core/utils/list_defaults.dart';
 import 'package:ku_task_management/data/local/app_database.dart' as db;
 import 'package:ku_task_management/data/models/home_view_options.dart';
+import 'package:ku_task_management/data/models/home_period_preference.dart';
 import 'package:ku_task_management/data/models/task_models.dart';
 import 'package:ku_task_management/data/models/task_swipe_options.dart';
 import 'package:ku_task_management/data/repositories/drift_folder_repository.dart';
@@ -383,16 +385,129 @@ void main() {
       await openDrawer(tester);
       await tester.tap(find.byKey(const ValueKey('drawer-settings')));
       await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(find.text('전체 일정 관리'), 200);
-      await tester.ensureVisible(find.text('전체 일정 관리'));
+      expect(find.text('전체 일정 관리'), findsNothing);
+      await tester.tap(find.byType(BackButton).first);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('전체 일정 관리'));
-      await tester.pumpAndSettle();
-      expect(find.text('일정이 없습니다.'), findsOneWidget);
+      await chooseScope(tester, 'all');
+      expect(find.byKey(const ValueKey('home-section-period')), findsOneWidget);
+      expect(find.text('할 일이 없습니다.'), findsNWidgets(4));
       expect(tester.takeException(), isNull);
       await finish(tester);
     },
   );
+
+  testWidgets(
+    'Drawer separates saved period and all dates with Inbox under Lists',
+    (tester) async {
+      await add('오늘 일정', due: today);
+      await add('먼 마감', due: DateTime(now.year + 1, 6, 15), list: 'course');
+      await add('과거 완료', due: today, completed: true);
+      await (database.update(database.tasks)
+            ..where((t) => t.id.equals('과거 완료')))
+          .write(db.TasksCompanion(completedAt: Value(DateTime(2020, 1, 1))));
+      await trashItem('휴지통 제외');
+      await pumpApp(tester);
+      await choosePeriod(tester, '이번 주');
+      expect(row('먼 마감'), findsNothing);
+      expect(row('과거 완료', 'completed'), findsNothing);
+      await openDrawer(tester);
+      final period = find.byKey(const ValueKey('scope-period-'));
+      final all = find.byKey(const ValueKey('scope-all-'));
+      expect(tester.widget<ListTile>(period).selected, isTrue);
+      expect(
+        (tester.widget<ListTile>(period).leading! as Icon).icon,
+        Icons.access_time_outlined,
+      );
+      expect(
+        (tester.widget<ListTile>(all).leading! as Icon).icon,
+        Icons.description_outlined,
+      );
+      final inbox = find.byKey(const ValueKey('scope-list-$inboxListId'));
+      expect(
+        tester.getTopLeft(inbox).dy,
+        greaterThan(tester.getTopLeft(find.text('목록')).dy),
+      );
+      expect(
+        tester.getTopLeft(inbox).dy,
+        greaterThan(tester.getTopLeft(all).dy),
+      );
+      await capture(tester, 'drawer-scopes');
+      await tester.tap(all);
+      await tester.pumpAndSettle();
+      expect(row('먼 마감'), findsOneWidget);
+      expect(row('과거 완료', 'completed'), findsOneWidget);
+      expect(find.text('휴지통 제외'), findsNothing);
+      await capture(tester, 'all-tasks');
+      expect((await settings.getSettings()).homePeriod.mode, HomePeriod.week);
+      expect(
+        tester.widget<InkWell>(find.byKey(const ValueKey('home-period'))).onTap,
+        isNull,
+      );
+      await tester.tap(row('먼 마감'));
+      await tester.pumpAndSettle();
+      expect(find.byType(TaskDetailScreen), findsOneWidget);
+      expect(find.byType(BottomSheet), findsOneWidget);
+      await tester.tap(find.byTooltip('작업 상세 닫기'));
+      await tester.pumpAndSettle();
+      await chooseScope(tester, 'period');
+      expect(find.text('이번 주'), findsNWidgets(2));
+      expect(row('먼 마감'), findsNothing);
+      expect(row('과거 완료', 'completed'), findsNothing);
+      expect(tester.takeException(), isNull);
+      await finish(tester);
+    },
+  );
+
+  testWidgets(
+    'relative period choices persist without saving unsaved view filters',
+    (tester) async {
+      await pumpApp(tester);
+      for (final (label, mode) in [
+        ('이번 주', HomePeriod.week),
+        ('이번 달', HomePeriod.month),
+        ('전체', HomePeriod.all),
+        ('오늘', HomePeriod.today),
+      ]) {
+        await choosePeriod(tester, label);
+        expect((await settings.getSettings()).homePeriod.mode, mode);
+        await restart(tester);
+        if (mode == HomePeriod.today) {
+          expect(find.textContaining('오늘 ·'), findsOneWidget);
+        } else {
+          expect(find.text(label), findsNWidgets(2));
+        }
+      }
+      await adjust(tester);
+      await tester.ensureVisible(find.widgetWithText(FilterChip, '높음'));
+      await tester.tap(find.widgetWithText(FilterChip, '높음'));
+      await dismissSheet(tester);
+      await choosePeriod(tester, '이번 주');
+      expect((await settings.getSettings()).homeView.isDefault, isTrue);
+      await restart(tester);
+      expect(find.text('이번 주'), findsNWidgets(2));
+      expect((await settings.getSettings()).homeView.isDefault, isTrue);
+      expect(tester.takeException(), isNull);
+      await finish(tester);
+    },
+  );
+
+  testWidgets('failed period persistence is reported and can be retried', (
+    tester,
+  ) async {
+    final failing = _FailingSwipeSettings(database: database);
+    settings = failing;
+    await pumpApp(tester);
+    await choosePeriod(tester, '이번 주');
+    expect(find.text('기간을 저장하지 못했습니다. 다시 선택해주세요.'), findsOneWidget);
+    expect((await settings.getSettings()).homePeriod.mode, HomePeriod.today);
+    failing.failSave = false;
+    await choosePeriod(tester, '이번 달');
+    await restart(tester);
+    expect(find.text('이번 달'), findsNWidgets(2));
+    expect((await settings.getSettings()).homePeriod.mode, HomePeriod.month);
+    expect(tester.takeException(), isNull);
+    await finish(tester);
+  });
 
   for (final textScale in [1.0, 1.5]) {
     testWidgets(
@@ -624,14 +739,14 @@ void main() {
       await chooseScope(tester, 'completed');
       await swipeTask(tester, '스와이프 일정', toRight: true, section: 'completed');
       expect((await tasks.getTaskById('스와이프 일정'))!.status, TaskStatus.active);
-      await chooseScope(tester, 'all');
+      await chooseScope(tester, 'period');
       await swipeTask(tester, '스와이프 일정', toRight: false);
       expect((await tasks.getTaskById('스와이프 일정'))!.status, TaskStatus.deleted);
       await chooseScope(tester, 'trash');
       await swipeTask(tester, '스와이프 일정', toRight: true, section: 'trash');
       expect((await tasks.getTaskById('스와이프 일정'))!.status, TaskStatus.active);
       expect((await tasks.getTaskById('스와이프 일정'))!.listId, 'course');
-      await chooseScope(tester, 'all');
+      await chooseScope(tester, 'period');
       await swipeTask(tester, '스와이프 일정', toRight: false);
       await chooseScope(tester, 'trash');
       await swipeTask(tester, '스와이프 일정', toRight: false, section: 'trash');
@@ -890,7 +1005,7 @@ void main() {
       expect(find.byType(Drawer), findsOneWidget);
       expect(
         tester
-            .widget<ListTile>(find.byKey(const ValueKey('scope-all-')))
+            .widget<ListTile>(find.byKey(const ValueKey('scope-period-')))
             .selected,
         isTrue,
       );
@@ -901,7 +1016,7 @@ void main() {
       expect(course, findsNothing);
       expect(
         tester
-            .widget<ListTile>(find.byKey(const ValueKey('scope-all-')))
+            .widget<ListTile>(find.byKey(const ValueKey('scope-period-')))
             .selected,
         isTrue,
       );
@@ -928,7 +1043,7 @@ void main() {
       expect(find.text('이번 주'), findsNWidgets(2));
       await chooseScope(tester, 'list', inboxListId);
       expect(row('개인 일정'), findsOneWidget);
-      await chooseScope(tester, 'all');
+      await chooseScope(tester, 'period');
       expect(row('학교 과제'), findsOneWidget);
       expect(row('개인 일정'), findsOneWidget);
       expect(tester.takeException(), isNull);
@@ -1066,7 +1181,7 @@ void main() {
       expect(find.byKey(const ValueKey('scope-tag-tag-a')), findsOneWidget);
       expect(
         tester
-            .widget<ListTile>(find.byKey(const ValueKey('scope-all-')))
+            .widget<ListTile>(find.byKey(const ValueKey('scope-period-')))
             .selected,
         isTrue,
       );
@@ -1147,7 +1262,7 @@ void main() {
       expect(await tasks.getTasks(), isEmpty);
       expect(
         tester
-            .widget<ListTile>(find.byKey(const ValueKey('scope-all-')))
+            .widget<ListTile>(find.byKey(const ValueKey('scope-period-')))
             .selected,
         isTrue,
       );
@@ -1277,12 +1392,12 @@ void main() {
       await openDrawer(tester);
       expect(
         find.descendant(
-          of: find.byKey(const ValueKey('scope-all-')),
+          of: find.byKey(const ValueKey('scope-period-')),
           matching: find.text('전체'),
         ),
         findsOneWidget,
       );
-      await tester.tap(find.byKey(const ValueKey('scope-all-')));
+      await tester.tap(find.byKey(const ValueKey('scope-period-')));
       await tester.pumpAndSettle();
       await capture(tester, 'all-dates');
       await choosePeriod(tester, '오늘');
@@ -1292,12 +1407,12 @@ void main() {
         await openDrawer(tester);
         expect(
           find.descendant(
-            of: find.byKey(const ValueKey('scope-all-')),
+            of: find.byKey(const ValueKey('scope-period-')),
             matching: find.text(label),
           ),
           findsOneWidget,
         );
-        await tester.tap(find.byKey(const ValueKey('scope-all-')));
+        await tester.tap(find.byKey(const ValueKey('scope-period-')));
         await tester.pumpAndSettle();
       }
       expect((await tasks.getTasks()).length, 1);
@@ -1360,6 +1475,12 @@ void main() {
         await tester.pumpAndSettle();
         expect(row('구간 끝'), findsOneWidget);
         expect(find.text(label), findsNWidgets(2));
+        await restart(tester);
+        expect(find.text(label), findsNWidgets(2));
+        expect(row('구간 시작'), findsOneWidget);
+        expect(row('구간 끝'), findsOneWidget);
+        expect(row('구간 이전'), findsNothing);
+        expect(row('구간 이후'), findsNothing);
         expect(tester.takeException(), isNull);
         await finish(tester);
       },
@@ -1384,12 +1505,14 @@ void main() {
     await finish(tester);
   });
 
-  testWidgets('month and single custom date are session state only', (
+  testWidgets('month and single custom date persist across restart', (
     tester,
   ) async {
     await add('선택 날짜 일정', due: DateTime(2030, 11, 12, 23, 59));
     await pumpApp(tester);
     await choosePeriod(tester, '이번 달');
+    await restart(tester);
+    expect(find.text('이번 달'), findsNWidgets(2));
     expect(row('선택 날짜 일정'), findsNothing);
     await choosePeriod(tester, '기간 선택');
     await tester.tap(find.text('단일 날짜'));
@@ -1407,8 +1530,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('2030년 11월 12일'), findsNWidgets(2));
     await restart(tester);
-    expect(find.textContaining('오늘 ·'), findsOneWidget);
-    expect(row('선택 날짜 일정'), findsNothing);
+    expect(find.text('2030년 11월 12일'), findsNWidgets(2));
+    expect(row('선택 날짜 일정'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await finish(tester);
   });
@@ -1486,7 +1609,7 @@ void main() {
         TaskPriority.high,
       });
       await restart(tester);
-      expect(find.textContaining('오늘 ·'), findsOneWidget);
+      expect(find.text('이번 주'), findsNWidgets(2));
       expect(row('일반 일정'), findsNothing);
       expect(row('중요 과제'), findsOneWidget);
       await adjust(tester);
@@ -2132,7 +2255,7 @@ void main() {
         (await settings.getSettings()).homeView.encode(),
         homeView.encode(),
       );
-      await chooseScope(tester, 'all');
+      await chooseScope(tester, 'period');
       expect(
         tester.getTopLeft(row('홈 늦은 마감')).dy,
         lessThan(tester.getTopLeft(row('홈 이른 마감')).dy),

@@ -4,15 +4,14 @@ import 'package:intl/intl.dart' show DateFormat;
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/list_defaults.dart';
 import '../../../data/models/home_view_options.dart';
+import '../../../data/models/home_period_preference.dart';
 import '../../../data/models/task_models.dart';
 import '../../../data/models/task_swipe_options.dart';
 import '../../../data/repositories/settings_repository.dart';
 import '../../../data/services/home_task_summary.dart';
 import '../../widgets/task_metadata_picker.dart' show colorFromHex;
 
-enum _ScopeKind { all, list, tag, completed, trash }
-
-enum _Period { today, week, month, all, custom }
+enum _ScopeKind { period, all, list, tag, completed, trash }
 
 class MobileHomePage extends StatefulWidget {
   const MobileHomePage({
@@ -75,9 +74,9 @@ class MobileHomePage extends StatefulWidget {
 
 class _MobileHomePageState extends State<MobileHomePage> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
-  _ScopeKind _scope = _ScopeKind.all;
+  _ScopeKind _scope = _ScopeKind.period;
   String? _scopeId;
-  _Period _period = _Period.today;
+  HomePeriod _period = HomePeriod.today;
   DateTimeRange? _customRange;
   HomeViewOptions _view = const HomeViewOptions();
   HomeViewOptions _trashView = const HomeViewOptions();
@@ -85,6 +84,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
   bool _trashBulkBusy = false;
   final Set<String> _selectedTrashIds = {};
   bool _loadedPreferences = false;
+  bool _savingPeriod = false;
   final Set<String> _expandedFolderIds = {};
   final Set<String> _swipingTaskIds = {};
   double _drawerDragDistance = 0;
@@ -107,6 +107,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
   }
 
   String get _scopeLabel => switch (_scope) {
+    _ScopeKind.period => '기간별 할 일',
     _ScopeKind.all => '전체',
     _ScopeKind.list =>
       widget.lists.where((l) => l.id == _scopeId).firstOrNull?.name ??
@@ -119,21 +120,22 @@ class _MobileHomePageState extends State<MobileHomePage> {
 
   (DateTime, DateTime) _range(DateTime now) {
     final today = DateTime(now.year, now.month, now.day);
+    if (_scope == _ScopeKind.all) return (DateTime(1), DateTime(10000));
     return switch (_period) {
-      _Period.today => (
+      HomePeriod.today => (
         today,
         DateTime(today.year, today.month, today.day + 1),
       ),
-      _Period.week => (
+      HomePeriod.week => (
         DateTime(today.year, today.month, today.day - today.weekday + 1),
         DateTime(today.year, today.month, today.day - today.weekday + 8),
       ),
-      _Period.month => (
+      HomePeriod.month => (
         DateTime(today.year, today.month),
         DateTime(today.year, today.month + 1),
       ),
-      _Period.all => (DateTime(1), DateTime(10000)),
-      _Period.custom => (
+      HomePeriod.all => (DateTime(1), DateTime(10000)),
+      HomePeriod.custom => (
         _customRange!.start,
         DateTime(
           _customRange!.end.year,
@@ -145,11 +147,11 @@ class _MobileHomePageState extends State<MobileHomePage> {
   }
 
   String get _periodLabel => switch (_period) {
-    _Period.today => '오늘',
-    _Period.week => '이번 주',
-    _Period.month => '이번 달',
-    _Period.all => '전체',
-    _Period.custom =>
+    HomePeriod.today => '오늘',
+    HomePeriod.week => '이번 주',
+    HomePeriod.month => '이번 달',
+    HomePeriod.all => '전체',
+    HomePeriod.custom =>
       _customRange!.start == _customRange!.end
           ? DateFormat('yyyy년 M월 d일', 'ko_KR').format(_customRange!.start)
           : '${DateFormat('yyyy.MM.dd').format(_customRange!.start)} ~ ${DateFormat(_customRange!.start.year == _customRange!.end.year ? 'MM.dd' : 'yyyy.MM.dd').format(_customRange!.end)}',
@@ -317,22 +319,14 @@ class _MobileHomePageState extends State<MobileHomePage> {
                   padding: EdgeInsets.zero,
                   children: [
                     _drawerEntry(
-                      _period == _Period.all ? '전체' : _periodLabel,
-                      Icons.format_list_bulleted_rounded,
-                      _ScopeKind.all,
+                      _periodLabel,
+                      Icons.access_time_outlined,
+                      _ScopeKind.period,
                     ),
                     _drawerEntry(
-                      inboxListName,
-                      Icons.square_rounded,
-                      _ScopeKind.list,
-                      inboxListId,
-                      colorFromHex(
-                        widget.lists
-                            .where((l) => l.id == inboxListId)
-                            .firstOrNull
-                            ?.color,
-                        fallback: AppTheme.successGreen,
-                      ),
+                      '전체',
+                      Icons.description_outlined,
+                      _ScopeKind.all,
                     ),
                     _drawerHeading(
                       '목록',
@@ -411,7 +405,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
                         ),
                       ),
                     for (final list in _drawerLists.where(
-                      (l) => l.groupId == null && l.id != inboxListId,
+                      (l) => l.groupId == null,
                     ))
                       _drawerEntry(
                         list.name,
@@ -485,7 +479,8 @@ class _MobileHomePageState extends State<MobileHomePage> {
   );
 
   Future<void> _pickPeriod() async {
-    final selected = await showModalBottomSheet<_Period>(
+    if (!widget.settingsReady || _savingPeriod) return;
+    final selected = await showModalBottomSheet<HomePeriod>(
       context: context,
       showDragHandle: true,
       builder: (context) => SafeArea(
@@ -499,14 +494,14 @@ class _MobileHomePageState extends State<MobileHomePage> {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
               ),
             ),
-            for (final period in _Period.values)
+            for (final period in HomePeriod.values)
               ListTile(
                 title: Text(switch (period) {
-                  _Period.today => '오늘',
-                  _Period.week => '이번 주',
-                  _Period.month => '이번 달',
-                  _Period.all => '전체',
-                  _Period.custom => '기간 선택',
+                  HomePeriod.today => '오늘',
+                  HomePeriod.week => '이번 주',
+                  HomePeriod.month => '이번 달',
+                  HomePeriod.all => '전체',
+                  HomePeriod.custom => '기간 선택',
                 }),
                 trailing: _period == period
                     ? const Icon(Icons.check_rounded)
@@ -518,7 +513,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
       ),
     );
     if (selected == null || !mounted) return;
-    if (selected == _Period.custom) {
+    if (selected == HomePeriod.custom) {
       final isRange = await showModalBottomSheet<bool>(
         context: context,
         showDragHandle: true,
@@ -574,16 +569,38 @@ class _MobileHomePageState extends State<MobileHomePage> {
         if (date != null) range = DateTimeRange(start: date, end: date);
       }
       if (range == null || !mounted) return;
-      setState(() {
-        _customRange = range;
-        _period = selected;
-        _selectedTrashIds.clear();
-      });
+      await _savePeriod(selected, range: range);
     } else {
-      setState(() {
-        _period = selected;
-        _selectedTrashIds.clear();
-      });
+      await _savePeriod(selected);
+    }
+  }
+
+  Future<void> _savePeriod(HomePeriod selected, {DateTimeRange? range}) async {
+    final preference = HomePeriodPreference(
+      mode: selected,
+      start: range?.start,
+      end: range?.end,
+    );
+    setState(() {
+      _period = selected;
+      if (range != null) _customRange = range;
+      _selectedTrashIds.clear();
+      _savingPeriod = true;
+    });
+    try {
+      final latest = await widget.settingsRepository.getSettings();
+      final saved = await widget.settingsRepository.saveSettings(
+        latest.copyWith(homePeriod: preference),
+      );
+      if (mounted) widget.onSettingsSaved(saved);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('기간을 저장하지 못했습니다. 다시 선택해주세요.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _savingPeriod = false);
     }
   }
 
@@ -645,7 +662,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
   bool _matches(Task task) {
     final view = _scope == _ScopeKind.trash ? _trashView : _view;
     final scopeMatches = switch (_scope) {
-      _ScopeKind.all => true,
+      _ScopeKind.period || _ScopeKind.all => true,
       _ScopeKind.list => task.listId == _scopeId,
       _ScopeKind.tag => task.tagIds.contains(_scopeId),
       _ScopeKind.completed => task.status == TaskStatus.completed,
@@ -672,8 +689,17 @@ class _MobileHomePageState extends State<MobileHomePage> {
   Widget build(BuildContext context) {
     if (!_loadedPreferences && widget.settingsReady) {
       _view = widget.settings.homeView;
+      final savedPeriod = widget.settings.homePeriod;
+      _period = savedPeriod.mode;
+      if (savedPeriod.mode == HomePeriod.custom) {
+        _customRange = DateTimeRange(
+          start: savedPeriod.start!,
+          end: savedPeriod.end!,
+        );
+      }
       _loadedPreferences = true;
     }
+    final isAll = _scope == _ScopeKind.all;
     final now = DateTime.now();
     final (start, end) = _range(now);
     bool inRange(DateTime? date) =>
@@ -740,7 +766,13 @@ class _MobileHomePageState extends State<MobileHomePage> {
           ),
           title: InkWell(
             key: const ValueKey('home-period'),
-            onTap: _trashBulkBusy ? null : _pickPeriod,
+            onTap:
+                _trashBulkBusy ||
+                    _savingPeriod ||
+                    !widget.settingsReady ||
+                    isAll
+                ? null
+                : _pickPeriod,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 6),
               child: Column(
@@ -754,7 +786,9 @@ class _MobileHomePageState extends State<MobileHomePage> {
                     children: [
                       Flexible(
                         child: Text(
-                          _period == _Period.today
+                          isAll
+                              ? '전체'
+                              : _period == HomePeriod.today
                               ? '오늘 · ${DateFormat('M월 d일', 'ko_KR').format(now)}'
                               : _periodLabel,
                           maxLines: 1,
@@ -765,7 +799,8 @@ class _MobileHomePageState extends State<MobileHomePage> {
                           ),
                         ),
                       ),
-                      const Icon(Icons.expand_more_rounded, size: 20),
+                      if (!isAll)
+                        const Icon(Icons.expand_more_rounded, size: 20),
                     ],
                   ),
                 ],
@@ -823,7 +858,11 @@ class _MobileHomePageState extends State<MobileHomePage> {
                   _section('휴지통', 'trash', trash),
                 ] else ...[
                   if (_scope != _ScopeKind.completed) ...[
-                    _section(_periodLabel, 'period', periodTasks),
+                    _section(
+                      isAll ? '전체' : _periodLabel,
+                      'period',
+                      periodTasks,
+                    ),
                     _section('마감 임박', 'urgent', urgent),
                     _section('마감 지남', 'overdue', overdue),
                   ],

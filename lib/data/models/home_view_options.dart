@@ -12,7 +12,7 @@ enum HomeSort {
   final String label;
 }
 
-/// Saved view choices only. Scope and dates belong to the running home screen.
+/// Sort and filter preferences; the date selection is saved separately.
 class HomeViewOptions {
   const HomeViewOptions({
     this.sort = HomeSort.standard,

@@ -1,4 +1,5 @@
 import '../models/home_section.dart';
+import '../models/home_period_preference.dart';
 import '../models/home_view_options.dart';
 import '../models/task_swipe_options.dart';
 
@@ -20,6 +21,7 @@ class AppSettings {
     this.ecampusFolderId,
     this.homeView = const HomeViewOptions(),
     this.taskSwipes = const TaskSwipeOptions(),
+    this.homePeriod = const HomePeriodPreference(),
   });
 
   final bool autoSyncEnabled;
@@ -38,6 +40,7 @@ class AppSettings {
   final String? ecampusFolderId;
   final HomeViewOptions homeView;
   final TaskSwipeOptions taskSwipes;
+  final HomePeriodPreference homePeriod;
 
   AppSettings copyWith({
     bool? autoSyncEnabled,
@@ -56,6 +59,7 @@ class AppSettings {
     Object? ecampusFolderId = _appSettingsUnset,
     HomeViewOptions? homeView,
     TaskSwipeOptions? taskSwipes,
+    HomePeriodPreference? homePeriod,
   }) {
     return AppSettings(
       autoSyncEnabled: autoSyncEnabled ?? this.autoSyncEnabled,
@@ -81,6 +85,7 @@ class AppSettings {
           : ecampusFolderId as String?,
       homeView: homeView ?? this.homeView,
       taskSwipes: taskSwipes ?? this.taskSwipes,
+      homePeriod: homePeriod ?? this.homePeriod,
     );
   }
 }

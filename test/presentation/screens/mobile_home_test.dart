@@ -363,7 +363,7 @@ void main() {
         expect(find.byKey(ValueKey('home-section-$section')), findsOneWidget);
       }
       expect(find.textContaining('오늘 ·'), findsOneWidget);
-      expect(find.text('표시할 할 일이 없습니다.'), findsNWidgets(4));
+      expect(find.text('할 일이 없습니다.'), findsNWidgets(4));
       expect(find.byType(FloatingActionButton), findsNothing);
       expect(find.byType(NavigationDestination), findsNWidgets(3));
       for (final (id, label) in [
@@ -380,6 +380,15 @@ void main() {
             .first;
         expect(tester.widget<FadeTransition>(fade).opacity.value, 0);
       }
+      await openDrawer(tester);
+      await tester.tap(find.byKey(const ValueKey('drawer-settings')));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.text('전체 일정 관리'), 200);
+      await tester.ensureVisible(find.text('전체 일정 관리'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('전체 일정 관리'));
+      await tester.pumpAndSettle();
+      expect(find.text('일정이 없습니다.'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await finish(tester);
     },

@@ -851,7 +851,7 @@ class _TaskListPageState extends State<_TaskListPage> {
       _TaskFilter.incomplete => '해야 할 작업이 없습니다.',
       _TaskFilter.ecampus => 'e-campus 작업이 없습니다.',
       _TaskFilter.personal => '개인 작업이 없습니다.',
-      _TaskFilter.all => '표시할 일정이 없습니다.',
+      _TaskFilter.all => '일정이 없습니다.',
     };
   }
 

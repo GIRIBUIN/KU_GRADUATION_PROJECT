@@ -1006,7 +1006,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 8, vertical: 14),
             child: Text(
-              '표시할 할 일이 없습니다.',
+              '할 일이 없습니다.',
               style: TextStyle(fontSize: 13, color: AppTheme.muted),
             ),
           ),

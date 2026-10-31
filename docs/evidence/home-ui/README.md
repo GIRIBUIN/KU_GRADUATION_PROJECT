@@ -1,5 +1,9 @@
 # 모바일 홈 UI 개편 — 2026-10-30
 
+UI-022 최신 보완: 제외 항목 작업은 체크 아이콘이며, 양쪽 선택 상단 높이/본문 여백을 줄였다. 최종 검증·캡처·소스 해시는 문서 맨 아래 height 기록을 기준으로 한다.
+
+최신 UI-022: 휴지통·제외된 eCampus 항목의 체크 선택과 고정 상단을 통일했다. 검증은 문서 하단 ‘휴지통·제외 항목 체크 선택 상단 통일’을 본다. UI-021은 `b55d523`/`229771e`로 커밋됐으며 아래 미커밋 표시는 당시 기록이다. 이번 UI-022는 커밋·push하지 않았다.
+
 최신 UI-021: 제외된 eCampus 항목을 별도 화면 대신 홈 공통 레이아웃으로 통합했다. 검증은 문서 하단 ‘제외된 eCampus 항목 홈 레이아웃 통일’을 본다. UI-020은 `baa73a9`/`ebdd5db`로 커밋됐으며 아래 미커밋 표시는 당시 기록이다. 이번 UI-021은 커밋·push하지 않았다.
 
 최신 UI-020: 설정 화면을 컨텍스트 메뉴와 즉시 저장 하단창으로 교체했다. 최신 검증은 문서 하단 ‘설정 컨텍스트 메뉴·즉시 저장’를 본다. UI-017~019는 `b8cd8e9`~`12ed816`으로 커밋되어 원격에 반영됐고, 아래의 미커밋 표시는 각 작업 당시 기록이다. 이번 UI-020은 커밋·push하지 않았다.
@@ -284,3 +288,19 @@ C:\flutter\bin\flutter.bat build apk --debug --no-pub
 - [첫 실행 원본](excluded-home-first-tests-20261031.jsonl)은 새 테스트가 기존 정책을 source 삭제로 잘못 가정해 2건 통과/1건 실패한 결과다. 실제 repository의 unreviewed 보존을 확인해 기대값만 수정했다. 최종 정렬 검증은 원본 sourceDueDate를 넣어 빠른 순/늦은 순 양쪽 순서 변화를 확인했다.
 - widget 렌더: [일반 목록](excluded-home-excluded-list.png) · [빈 목록](excluded-home-excluded-empty.png) · [정렬](excluded-home-excluded-sort.png) · [큰 글씨·긴 제목·과목·마감](excluded-home-excluded-large.png). 실제 Android 캡처가 아니다.
 - Android 확인: Drawer 항목 선택 후 같은 홈과 하단바 유지 → 기존 안내/카드 없음 → 기간/홈 필터와 무관하게 제외 원본 표시 → 정렬 변경/이탈 후 초기화 → 제외 해제 아이콘/중복 탭 → 다음 가져오기에서 다시 검토 → 완료·휴지통/일반 Task 동작 유지. 전체 테스트·APK 빌드·설치·커밋·push는 하지 않았다.
+
+## 휴지통·제외 항목 체크 선택 상단 통일 — 2026-10-31
+
+- UI-022. 휴지통/제외된 eCampus 모두 왼쪽 체크박스와 행 전체 터치로 선택한다. 휴지통 행의 상세/편집 진입·개별 popup과 제외 항목의 개별 실행 아이콘을 제거했다. 일반 Task의 상세·완료와 선택 전 휴지통 복원/삭제 스와이프는 유지한다.
+- 선택 중에는 기존 상단과 섹션 제목/개수 줄 대신 고정 AppBar를 표시한다. `← N [복원] [삭제]`(휴지통), `← N [체크]`(제외 항목) 아래 왼쪽 체크박스와 모두 선택/모두 해제만 둔다. 개수는 뒤로가기 옆, 모두 선택 체크박스는 행의 체크박스와 같은 x좌표다. 선택 취소/N개 선택/전체 선택/선택 복원/선택 삭제 문구를 제거했다.
+- 상단 뒤로가기·Android 이전키는 선택만 해제하고 기존 목록/도구로 돌아간다. 스크롤해도 선택 상단과 모두 선택 줄은 고정된다. 0개 선택에서는 작업 아이콘이 비활성화되며 범위/탭 변경 때 선택을 정리한다.
+- 휴지통은 기존 복원·영구 삭제 확인/알림/위젯 경로, 제외는 기존 제외 해제 경로를 재사용한다. 제외 항목의 체크 아이콘은 tooltip 복원이며, 원본 `ignored → unreviewed`로 다음 가져오기 검토를 허용한다. 원본 영구 삭제나 즉시 Task 생성으로 바꾸지 않았다.
+- 모두 선택은 화면 밖을 포함한 현재 날짜/필터 결과만 대상으로 한다. 처리 중 중복 실행/선택/뒤로가기를 막는다. 기존 항목별 처리 방식으로 부분 성공이 가능하고 성공한 선택은 제거, 실패한 선택은 유지하여 재시도한다. DB·repository·eCampus/세션 서비스·알림 코드는 변경하지 않았다.
+- 앱 코드 `mobile_home_page.dart`와 기존 홈 테스트만 수정했다. [관련 88건 통과](archive-selection-final-tests-20261031.jsonl): 홈 54 + shell/캘린더/위젯 6 + 목록 6 + eCampus 22. 마지막 상단 정렬 보완 뒤 [영향 UI 2건 재확인·캡처](archive-selection-capture-tests-20261031.jsonl)도 통과했다. 중복이므로 합산하지 않는다. [분석](archive-selection-analyze-20261031.txt) 문제 없음. [요약·소스 해시](archive-selection-summary-20261031.json).
+- 중간 원본: first는 기존 관련 14건 통과, controls는 신규 3건 통과지만 스크롤 후 시험 탭이 가려진 행을 놓치는 경고가 있었다. 실제 스크롤을 초기화하고 hitTestable/선택 재진입을 확인하도록 보강했다. 최종 로그에는 해당 경고가 없다.
+- widget 렌더: 휴지통 [선택](archive-selection-trash-selection-header.png) · [모두 해제](archive-selection-trash-selection-all.png) · [스크롤](archive-selection-trash-selection-scrolled.png), 제외 항목 [선택](archive-selection-excluded-selection-header.png) · [모두 해제](archive-selection-excluded-selection-all.png) · [스크롤](archive-selection-excluded-selection-scrolled.png). 큰 글씨 1.5배의 모의 데이터이며 실제 기기 캡처는 아니다.
+- Android 확인: 행/체크박스 각각 선택 → 상단 N·아이콘·모두 선택/해제 → 스크롤 중 고정 → 화살표/이전키로 선택 취소 → 휴지통 복원/삭제 취소·확정 → 제외 항목 복원 후 다음 가져오기 검토 → 기존 일반 할 일 상세와 완료 유지. 전체 테스트·APK 빌드·설치·커밋·push는 하지 않았다.
+
+- UI-022 최종 시각 보완: 제외 항목 작업 아이콘을 체크로 변경했다. 양쪽 공통 선택 상단의 모두 선택 줄은 56→48, 본문 위 여백은 12→0으로 줄였고 숫자/라벨 크기도 기존 홈에 맞췄다. 전체 선택 상단은 두 범위 모두 104이며 체크 터치 영역 48은 유지한다.
+- [최종 영향 UI 4건 통과·캡처](archive-selection-height-final-tests-20261031.jsonl): 휴지통/제외 × 기본/큰 글씨. 아이콘, 상단/체크 줄 높이, 행 시작 위치가 더 내려가지 않음, 체크 정렬·선택/해제·스크롤 고정·이전키를 확인했다. 큰 글씨에서는 기존 긴 섹션 제목이 사라져 본문이 위로 이동할 수 있다. 이전 88건과 중복이며 이번 시각 수정 뒤 전체 관련 테스트는 반복하지 않았다. [분석](archive-selection-height-analyze-20261031.txt) 문제 없음, [최종 소스 해시·측정](archive-selection-height-summary-20261031.json). 기존 archive-selection-summary/capture는 보완 전 스냅샷이다.
+- 최종 화면: [휴지통](archive-selection-height-trash-selection-header.png) · [제외 체크](archive-selection-height-excluded-selection-header.png) · [큰 글씨 휴지통](archive-selection-height-trash-large-selection-header.png) · [큰 글씨 제외](archive-selection-height-excluded-large-selection-header.png). height-tests 원본은 큰 글씨의 의도된 위쪽 이동까지 절댓값으로 제한해 2건 통과/2건 실패한 중간 실행이고, 최종은 height-final-tests다. 실제 기기 설치·커밋·push는 하지 않았다.

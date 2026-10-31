@@ -1,0 +1,73 @@
+{
+  "recorded_at_utc": "2026-10-31T11:50:18.340789+00:00",
+  "git_base": "229771e1830193c642ba9b879592becdba4ea217",
+  "uncommitted_changes": true,
+  "scope": "UI-022 follow-up: excluded-source action uses check icon; compact shared selection header and remove duplicate top list padding.",
+  "final_tests": {
+    "raw": "archive-selection-height-final-tests-20261031.jsonl",
+    "passed": 4,
+    "failed": 0,
+    "success": true,
+    "elapsed_ms": 9892
+  },
+  "initial_tests": {
+    "raw": "archive-selection-height-tests-20261031.jsonl",
+    "passed": 2,
+    "failed": 2,
+    "success": false,
+    "elapsed_ms": 5110
+  },
+  "initial_failure_note": "2 large-text cases failed an absolute before/after Y-position assertion: removing the wrapped normal heading intentionally moves the list upward. Final checks require the shared 104-dp header, 48-dp select-all row and no extra downward shift; selection/scroll/back checks remain.",
+  "counts_overlap": true,
+  "coverage_note": "Four affected existing test variants (trash/excluded, text scale 1.0/1.5) passed with captures. The earlier 88-test regression run predates this visual polish; the full related run was not repeated for this follow-up.",
+  "layout": {
+    "select_all_height_before": 56,
+    "select_all_height_after": 48,
+    "selection_body_top_padding_before": 12,
+    "selection_body_top_padding_after": 0,
+    "shared_selection_header_height": 104,
+    "count_font_size": 17,
+    "select_all_font_size": 13,
+    "minimum_checkbox_hit_area": 48,
+    "excluded_action_icon": "Icons.check_rounded",
+    "trash_delete_icon": "Icons.delete_outline_rounded"
+  },
+  "behavior_unchanged": [
+    "restore/delete/allow-import callbacks",
+    "selection count and select-all",
+    "pinned scrolling header",
+    "back arrow/Android back",
+    "Task/database/import/session/notification contracts"
+  ],
+  "analysis": {
+    "raw": "archive-selection-height-analyze-20261031.txt",
+    "exit_code": 0,
+    "errors": 0,
+    "warnings": 0,
+    "info": 0,
+    "capture_method": "Exact stdout copied from direct flutter analyze --no-pub output"
+  },
+  "full_suite_run": false,
+  "android_build_run": false,
+  "installed_on_device": false,
+  "commit_created": false,
+  "push_run": false,
+  "source_git_blob_hashes": {
+    "lib/presentation/screens/main/mobile_home_page.dart": "1ec42df811773b5f33450b88c6b96219217ba2fa",
+    "test/presentation/screens/mobile_home_test.dart": "3f981fdd6309000eb95e656137e1342ca8ee94ce"
+  },
+  "widget_captures": [
+    "archive-selection-height-excluded-large-selection-all.png",
+    "archive-selection-height-excluded-large-selection-header.png",
+    "archive-selection-height-excluded-large-selection-scrolled.png",
+    "archive-selection-height-excluded-selection-all.png",
+    "archive-selection-height-excluded-selection-header.png",
+    "archive-selection-height-excluded-selection-scrolled.png",
+    "archive-selection-height-trash-large-selection-all.png",
+    "archive-selection-height-trash-large-selection-header.png",
+    "archive-selection-height-trash-large-selection-scrolled.png",
+    "archive-selection-height-trash-selection-all.png",
+    "archive-selection-height-trash-selection-header.png",
+    "archive-selection-height-trash-selection-scrolled.png"
+  ]
+}

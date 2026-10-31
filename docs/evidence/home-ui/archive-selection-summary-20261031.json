@@ -1,0 +1,82 @@
+{
+  "recorded_at_utc": "2026-10-31T11:40:00.467257+00:00",
+  "git_base": "229771e1830193c642ba9b879592becdba4ea217",
+  "uncommitted_changes": true,
+  "scope": "Unify trash/excluded source checkbox selection, replace scrolling action text with a fixed contextual AppBar and select-all row; no archive-row detail/edit entry.",
+  "related_tests": {
+    "raw": "archive-selection-final-tests-20261031.jsonl",
+    "passed": 88,
+    "failed": 0,
+    "success": true,
+    "elapsed_ms": 33285
+  },
+  "final_capture_tests": {
+    "raw": "archive-selection-capture-tests-20261031.jsonl",
+    "passed": 2,
+    "failed": 0,
+    "success": true,
+    "elapsed_ms": 3510
+  },
+  "counts_overlap": true,
+  "coverage_note": "88 related tests passed (home 54, shell/calendar/widget 6, lists 6, eCampus 22). After final count/checkbox alignment polish, both affected scope tests passed again with rendering, scrolling, select-all, row/checkbox taps and hardware-back assertions. Counts overlap.",
+  "earlier_runs": [
+    {
+      "raw": "archive-selection-first-tests-20261031.jsonl",
+      "passed": 14,
+      "failed": 0,
+      "success": true,
+      "elapsed_ms": 9108
+    },
+    {
+      "raw": "archive-selection-controls-tests-20261031.jsonl",
+      "passed": 3,
+      "failed": 0,
+      "success": true,
+      "elapsed_ms": 3643
+    }
+  ],
+  "earlier_run_note": "First: existing affected 14 tests passed. Controls: 3 passed but a post-scroll test tap missed its target, weakening the hardware-back assertion. The test now resets the actual scroll position, checks hitTestable and asserts selection has reopened before pressing back. Final/capture runs have no missed-tap warnings.",
+  "analysis": {
+    "raw": "archive-selection-analyze-20261031.txt",
+    "exit_code": 0,
+    "errors": 0,
+    "warnings": 0,
+    "info": 0,
+    "capture_method": "Exact stdout copied from direct flutter analyze --no-pub output"
+  },
+  "behavior": {
+    "entry": "Both trash and excluded rows always have left checkboxes. Tapping any row area toggles it; neither opens Task details. Normal Task details/completion remain unchanged.",
+    "header": "Selection replaces the normal toolbar and section heading/count with a pinned AppBar: back + numeric count + action icons; pinned select-all checkbox row below. Count left-aligned, checkbox aligned with row checkboxes.",
+    "trash_actions": "Restore and delete icon buttons. Existing restore/notification/widget callbacks and permanent-delete confirmation remain; multi-item confirmation button is Delete, without Selected prefix.",
+    "excluded_action": "User-requested delete-shaped icon with Restore tooltip; reuses allowExcludedTaskSync (ignored -> unreviewed, no immediate Task creation). It does not hard-delete source data.",
+    "select_all": "All filtered/date-matching rows, including off-screen rows, only within current scope. Mixed state supported; label is 모두 선택 / 모두 해제. Zero selection disables action icons.",
+    "exit": "Header arrow and Android back clear selection only, restoring original toolbar/list. Scope/tab changes also clear selection. Pending bulk operations disable selection/actions/back.",
+    "bulk": "Reuse existing per-item callbacks. Partial success possible; remove successful IDs from selection, retain failed visible sources/tasks and allow retry. No new DB transaction or repository API.",
+    "preserved": "Home CRUD, trash swipes outside selection, period/view persistence, excluded all-date scope and temporary sort, import/session/notification behavior."
+  },
+  "protected_paths_unchanged": [
+    "lib/data",
+    "lib/presentation/services",
+    "lib/presentation/screens/sync",
+    "lib/presentation/screens/login",
+    "lib/presentation/screens/main/main_shell_screen.dart"
+  ],
+  "limits": "In-memory Drift/widget tests and mock eCampus flows; no real account or installed Android validation.",
+  "full_suite_run": false,
+  "android_build_run": false,
+  "installed_on_device": false,
+  "commit_created": false,
+  "push_run": false,
+  "source_git_blob_hashes": {
+    "lib/presentation/screens/main/mobile_home_page.dart": "abd39d55019a935a58905c6873cafd584085638a",
+    "test/presentation/screens/mobile_home_test.dart": "020ba1d425c15a22eef0fe4f1e81a1dbfa5a32aa"
+  },
+  "widget_captures": [
+    "archive-selection-trash-selection-header.png",
+    "archive-selection-trash-selection-all.png",
+    "archive-selection-trash-selection-scrolled.png",
+    "archive-selection-excluded-selection-header.png",
+    "archive-selection-excluded-selection-all.png",
+    "archive-selection-excluded-selection-scrolled.png"
+  ]
+}

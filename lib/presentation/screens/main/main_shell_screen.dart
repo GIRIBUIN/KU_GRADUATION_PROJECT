@@ -481,6 +481,61 @@ class _MainShellScreenState extends State<MainShellScreen>
     }
   }
 
+  Future<void> _moveDrawerList(
+    String id,
+    String? groupId,
+    String? beforeId,
+  ) async {
+    final repository = widget.folderRepository;
+    if (repository is! GroupedListRepository) return;
+    await (repository as GroupedListRepository).moveList(
+      id,
+      groupId,
+      beforeListId: beforeId,
+    );
+    if (mounted) _refreshMetadata();
+  }
+
+  Future<void> _moveDrawerTag(String id, String? beforeId) async {
+    final latest = await widget.settingsRepository.getSettings();
+    final tags = await widget.tagRepository.getTags();
+    tags.sort((a, b) {
+      final left = latest.tagSortOrders[a.id];
+      final right = latest.tagSortOrders[b.id];
+      if (left != null && right != null && left != right) {
+        return left.compareTo(right);
+      }
+      if (left != null && right == null) return -1;
+      if (left == null && right != null) return 1;
+      return a.name.compareTo(b.name);
+    });
+    final ids = tags.map((tag) => tag.id).toList();
+    if (!ids.remove(id) || (beforeId != null && !ids.contains(beforeId))) {
+      throw StateError('이동할 태그가 변경됐습니다.');
+    }
+    ids.insert(beforeId == null ? ids.length : ids.indexOf(beforeId), id);
+    final saved = await widget.settingsRepository.saveSettings(
+      latest.copyWith(
+        tagSortOrders: {for (var i = 0; i < ids.length; i++) ids[i]: i},
+      ),
+    );
+    if (mounted) _settingsSaved(saved);
+  }
+
+  Future<void> _openExcludedFromDrawer() async {
+    final tasks = await _loadTasks();
+    if (!mounted) return;
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => _ExcludedEcampusTasksManagementScreen(
+          tasks: tasks.where(_isExcludedEcampusTask).toList(),
+          onAllowSync: _allowExcludedTaskSync,
+        ),
+      ),
+    );
+    if (mounted) _refreshTasksAndMetadata();
+  }
+
   Future<void> _openQuickAdd({
     String? listId,
     List<String> tagIds = const [],
@@ -552,6 +607,9 @@ class _MainShellScreenState extends State<MainShellScreen>
                     lists: metadata.lists,
                     groups: metadata.groups,
                     onSettingsSaved: _settingsSaved,
+                    onMoveList: _moveDrawerList,
+                    onMoveTag: _moveDrawerTag,
+                    onOpenExcluded: _openExcludedFromDrawer,
                     onRefresh: _refreshTasks,
                     onImport: _openEcampusSync,
                     onSettings: () => setState(() => _selectedIndex = 3),
@@ -621,7 +679,6 @@ class _MainShellScreenState extends State<MainShellScreen>
                     onOpenSync: _openEcampusSync,
                     onClearEcampusSession: _clearEcampusSession,
                     localNotificationService: widget.localNotificationService,
-                    onManageMetadata: () => setState(() => _selectedIndex = 2),
                   ),
                 ];
                 return PopScope(
@@ -776,7 +833,6 @@ class _ManagementPageState extends State<_ManagementPage> {
   late Future<List<Folder>> _foldersFuture;
   var _showHiddenMetadata = false;
   List<FolderGroup> _groups = const [];
-  List<Folder> _archivedLists = const [];
   final Set<String> _expandedGroupIds = {};
 
   GroupedListRepository? get _grouping =>
@@ -786,7 +842,6 @@ class _ManagementPageState extends State<_ManagementPage> {
 
   Future<List<Folder>> _loadLists() async {
     _groups = await _grouping?.getGroups() ?? [];
-    _archivedLists = await _grouping?.getArchivedLists() ?? [];
     return widget.folderRepository.getFolders();
   }
 
@@ -897,22 +952,6 @@ class _ManagementPageState extends State<_ManagementPage> {
                         const _ManagementEmptyRow(message: '항목이 없습니다.')
                       else
                         ...treeRows,
-                      if (_archivedLists.isNotEmpty) ...[
-                        const Divider(),
-                        const Text('보관된 목록'),
-                        for (final list in _archivedLists)
-                          ListTile(
-                            title: Text(list.name),
-                            onTap: () => _openFolderTasks(list, tags),
-                            trailing: TextButton(
-                              onPressed: () async {
-                                await _grouping!.restoreList(list.id);
-                                if (mounted) _refreshMetadata();
-                              },
-                              child: const Text('목록 복원'),
-                            ),
-                          ),
-                      ],
                     ],
                   );
                 },
@@ -1146,7 +1185,7 @@ class _ManagementPageState extends State<_ManagementPage> {
       MaterialPageRoute(
         builder: (_) => _MetadataTaskListScreen(
           title: folder.name,
-          subtitle: folder.archivedAt == null ? '목록의 할 일' : '보관된 목록의 할 일',
+          subtitle: '목록의 할 일',
           icon: Icons.square_rounded,
           iconColor: _colorFromHex(folder.color ?? '#22C55E'),
           tasks: widget.tasks.where(matches).toList(),
@@ -1432,25 +1471,6 @@ class _ManagementPageState extends State<_ManagementPage> {
       ),
     );
     if (result == null || !mounted) {
-      return;
-    }
-
-    if (result.deleteRequested) {
-      final confirmed = await _confirmDelete(
-        title: '목록 보관',
-        confirmLabel: '보관',
-        message: '목록을 보관해도 모든 할 일과 완료·휴지통 항목의 소속이 유지됩니다. 나중에 복원할 수 있습니다.',
-      );
-      if (!confirmed || !mounted) {
-        return;
-      }
-      await widget.folderRepository.deleteFolder(folder.id);
-      await _setFolderHidden(folder.id, false);
-      if (!mounted) {
-        return;
-      }
-      _refreshMetadata();
-      _showSnackBar(context, '목록을 보관했습니다.');
       return;
     }
 
@@ -2214,7 +2234,6 @@ class _SettingsPage extends StatefulWidget {
     required this.onOpenSync,
     required this.onClearEcampusSession,
     required this.localNotificationService,
-    required this.onManageMetadata,
   });
 
   final SettingsRepository settingsRepository;
@@ -2224,7 +2243,6 @@ class _SettingsPage extends StatefulWidget {
   final ValueChanged<AppSettings> onSettingsChanged;
   final Future<void> Function() onOpenSync;
   final Future<void> Function() onClearEcampusSession;
-  final VoidCallback onManageMetadata;
   final LocalNotificationService localNotificationService;
 
   @override
@@ -2373,12 +2391,6 @@ class _SettingsPageState extends State<_SettingsPage> {
               _SettingsSection(
                 title: '홈 표시',
                 children: [
-                  _SettingsActionRow(
-                    icon: Icons.folder_outlined,
-                    title: '목록·태그 관리',
-                    subtitle: '폴더, 목록, 태그와 보관된 목록을 관리합니다.',
-                    onTap: widget.onManageMetadata,
-                  ),
                   _SettingsInfoRow(
                     icon: Icons.access_time_rounded,
                     title: '마감 임박 기준',
@@ -3690,13 +3702,6 @@ class _FolderEditDialogState extends State<_FolderEditDialog> {
         ),
       ),
       actions: [
-        if (widget.folder != null && !isInbox)
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(_FolderFormResult.delete());
-            },
-            child: const Text('목록 보관'),
-          ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('취소'),
@@ -3794,22 +3799,12 @@ class _FolderFormResult {
     this.parentFolderId,
     this.groupId,
     this.isHidden = false,
-  }) : deleteRequested = false;
-
-  const _FolderFormResult.delete()
-    : name = '',
-      color = '',
-      parentFolderId = null,
-      groupId = null,
-      isHidden = false,
-      deleteRequested = true;
-
+  });
   final String name;
   final String color;
   final String? parentFolderId;
   final String? groupId;
   final bool isHidden;
-  final bool deleteRequested;
 }
 
 class _SettingsSection extends StatelessWidget {

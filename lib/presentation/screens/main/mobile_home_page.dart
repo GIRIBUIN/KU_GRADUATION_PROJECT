@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' show DateFormat;
 
@@ -10,6 +11,7 @@ import '../../../data/models/task_swipe_options.dart';
 import '../../../data/repositories/settings_repository.dart';
 import '../../../data/services/home_task_summary.dart';
 import '../../widgets/task_metadata_picker.dart' show colorFromHex;
+import 'drawer_context_item.dart';
 
 enum _ScopeKind { period, all, list, tag, completed, trash }
 
@@ -43,6 +45,9 @@ class MobileHomePage extends StatefulWidget {
     required this.onRestoreTask,
     required this.onDeletePermanently,
     required this.onDeleteTask,
+    required this.onMoveList,
+    required this.onMoveTag,
+    required this.onOpenExcluded,
   });
 
   final List<Task> tasks;
@@ -61,6 +66,10 @@ class MobileHomePage extends StatefulWidget {
   final Future<void> Function(FolderGroup) onEditFolder, onAddListToFolder;
   final Future<void> Function(Folder) onEditList, onAddTaskToList;
   final Future<void> Function(Tag) onEditTag, onAddTaskWithTag;
+  final Future<void> Function(String id, String? groupId, String? beforeId)
+  onMoveList;
+  final Future<void> Function(String id, String? beforeId) onMoveTag;
+  final Future<void> Function() onOpenExcluded;
   final Future<void> Function() onImport;
   final Future<void> Function(Task) onOpenTask,
       onToggleTask,
@@ -85,12 +94,25 @@ class _MobileHomePageState extends State<MobileHomePage> {
   final Set<String> _selectedTrashIds = {};
   bool _loadedPreferences = false;
   bool _savingPeriod = false;
+  HomePeriod _trashPeriod = HomePeriod.all;
+  DateTimeRange? _trashCustomRange;
+  final _dismissMenus = ValueNotifier<int>(0);
+  final _drawerScroll = ScrollController();
+  final _drawerScrollKey = GlobalKey();
+  final Map<String, ExpansibleController> _folderControllers = {};
+  Offset? _dragPosition;
+  bool _dragMoving = false;
+  bool _metadataBusy = false;
+  Timer? _dragScrollTimer;
+  double _scrollDelta = 0;
   final Set<String> _expandedFolderIds = {};
   final Set<String> _swipingTaskIds = {};
   double _drawerDragDistance = 0;
 
   void _resetTrashSession() {
     _trashView = const HomeViewOptions();
+    _trashPeriod = HomePeriod.all;
+    _trashCustomRange = null;
     _trashSelectionMode = false;
     _selectedTrashIds.clear();
   }
@@ -107,8 +129,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
   }
 
   String get _scopeLabel => switch (_scope) {
-    _ScopeKind.period => '기간별 할 일',
-    _ScopeKind.all => '전체',
+    _ScopeKind.period || _ScopeKind.all => '할 일',
     _ScopeKind.list =>
       widget.lists.where((l) => l.id == _scopeId).firstOrNull?.name ??
           inboxListName,
@@ -121,7 +142,8 @@ class _MobileHomePageState extends State<MobileHomePage> {
   (DateTime, DateTime) _range(DateTime now) {
     final today = DateTime(now.year, now.month, now.day);
     if (_scope == _ScopeKind.all) return (DateTime(1), DateTime(10000));
-    return switch (_period) {
+    final range = _scope == _ScopeKind.trash ? _trashCustomRange : _customRange;
+    return switch (_scope == _ScopeKind.trash ? _trashPeriod : _period) {
       HomePeriod.today => (
         today,
         DateTime(today.year, today.month, today.day + 1),
@@ -136,31 +158,45 @@ class _MobileHomePageState extends State<MobileHomePage> {
       ),
       HomePeriod.all => (DateTime(1), DateTime(10000)),
       HomePeriod.custom => (
-        _customRange!.start,
-        DateTime(
-          _customRange!.end.year,
-          _customRange!.end.month,
-          _customRange!.end.day + 1,
-        ),
+        range!.start,
+        DateTime(range.end.year, range.end.month, range.end.day + 1),
       ),
     };
   }
 
-  String get _periodLabel => switch (_period) {
-    HomePeriod.today => '오늘',
-    HomePeriod.week => '이번 주',
-    HomePeriod.month => '이번 달',
-    HomePeriod.all => '전체',
-    HomePeriod.custom =>
-      _customRange!.start == _customRange!.end
-          ? DateFormat('yyyy년 M월 d일', 'ko_KR').format(_customRange!.start)
-          : '${DateFormat('yyyy.MM.dd').format(_customRange!.start)} ~ ${DateFormat(_customRange!.start.year == _customRange!.end.year ? 'MM.dd' : 'yyyy.MM.dd').format(_customRange!.end)}',
-  };
+  String get _periodLabel {
+    final mode = _scope == _ScopeKind.trash ? _trashPeriod : _period;
+    final range = _scope == _ScopeKind.trash ? _trashCustomRange : _customRange;
+    return switch (mode) {
+      HomePeriod.today => '오늘',
+      HomePeriod.week => '이번 주',
+      HomePeriod.month => '이번 달',
+      HomePeriod.all => '전체',
+      HomePeriod.custom =>
+        range!.start == range.end
+            ? DateFormat('yyyy년 M월 d일', 'ko_KR').format(range.start)
+            : '${DateFormat('yyyy.MM.dd').format(range.start)} ~ ${DateFormat(range.start.year == range.end.year ? 'MM.dd' : 'yyyy.MM.dd').format(range.end)}',
+    };
+  }
+
+  String get _savedPeriodLabel {
+    if (_period == HomePeriod.today) return '오늘';
+    if (_period == HomePeriod.week) return '이번 주';
+    if (_period == HomePeriod.month) return '이번 달';
+    if (_period == HomePeriod.all) return '오늘';
+    final range = _customRange!;
+    return range.start == range.end
+        ? DateFormat('yyyy년 M월 d일', 'ko_KR').format(range.start)
+        : '${DateFormat('yyyy.MM.dd').format(range.start)} ~ ${DateFormat(range.start.year == range.end.year ? 'MM.dd' : 'yyyy.MM.dd').format(range.end)}';
+  }
 
   void _selectScope(_ScopeKind scope, [String? id]) {
-    if (_trashBulkBusy) return;
+    if (_trashBulkBusy || _metadataBusy) return;
+    _dismissMenus.value++;
     setState(() {
-      if (_scope != scope || _scopeId != id) _resetTrashSession();
+      if (_scope != scope || _scopeId != id || scope == _ScopeKind.trash) {
+        _resetTrashSession();
+      }
       _scope = scope;
       _scopeId = id;
     });
@@ -174,99 +210,286 @@ class _MobileHomePageState extends State<MobileHomePage> {
     String? id,
     Color? color,
   ]) {
-    return ListTile(
+    final row = ListTile(
       key: ValueKey('scope-${kind.name}-${id ?? ''}'),
       selected: _scope == kind && _scopeId == id,
       selectedTileColor: AppTheme.primaryBlue.withValues(alpha: .08),
       leading: Icon(icon, color: color),
       title: Text(label),
       onTap: () => _selectScope(kind, id),
-      onLongPress: switch (kind) {
-        _ScopeKind.list => () {
-          final list = widget.lists.where((l) => l.id == id).firstOrNull;
-          if (list != null) {
-            _metadataActions(
-              list.name,
-              editLabel: '목록 편집',
-              addLabel: '할 일 추가',
-              onEdit: () => widget.onEditList(list),
-              onAdd: () => widget.onAddTaskToList(list),
-            );
-          }
-        },
-        _ScopeKind.tag => () {
-          final tag = widget.tags.where((t) => t.id == id).firstOrNull;
-          if (tag != null) {
-            _metadataActions(
-              tag.name,
-              editLabel: '태그 편집',
-              addLabel: '할 일 추가',
-              onEdit: () => widget.onEditTag(tag),
-              onAdd: () => widget.onAddTaskWithTag(tag),
-            );
-          }
-        },
-        _ => null,
-      },
+    );
+    if (kind != _ScopeKind.list && kind != _ScopeKind.tag) return row;
+    final list = widget.lists.where((l) => l.id == id).firstOrNull;
+    final tag = widget.tags.where((t) => t.id == id).firstOrNull;
+    final isList = kind == _ScopeKind.list;
+    final draggable = !isList || id != inboxListId;
+    final item = DrawerDragItem(
+      isList ? DrawerDragKind.list : DrawerDragKind.tag,
+      id!,
+    );
+    final child = DrawerContextItem(
+      key: ValueKey('drawer-item-${kind.name}-$id'),
+      label: label,
+      icon: icon,
+      dismissMenus: _dismissMenus,
+      dragItem: draggable && !_metadataBusy ? item : null,
+      onDragChanged: _dragChanged,
+      onDragPosition: _scrollDrag,
+      actions: [
+        DrawerContextAction(
+          isList ? '목록 편집' : '태그 편집',
+          Icons.edit_outlined,
+          () => isList ? widget.onEditList(list!) : widget.onEditTag(tag!),
+        ),
+        DrawerContextAction(
+          '할 일 추가',
+          Icons.add_rounded,
+          () => isList
+              ? widget.onAddTaskToList(list!)
+              : widget.onAddTaskWithTag(tag!),
+        ),
+      ],
+      child: row,
+    );
+    return _dropTarget(
+      key: 'drawer-drop-${kind.name}-$id',
+      accept: (data) => data.kind == item.kind && data.id != id,
+      onDrop: (data) => isList
+          ? widget.onMoveList(
+              data.id,
+              list!.groupId,
+              id == inboxListId ? null : id,
+            )
+          : widget.onMoveTag(data.id, id),
+      onDropAt: (data, after) =>
+          _dropRelativeTo(data, id, isList: isList, after: after),
+      child: child,
     );
   }
 
-  Future<void> _metadataActions(
-    String title, {
-    required String editLabel,
-    required String addLabel,
-    required Future<void> Function() onEdit,
-    required Future<void> Function() onAdd,
-  }) async {
-    final edit = await showModalBottomSheet<bool>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Text(
-                title,
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.edit_outlined),
-              title: Text(editLabel),
-              onTap: () => Navigator.pop(context, true),
-            ),
-            ListTile(
-              leading: const Icon(Icons.add_rounded),
-              title: Text(addLabel),
-              onTap: () => Navigator.pop(context, false),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (edit == null || !mounted) return;
-    if (edit) {
-      await onEdit();
-    } else {
-      await onAdd();
+  @override
+  void dispose() {
+    _dragScrollTimer?.cancel();
+    _dismissMenus.dispose();
+    _drawerScroll.dispose();
+    for (final controller in _folderControllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  void _dragChanged(DrawerDragItem? item, bool moving) {
+    if (!mounted) return;
+    setState(() {
+      _dragMoving = moving;
+    });
+    if (item == null) {
+      _dragScrollTimer?.cancel();
+      _dragScrollTimer = null;
+      _scrollDelta = 0;
     }
   }
 
-  Future<void> _manageVisibility() => showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
-    builder: (_) => _DrawerVisibilitySheet(
-      lists: widget.lists,
-      tags: widget.tags,
-      groups: widget.groups,
-      settings: widget.settings,
-      repository: widget.settingsRepository,
-      onSaved: (saved) {
-        if (mounted) widget.onSettingsSaved(saved);
+  void _scrollDrag(Offset position) {
+    _dragPosition = position;
+    final box = _drawerScrollKey.currentContext?.findRenderObject();
+    if (box is! RenderBox || !_drawerScroll.hasClients) return;
+    final y = box.globalToLocal(position).dy;
+    _scrollDelta = y < 48
+        ? -12
+        : y > box.size.height - 48
+        ? 12
+        : 0;
+    _dragScrollTimer ??= Timer.periodic(const Duration(milliseconds: 50), (_) {
+      if (!_drawerScroll.hasClients || _scrollDelta == 0) return;
+      final position = _drawerScroll.position;
+      _drawerScroll.jumpTo(
+        (_drawerScroll.offset + _scrollDelta).clamp(
+          position.minScrollExtent,
+          position.maxScrollExtent,
+        ),
+      );
+    });
+  }
+
+  Future<void> _dropRelativeTo(
+    DrawerDragItem item,
+    String targetId, {
+    required bool isList,
+    required bool after,
+  }) {
+    if (!isList) {
+      final peers = _drawerTags.where((tag) => tag.id != item.id).toList();
+      final index = peers.indexWhere((tag) => tag.id == targetId);
+      final beforeId = after && index == peers.length - 1
+          ? null
+          : peers[index + (after ? 1 : 0)].id;
+      return widget.onMoveTag(item.id, beforeId);
+    }
+    final target = widget.lists.firstWhere((list) => list.id == targetId);
+    final peers = _drawerLists
+        .where(
+          (list) =>
+              list.groupId == target.groupId &&
+              list.id != item.id &&
+              list.id != inboxListId,
+        )
+        .toList();
+    if (targetId == inboxListId) {
+      return widget.onMoveList(item.id, null, peers.firstOrNull?.id);
+    }
+    final index = peers.indexWhere((list) => list.id == targetId);
+    final beforeId = after && index == peers.length - 1
+        ? null
+        : peers[index + (after ? 1 : 0)].id;
+    return widget.onMoveList(item.id, target.groupId, beforeId);
+  }
+
+  Widget _dropTarget({
+    required String key,
+    required bool Function(DrawerDragItem) accept,
+    required Future<void> Function(DrawerDragItem) onDrop,
+    Future<void> Function(DrawerDragItem item, bool after)? onDropAt,
+    required Widget child,
+  }) {
+    BuildContext? targetContext;
+    bool isAfter() {
+      final box = targetContext?.findRenderObject();
+      return box is RenderBox &&
+          _dragPosition != null &&
+          box.globalToLocal(_dragPosition!).dy >= box.size.height / 2;
+    }
+
+    return DragTarget<DrawerDragItem>(
+      key: ValueKey(key),
+      onWillAcceptWithDetails: (details) =>
+          !_metadataBusy && _dragMoving && accept(details.data),
+      onMove: (_) {
+        if (onDropAt != null && mounted) setState(() {});
       },
+      onAcceptWithDetails: (details) async {
+        final after = isAfter();
+        _dismissMenus.value++;
+        setState(() => _metadataBusy = true);
+        try {
+          if (onDropAt == null) {
+            await onDrop(details.data);
+          } else {
+            await onDropAt(details.data, after);
+          }
+        } catch (_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('순서나 위치를 저장하지 못했습니다. 다시 시도해주세요.')),
+            );
+          }
+        } finally {
+          if (mounted) setState(() => _metadataBusy = false);
+        }
+      },
+      builder: (context, candidates, _) {
+        targetContext = context;
+        final active = candidates.isNotEmpty;
+        final side = BorderSide(color: AppTheme.primaryBlue, width: 2);
+        return Material(
+          type: MaterialType.transparency,
+          child: Ink(
+            decoration: BoxDecoration(
+              color: active
+                  ? AppTheme.primaryBlue.withValues(alpha: .08)
+                  : Colors.transparent,
+              border: active && onDropAt != null
+                  ? (isAfter() ? Border(bottom: side) : Border(top: side))
+                  : null,
+            ),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _manageVisibility(
+    BuildContext anchor, {
+    required bool isTag,
+  }) async {
+    final entries = isTag
+        ? [for (final tag in widget.tags) (tag.id, tag.name)]
+        : [
+            for (final list in widget.lists)
+              if (list.id != inboxListId) (list.id, list.name),
+          ];
+    if (entries.isEmpty) return;
+    final titleStyle = Theme.of(context).textTheme.bodyMedium!.copyWith(
+      fontSize: 14,
+      height: 1.3,
+      color: Theme.of(context).colorScheme.onSurface,
+    );
+    var widest = 0.0;
+    for (final (_, name) in entries) {
+      final painter = TextPainter(
+        text: TextSpan(text: name, style: titleStyle),
+        textDirection: Directionality.of(context),
+        textScaler: MediaQuery.textScalerOf(context),
+      )..layout();
+      if (painter.width > widest) widest = painter.width;
+      painter.dispose();
+    }
+    final width = (widest + 64).clamp(152.0, 208.0);
+    final button = anchor.findRenderObject()! as RenderBox;
+    final overlay =
+        Navigator.of(context).overlay!.context.findRenderObject()! as RenderBox;
+    final offset = button.localToGlobal(
+      Offset(0, button.size.height),
+      ancestor: overlay,
+    );
+    await showMenu<void>(
+      context: context,
+      position: RelativeRect.fromRect(
+        offset & Size(button.size.width, 0),
+        Offset.zero & overlay.size,
+      ),
+      constraints: BoxConstraints.tightFor(width: width),
+      items: [
+        PopupMenuItem<void>(
+          height: 0,
+          padding: EdgeInsets.zero,
+          child: _DrawerVisibilityMenu(
+            width: width,
+            titleStyle: titleStyle,
+            entries: entries,
+            isTag: isTag,
+            settings: widget.settings,
+            repository: widget.settingsRepository,
+            onSaved: (saved) {
+              if (mounted) widget.onSettingsSaved(saved);
+            },
+            onError: () {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('숨김 설정을 저장하지 못했습니다. 다시 시도해주세요.'),
+                  ),
+                );
+              }
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _visibilityButton({required bool isTag}) => Builder(
+    builder: (anchor) => IconButton(
+      tooltip: isTag ? '태그 숨김' : '목록 숨김',
+      icon: const Icon(Icons.visibility_off_outlined),
+      onPressed:
+          widget.settingsReady &&
+              (isTag
+                  ? widget.tags.isNotEmpty
+                  : widget.lists.any((list) => list.id != inboxListId))
+          ? () => _manageVisibility(anchor, isTag: isTag)
+          : null,
     ),
   );
 
@@ -293,9 +516,20 @@ class _MobileHomePageState extends State<MobileHomePage> {
             !widget.settings.hiddenFolderIds.contains(list.id),
       )
       .toList();
-  List<Tag> get _drawerTags => widget.tags
-      .where((tag) => !widget.settings.hiddenTagIds.contains(tag.id))
-      .toList();
+  List<Tag> get _drawerTags =>
+      widget.tags
+          .where((tag) => !widget.settings.hiddenTagIds.contains(tag.id))
+          .toList()
+        ..sort((a, b) {
+          final aOrder = widget.settings.tagSortOrders[a.id];
+          final bOrder = widget.settings.tagSortOrders[b.id];
+          if (aOrder != null && bOrder != null && aOrder != bOrder) {
+            return aOrder.compareTo(bOrder);
+          }
+          if (aOrder != null && bOrder == null) return -1;
+          if (aOrder == null && bOrder != null) return 1;
+          return a.name.compareTo(b.name);
+        });
 
   Widget _drawer() => Drawer(
     child: SafeArea(
@@ -316,10 +550,13 @@ class _MobileHomePageState extends State<MobileHomePage> {
               child: Material(
                 type: MaterialType.transparency,
                 child: ListView(
+                  key: _drawerScrollKey,
+                  controller: _drawerScroll,
                   padding: EdgeInsets.zero,
                   children: [
+                    _drawerHeading('할 일'),
                     _drawerEntry(
-                      _periodLabel,
+                      _savedPeriodLabel,
                       Icons.access_time_outlined,
                       _ScopeKind.period,
                     ),
@@ -328,27 +565,26 @@ class _MobileHomePageState extends State<MobileHomePage> {
                       Icons.description_outlined,
                       _ScopeKind.all,
                     ),
-                    _drawerHeading(
-                      '목록',
-                      actions: [
-                        IconButton(
-                          tooltip: '숨김 관리',
-                          icon: const Icon(Icons.visibility_off_outlined),
-                          onPressed: widget.settingsReady
-                              ? _manageVisibility
-                              : null,
-                        ),
-                        IconButton(
-                          tooltip: '폴더 추가',
-                          icon: const Icon(Icons.create_new_folder_outlined),
-                          onPressed: widget.onAddFolder,
-                        ),
-                        IconButton(
-                          tooltip: '목록 추가',
-                          icon: const Icon(Icons.add_box_outlined),
-                          onPressed: widget.onAddList,
-                        ),
-                      ],
+                    _dropTarget(
+                      key: 'drawer-drop-root',
+                      accept: (data) => data.kind == DrawerDragKind.list,
+                      onDrop: (data) => widget.onMoveList(data.id, null, null),
+                      child: _drawerHeading(
+                        '목록',
+                        actions: [
+                          _visibilityButton(isTag: false),
+                          IconButton(
+                            tooltip: '폴더 추가',
+                            icon: const Icon(Icons.create_new_folder_outlined),
+                            onPressed: widget.onAddFolder,
+                          ),
+                          IconButton(
+                            tooltip: '목록 추가',
+                            icon: const Icon(Icons.add_box_outlined),
+                            onPressed: widget.onAddList,
+                          ),
+                        ],
+                      ),
                     ),
                     if (widget.groups.isEmpty)
                       const Padding(
@@ -362,46 +598,70 @@ class _MobileHomePageState extends State<MobileHomePage> {
                         ),
                       ),
                     for (final group in widget.groups)
-                      GestureDetector(
-                        onLongPress: () => _metadataActions(
-                          group.name,
-                          editLabel: '폴더 편집',
-                          addLabel: '목록 추가',
-                          onEdit: () => widget.onEditFolder(group),
-                          onAdd: () => widget.onAddListToFolder(group),
-                        ),
-                        child: ExpansionTile(
-                          key: ValueKey('drawer-folder-${group.id}'),
-                          initiallyExpanded: _expandedFolderIds.contains(
-                            group.id,
-                          ),
-                          onExpansionChanged: (expanded) => setState(() {
-                            if (expanded) {
-                              _expandedFolderIds.add(group.id);
-                            } else {
-                              _expandedFolderIds.remove(group.id);
-                            }
-                          }),
-                          leading: const Icon(Icons.folder_rounded),
-                          title: Text(group.name),
-                          shape: const Border(),
-                          collapsedShape: const Border(),
-                          childrenPadding: const EdgeInsets.only(left: 18),
-                          children: [
-                            for (final list in _drawerLists.where(
-                              (l) => l.groupId == group.id,
-                            ))
-                              _drawerEntry(
-                                list.name,
-                                Icons.square_rounded,
-                                _ScopeKind.list,
-                                list.id,
-                                colorFromHex(
-                                  list.color,
-                                  fallback: AppTheme.successGreen,
-                                ),
-                              ),
+                      _dropTarget(
+                        key: 'drawer-drop-folder-${group.id}',
+                        accept: (data) => data.kind == DrawerDragKind.list,
+                        onDrop: (data) async {
+                          await widget.onMoveList(data.id, group.id, null);
+                          if (!mounted) return;
+                          _expandedFolderIds.add(group.id);
+                          _folderControllers[group.id]?.expand();
+                        },
+                        child: DrawerContextItem(
+                          key: ValueKey('drawer-item-folder-${group.id}'),
+                          label: group.name,
+                          icon: Icons.folder_rounded,
+                          dismissMenus: _dismissMenus,
+                          onDragChanged: (_, _) {},
+                          actions: [
+                            DrawerContextAction(
+                              '폴더 편집',
+                              Icons.edit_outlined,
+                              () => widget.onEditFolder(group),
+                            ),
+                            DrawerContextAction(
+                              '목록 추가',
+                              Icons.add_rounded,
+                              () => widget.onAddListToFolder(group),
+                            ),
                           ],
+                          child: ExpansionTile(
+                            controller: _folderControllers.putIfAbsent(
+                              group.id,
+                              ExpansibleController.new,
+                            ),
+                            key: ValueKey('drawer-folder-${group.id}'),
+                            initiallyExpanded: _expandedFolderIds.contains(
+                              group.id,
+                            ),
+                            onExpansionChanged: (expanded) => setState(() {
+                              if (expanded) {
+                                _expandedFolderIds.add(group.id);
+                              } else {
+                                _expandedFolderIds.remove(group.id);
+                              }
+                            }),
+                            leading: const Icon(Icons.folder_rounded),
+                            title: Text(group.name),
+                            shape: const Border(),
+                            collapsedShape: const Border(),
+                            childrenPadding: const EdgeInsets.only(left: 18),
+                            children: [
+                              for (final list in _drawerLists.where(
+                                (l) => l.groupId == group.id,
+                              ))
+                                _drawerEntry(
+                                  list.name,
+                                  Icons.square_rounded,
+                                  _ScopeKind.list,
+                                  list.id,
+                                  colorFromHex(
+                                    list.color,
+                                    fallback: AppTheme.successGreen,
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
                       ),
                     for (final list in _drawerLists.where(
@@ -420,6 +680,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
                     _drawerHeading(
                       '태그',
                       actions: [
+                        _visibilityButton(isTag: true),
                         IconButton(
                           tooltip: '태그 추가',
                           icon: const Icon(Icons.new_label_outlined),
@@ -456,6 +717,15 @@ class _MobileHomePageState extends State<MobileHomePage> {
                       '휴지통',
                       Icons.delete_outline_rounded,
                       _ScopeKind.trash,
+                    ),
+                    ListTile(
+                      key: const ValueKey('drawer-excluded'),
+                      leading: const Icon(Icons.block_outlined),
+                      title: const Text('제외된 eCampus 항목'),
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        widget.onOpenExcluded();
+                      },
                     ),
                     const SizedBox(height: 12),
                   ],
@@ -494,7 +764,9 @@ class _MobileHomePageState extends State<MobileHomePage> {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
               ),
             ),
-            for (final period in HomePeriod.values)
+            for (final period in HomePeriod.values.where(
+              (mode) => _scope == _ScopeKind.trash || mode != HomePeriod.all,
+            ))
               ListTile(
                 title: Text(switch (period) {
                   HomePeriod.today => '오늘',
@@ -503,7 +775,9 @@ class _MobileHomePageState extends State<MobileHomePage> {
                   HomePeriod.all => '전체',
                   HomePeriod.custom => '기간 선택',
                 }),
-                trailing: _period == period
+                trailing:
+                    (_scope == _ScopeKind.trash ? _trashPeriod : _period) ==
+                        period
                     ? const Icon(Icons.check_rounded)
                     : null,
                 onTap: () => Navigator.pop(context, period),
@@ -547,7 +821,9 @@ class _MobileHomePageState extends State<MobileHomePage> {
       if (isRange) {
         range = await showDateRangePicker(
           context: context,
-          initialDateRange: _customRange,
+          initialDateRange: _scope == _ScopeKind.trash
+              ? _trashCustomRange
+              : _customRange,
           firstDate: DateTime(2000),
           lastDate: DateTime(2100, 12, 31),
           helpText: '기간 선택',
@@ -560,7 +836,10 @@ class _MobileHomePageState extends State<MobileHomePage> {
       } else {
         final date = await showDatePicker(
           context: context,
-          initialDate: _customRange?.start ?? DateTime.now(),
+          initialDate:
+              (_scope == _ScopeKind.trash ? _trashCustomRange : _customRange)
+                  ?.start ??
+              DateTime.now(),
           firstDate: DateTime(2000),
           lastDate: DateTime(2100, 12, 31),
           helpText: '단일 날짜 선택',
@@ -576,6 +855,14 @@ class _MobileHomePageState extends State<MobileHomePage> {
   }
 
   Future<void> _savePeriod(HomePeriod selected, {DateTimeRange? range}) async {
+    if (_scope == _ScopeKind.trash) {
+      setState(() {
+        _trashPeriod = selected;
+        _trashCustomRange = range;
+        _selectedTrashIds.clear();
+      });
+      return;
+    }
     final preference = HomePeriodPreference(
       mode: selected,
       start: range?.start,
@@ -753,6 +1040,9 @@ class _MobileHomePageState extends State<MobileHomePage> {
       child: Scaffold(
         key: _scaffoldKey,
         drawer: _drawer(),
+        onDrawerChanged: (open) {
+          if (!open) _dismissMenus.value++;
+        },
         drawerEnableOpenDragGesture: !_trashBulkBusy,
         appBar: AppBar(
           automaticallyImplyLeading: false,
@@ -788,7 +1078,10 @@ class _MobileHomePageState extends State<MobileHomePage> {
                         child: Text(
                           isAll
                               ? '전체'
-                              : _period == HomePeriod.today
+                              : (_scope == _ScopeKind.trash
+                                        ? _trashPeriod
+                                        : _period) ==
+                                    HomePeriod.today
                               ? '오늘 · ${DateFormat('M월 d일', 'ko_KR').format(now)}'
                               : _periodLabel,
                           maxLines: 1,
@@ -1321,137 +1614,118 @@ int _compare(Task a, Task b, HomeSort sort) {
   return created == 0 ? a.id.compareTo(b.id) : created;
 }
 
-class _DrawerVisibilitySheet extends StatefulWidget {
-  const _DrawerVisibilitySheet({
-    required this.lists,
-    required this.tags,
-    required this.groups,
+class _DrawerVisibilityMenu extends StatefulWidget {
+  const _DrawerVisibilityMenu({
+    required this.width,
+    required this.titleStyle,
+    required this.entries,
+    required this.isTag,
     required this.settings,
     required this.repository,
     required this.onSaved,
+    required this.onError,
   });
-
-  final List<Folder> lists;
-  final List<Tag> tags;
-  final List<FolderGroup> groups;
+  final double width;
+  final TextStyle titleStyle;
+  final List<(String, String)> entries;
+  final bool isTag;
   final AppSettings settings;
   final SettingsRepository repository;
   final ValueChanged<AppSettings> onSaved;
-
+  final VoidCallback onError;
   @override
-  State<_DrawerVisibilitySheet> createState() => _DrawerVisibilitySheetState();
+  State<_DrawerVisibilityMenu> createState() => _DrawerVisibilityMenuState();
 }
 
-class _DrawerVisibilitySheetState extends State<_DrawerVisibilitySheet> {
+class _DrawerVisibilityMenuState extends State<_DrawerVisibilityMenu> {
   late AppSettings _settings = widget.settings;
   bool _saving = false;
-  String? _error;
-
-  Future<void> _setHidden(String id, bool hidden, {required bool isTag}) async {
-    setState(() {
-      _saving = true;
-      _error = null;
-    });
+  Future<void> _toggle(String id) async {
+    if (_saving) return;
+    setState(() => _saving = true);
     try {
-      // Merge only this visibility change into the latest saved settings.
       final latest = await widget.repository.getSettings();
-      final ids = {...(isTag ? latest.hiddenTagIds : latest.hiddenFolderIds)};
-      if (hidden) {
-        ids.add(id);
-      } else {
-        ids.remove(id);
-      }
+      final ids = {
+        ...(widget.isTag ? latest.hiddenTagIds : latest.hiddenFolderIds),
+      };
+      if (!ids.remove(id)) ids.add(id);
       final saved = await widget.repository.saveSettings(
-        isTag
+        widget.isTag
             ? latest.copyWith(hiddenTagIds: ids)
             : latest.copyWith(hiddenFolderIds: ids),
       );
       widget.onSaved(saved);
       if (mounted) setState(() => _settings = saved);
     } catch (_) {
-      if (mounted) {
-        setState(() => _error = '숨김 설정을 저장하지 못했습니다. 다시 시도해주세요.');
-      }
+      widget.onError();
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
+  bool _isHidden(String id) =>
+      (widget.isTag ? _settings.hiddenTagIds : _settings.hiddenFolderIds)
+          .contains(id);
+
   @override
-  Widget build(BuildContext context) => SafeArea(
-    child: SizedBox(
-      height: MediaQuery.sizeOf(context).height * .7,
-      child: Column(
-        children: [
-          const Padding(
-            padding: EdgeInsets.all(12),
-            child: Text(
-              '숨김 관리',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-            ),
-          ),
-          const Text('숨긴 목록과 태그는 메뉴에서만 가려집니다.'),
-          if (_error != null)
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Text(
-                _error!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+  Widget build(BuildContext context) => SizedBox(
+    width: widget.width,
+    child: ConstrainedBox(
+      key: ValueKey('visibility-menu-${widget.isTag ? 'tag' : 'list'}'),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * .55,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final (id, name) in widget.entries)
+              InkWell(
+                key: ValueKey(
+                  'visibility-${widget.isTag ? 'tag' : 'list'}-$id',
+                ),
+                onTap: _saving ? null : () => _toggle(id),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          name,
+                          style: widget.titleStyle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        key: ValueKey('visibility-toggle-$id'),
+                        tooltip: _isHidden(id) ? '보이기' : '숨기기',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints.tightFor(
+                          width: 32,
+                          height: 36,
+                        ),
+                        iconSize: 20,
+                        icon: Icon(
+                          _isHidden(id)
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                        ),
+                        color: _isHidden(id)
+                            ? AppTheme.muted
+                            : AppTheme.primaryBlue,
+                        onPressed: _saving ? null : () => _toggle(id),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          Expanded(
-            child: ListView(
-              children: [
-                const ListTile(title: Text('목록')),
-                for (final list in widget.lists)
-                  SwitchListTile.adaptive(
-                    key: ValueKey('visibility-list-${list.id}'),
-                    title: Text(list.name),
-                    subtitle: Text(
-                      list.id == inboxListId
-                          ? '항상 표시'
-                          : [
-                              if (list.groupId != null)
-                                widget.groups
-                                        .where((g) => g.id == list.groupId)
-                                        .firstOrNull
-                                        ?.name ??
-                                    '폴더',
-                              _settings.hiddenFolderIds.contains(list.id)
-                                  ? '숨김'
-                                  : '표시',
-                            ].join(' · '),
-                    ),
-                    value:
-                        list.id != inboxListId &&
-                        _settings.hiddenFolderIds.contains(list.id),
-                    onChanged: _saving || list.id == inboxListId
-                        ? null
-                        : (hidden) => _setHidden(list.id, hidden, isTag: false),
-                  ),
-                const ListTile(title: Text('태그')),
-                if (widget.tags.isEmpty)
-                  const ListTile(title: Text('등록된 태그가 없습니다.')),
-                for (final tag in widget.tags)
-                  SwitchListTile.adaptive(
-                    key: ValueKey('visibility-tag-${tag.id}'),
-                    title: Text(tag.name),
-                    subtitle: Text(
-                      _settings.hiddenTagIds.contains(tag.id) ? '숨김' : '표시',
-                    ),
-                    value: _settings.hiddenTagIds.contains(tag.id),
-                    onChanged: _saving
-                        ? null
-                        : (hidden) => _setHidden(tag.id, hidden, isTag: true),
-                  ),
-              ],
-            ),
-          ),
-          TextButton(
-            onPressed: _saving ? null : () => Navigator.pop(context),
-            child: const Text('닫기'),
-          ),
-        ],
+          ],
+        ),
       ),
     ),
   );

@@ -152,7 +152,7 @@ void main() {
   );
 
   test(
-    'completion, trash, list archival and restoration preserve original list and completion',
+    'completion, trash and soft-deleted lists preserve original task membership',
     () async {
       await lists.createFolder(list('course'));
       await tasks.createTask(task('todo', listId: 'course'));
@@ -161,14 +161,12 @@ void main() {
       final before = (await tasks.getTaskById('todo'))!;
       await lists.deleteFolder('course');
       expect((await lists.getFolders()).map((l) => l.id), [inboxListId]);
-      expect((await lists.getArchivedLists()).single.id, 'course');
+      expect((await lists.getFolderById('course'))!.archivedAt, isNotNull);
       expect((await tasks.getTaskById('todo'))!.listId, 'course');
       final restored = await tasks.restoreTask('todo');
       expect(restored.listId, 'course');
       expect(restored.status, TaskStatus.completed);
       expect(restored.completedAt, before.completedAt);
-      await lists.restoreList('course');
-      expect((await lists.getFolderById('course'))!.archivedAt, isNull);
     },
   );
 
@@ -216,6 +214,13 @@ void main() {
       await expectLater(
         lists.moveList(inboxListId, 'work'),
         throwsArgumentError,
+      );
+      await lists.moveList('course', 'work');
+      expect(
+        (await lists.getFolders())
+            .where((l) => l.groupId == 'work')
+            .map((l) => l.id),
+        ['target', 'course'],
       );
       await lists.moveList('course', null);
       final after = (await tasks.getTaskById('todo'))!;

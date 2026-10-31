@@ -46,7 +46,9 @@ class HomePeriodPreference {
       final mode = HomePeriod.values
           .where((mode) => mode.name == value['mode'])
           .firstOrNull;
-      if (mode == null) return const HomePeriodPreference();
+      if (mode == null || mode == HomePeriod.all) {
+        return const HomePeriodPreference();
+      }
       if (mode != HomePeriod.custom) return HomePeriodPreference(mode: mode);
       final start = _parseDate(value['start']);
       final end = _parseDate(value['end']);

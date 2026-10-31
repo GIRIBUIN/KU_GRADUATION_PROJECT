@@ -191,6 +191,30 @@ void main() {
   });
 
   group('DriftSettingsRepository', () {
+    test(
+      'reading settings does not restore or convert old deleted lists',
+      () async {
+        final now = DateTime.now();
+        await folderRepository.createFolder(
+          Folder(id: 'old-list', name: '이전 목록', createdAt: now, updatedAt: now),
+        );
+        await folderRepository.deleteFolder('old-list');
+        final before = (await folderRepository.getFolderById('old-list'))!;
+        final settings = await settingsRepository.getSettings();
+        final after = (await folderRepository.getFolderById('old-list'))!;
+        expect(after.archivedAt, before.archivedAt);
+        expect(after.archivedAt, isNotNull);
+        expect(after.updatedAt, before.updatedAt);
+        expect(settings.hiddenFolderIds.contains('old-list'), isFalse);
+        expect(
+          (await folderRepository.getFolders()).any(
+            (list) => list.id == 'old-list',
+          ),
+          isFalse,
+        );
+      },
+    );
+
     test('returns defaults and saves settings as key value rows', () async {
       final defaults = await settingsRepository.getSettings();
 
@@ -374,6 +398,7 @@ void main() {
           '[]',
           '{}',
           '{"mode":"unknown"}',
+          '{"mode":"all"}',
           '{"mode":"custom"}',
           '{"mode":"custom","start":"2030-11-14","end":"2030-11-12"}',
           '{"mode":"custom","start":"2030-02-30","end":"2030-03-02"}',
@@ -383,7 +408,7 @@ void main() {
           expect(HomePeriodPreference.decode(raw).mode, HomePeriod.today);
         }
         for (final mode in HomePeriod.values.where(
-          (m) => m != HomePeriod.custom,
+          (m) => m != HomePeriod.custom && m != HomePeriod.all,
         )) {
           final preference = HomePeriodPreference(mode: mode);
           final loaded = mapper.fromMap({'homePeriod': preference.encode()});

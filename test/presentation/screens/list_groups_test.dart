@@ -68,13 +68,6 @@ void main() {
     await screen(tester, mainScreen());
     await tester.tap(find.byTooltip('사이드 메뉴'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('drawer-settings')));
-    await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('목록·태그 관리'), 200);
-    await tester.ensureVisible(find.text('목록·태그 관리'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('목록·태그 관리'));
-    await tester.pumpAndSettle();
   }
 
   Future<void> seedCourse({String? groupId}) async {
@@ -107,9 +100,13 @@ void main() {
 
   Future<void> dragList(WidgetTester tester, Finder destination) async {
     final gesture = await tester.startGesture(
-      tester.getCenter(find.byKey(const ValueKey('task-list-course'))),
+      tester.getCenter(find.byKey(const ValueKey('scope-list-course'))),
     );
     await tester.pump(const Duration(milliseconds: 600));
+    expect(find.byKey(const ValueKey('drawer-context-menu')), findsOneWidget);
+    await gesture.moveBy(const Offset(0, -24));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byKey(const ValueKey('drawer-context-menu')), findsNothing);
     await gesture.moveTo(tester.getCenter(destination));
     await tester.pump(const Duration(milliseconds: 100));
     await gesture.up();
@@ -133,7 +130,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Course 1'));
     await tester.pumpAndSettle();
-    expect(find.text('목록의 할 일'), findsOneWidget);
+    expect(find.byType(Drawer), findsNothing);
     expect(find.text('Course task'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
@@ -144,11 +141,14 @@ void main() {
     (tester) async {
       await seedCourse();
       await openManagement(tester);
-      await dragList(tester, find.byKey(const ValueKey('folder-group-school')));
+      await dragList(
+        tester,
+        find.byKey(const ValueKey('drawer-drop-folder-school')),
+      );
       expect((await lists.getFolderById('course'))!.groupId, 'school');
       expect(find.text('Course 1'), findsOneWidget);
       expect((await tasks.getTaskById('task'))!.listId, 'course');
-      await dragList(tester, find.text('폴더 밖'));
+      await dragList(tester, find.byKey(const ValueKey('drawer-drop-root')));
       expect((await lists.getFolderById('course'))!.groupId, isNull);
       expect((await tasks.getTaskById('task'))!.listId, 'course');
       expect(tester.takeException(), isNull);
@@ -161,8 +161,8 @@ void main() {
   ) async {
     await seedCourse();
     await openManagement(tester);
-    final inbox = find.byKey(const ValueKey('task-list-kutodo:inbox'));
-    final course = find.byKey(const ValueKey('task-list-course'));
+    final inbox = find.byKey(const ValueKey('scope-list-kutodo:inbox'));
+    final course = find.byKey(const ValueKey('scope-list-course'));
     final inboxIcon = find.descendant(
       of: inbox,
       matching: find.byIcon(Icons.square_rounded),
@@ -189,13 +189,13 @@ void main() {
     expect(
       find.descendant(
         of: find.byTooltip('목록 추가'),
-        matching: find.byIcon(Icons.square_rounded),
+        matching: find.byIcon(Icons.add_box_outlined),
       ),
       findsOneWidget,
     );
-    await tester.tap(
-      find.descendant(of: inbox, matching: find.byTooltip('편집')),
-    );
+    await tester.longPress(inbox);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('목록 편집'));
     await tester.pumpAndSettle();
     expect(
       tester.widget<TextField>(find.byType(TextField).first).enabled,
@@ -283,14 +283,7 @@ void main() {
       expect(find.byKey(const ValueKey('nav-home')), findsOneWidget);
       await tester.tap(find.byTooltip('사이드 메뉴'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('drawer-settings')));
-      await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(find.text('목록·태그 관리'), 200);
-      await tester.ensureVisible(find.text('목록·태그 관리'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('목록·태그 관리'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('상위 폴더 추가'));
+      await tester.tap(find.byTooltip('폴더 추가'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField).first, 'School');
       await tester.tap(find.widgetWithText(FilledButton, '저장'));
@@ -317,6 +310,8 @@ void main() {
         group.id,
       );
       expect(find.text('School'), findsOneWidget);
+      await tester.tap(find.text('School'));
+      await tester.pumpAndSettle();
       expect(find.text('Course 1'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
@@ -324,53 +319,36 @@ void main() {
   );
 
   testWidgets(
-    'archival and restore through management retain completed task list',
+    'list editing has no archive action and hiding preserves completed task membership',
     (tester) async {
-      final now = DateTime.now();
-      await lists.createFolder(
-        Folder(id: 'course', name: 'Course 1', createdAt: now, updatedAt: now),
-      );
-      await tasks.createTask(
-        Task(
-          id: 'task',
-          title: 'Completed',
-          origin: TaskOrigin.personal,
-          status: TaskStatus.active,
-          folderIds: const ['course'],
-          createdAt: now,
-          updatedAt: now,
-        ),
-      );
+      await seedCourse();
       await tasks.updateTaskStatus('task', TaskStatus.completed);
-      await screen(tester, mainScreen());
-      await tester.tap(find.byTooltip('사이드 메뉴'));
+      await openManagement(tester);
+      expect(find.byTooltip('보관된 목록'), findsNothing);
+      await tester.longPress(find.byKey(const ValueKey('scope-list-course')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('drawer-settings')));
+      await tester.tap(find.text('목록 편집'));
       await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(find.text('목록·태그 관리'), 200);
-      await tester.ensureVisible(find.text('목록·태그 관리'));
+      expect(find.text('목록 보관'), findsNothing);
+      await tester.tap(find.text('취소'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('목록·태그 관리'));
+      await tester.tap(find.byTooltip('목록 숨김'));
       await tester.pumpAndSettle();
-      final row = find.ancestor(
-        of: find.text('Course 1'),
-        matching: find.byType(ListTile),
-      );
-      await tester.tap(
-        find.descendant(of: row, matching: find.byTooltip('편집')),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('목록 보관').last);
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, '보관'));
-      await tester.pumpAndSettle();
-      expect(find.text('보관된 목록'), findsOneWidget);
-      expect((await tasks.getTaskById('task'))!.listId, 'course');
-      await tester.ensureVisible(find.text('목록 복원'));
-      await tester.tap(find.text('목록 복원'));
+      await tester.tap(find.byKey(const ValueKey('visibility-toggle-course')));
       await tester.pumpAndSettle();
       expect((await lists.getFolderById('course'))!.archivedAt, isNull);
+      expect((await tasks.getTaskById('task'))!.listId, 'course');
       expect((await tasks.getTaskById('task'))!.status, TaskStatus.completed);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('scope-list-course')), findsNothing);
+      await tester.tap(find.byTooltip('목록 숨김'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('visibility-toggle-course')));
+      await tester.pumpAndSettle();
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('scope-list-course')), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
     },

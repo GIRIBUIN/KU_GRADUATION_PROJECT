@@ -158,26 +158,6 @@ class DriftFolderRepository implements FolderRepository, GroupedListRepository {
   });
 
   @override
-  Future<List<Folder>> getArchivedLists() async =>
-      (await (_database.select(
-            _database.folders,
-          )..where((t) => t.deletedAt.isNotNull())).get())
-          .map(_mapper.fromRow)
-          .toList();
-
-  @override
-  Future<void> restoreList(String id) async {
-    await (_database.update(
-      _database.folders,
-    )..where((t) => t.id.equals(id))).write(
-      db.FoldersCompanion(
-        deletedAt: const Value(null),
-        updatedAt: Value(DateTime.now()),
-      ),
-    );
-  }
-
-  @override
   Future<void> moveList(
     String listId,
     String? groupId, {
@@ -210,15 +190,17 @@ class DriftFolderRepository implements FolderRepository, GroupedListRepository {
         updatedAt: DateTime.now(),
       ),
     );
-    if (beforeListId != null) {
-      final ids =
-          (await getFolders())
-              .where((list) => list.groupId == groupId)
-              .map((list) => list.id)
-              .toList()
-            ..remove(listId);
+    final ids =
+        (await getFolders())
+            .where((list) => list.groupId == groupId && list.id != inboxListId)
+            .map((list) => list.id)
+            .toList()
+          ..remove(listId);
+    if (beforeListId == null) {
+      ids.add(listId);
+    } else {
       ids.insert(ids.indexOf(beforeListId), listId);
-      await updateFolderOrder(ids);
     }
+    await updateFolderOrder(ids);
   });
 }

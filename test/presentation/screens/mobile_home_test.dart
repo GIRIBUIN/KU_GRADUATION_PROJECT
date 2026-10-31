@@ -357,6 +357,38 @@ void main() {
     });
   }
 
+  Future<void> dragDrawer(
+    WidgetTester tester,
+    Finder source,
+    Finder target, {
+    bool after = false,
+  }) async {
+    await tester.ensureVisible(source);
+    final gesture = await tester.startGesture(tester.getCenter(source));
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.byKey(const ValueKey('drawer-context-menu')), findsOneWidget);
+    expect(find.byType(BottomSheet), findsNothing);
+    await capture(tester, 'context-menu');
+    await gesture.moveBy(const Offset(0, -24));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byKey(const ValueKey('drawer-context-menu')), findsNothing);
+    for (final text in ['목록 끝으로 이동', '태그 끝으로 이동', '폴더 밖으로 이동']) {
+      expect(find.text(text), findsNothing);
+    }
+    await tester.ensureVisible(target);
+    await tester.pump(const Duration(milliseconds: 100));
+    final targetRect = tester.getRect(target);
+    await gesture.moveTo(
+      Offset(
+        targetRect.center.dx,
+        targetRect.top + targetRect.height * (after ? .75 : .25),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    await gesture.up();
+    await tester.pumpAndSettle();
+  }
+
   testWidgets(
     'home defaults to today with four plain sections and empty states',
     (tester) async {
@@ -465,7 +497,6 @@ void main() {
       for (final (label, mode) in [
         ('이번 주', HomePeriod.week),
         ('이번 달', HomePeriod.month),
-        ('전체', HomePeriod.all),
         ('오늘', HomePeriod.today),
       ]) {
         await choosePeriod(tester, label);
@@ -508,6 +539,195 @@ void main() {
     expect(tester.takeException(), isNull);
     await finish(tester);
   });
+
+  testWidgets(
+    'Drawer list reordering persists and fixed Inbox cannot be dragged',
+    (tester) async {
+      for (final id in ['A', 'B', 'C']) {
+        await lists.createFolder(
+          Folder(id: id, name: id, createdAt: now, updatedAt: now),
+        );
+      }
+      await pumpApp(tester);
+      await openDrawer(tester);
+      await dragDrawer(
+        tester,
+        find.byKey(const ValueKey('scope-list-C')),
+        find.byKey(const ValueKey('drawer-drop-list-A')),
+      );
+      expect(
+        (await lists.getFolders())
+            .where((l) => ['A', 'B', 'C'].contains(l.id))
+            .map((l) => l.id),
+        ['C', 'A', 'B'],
+      );
+      await dragDrawer(
+        tester,
+        find.byKey(const ValueKey('scope-list-C')),
+        find.byKey(const ValueKey('drawer-drop-list-B')),
+        after: true,
+      );
+      expect(
+        (await lists.getFolders())
+            .where((l) => ['A', 'B', 'C'].contains(l.id))
+            .map((l) => l.id),
+        ['A', 'B', 'C'],
+      );
+      await restart(tester);
+      await openDrawer(tester);
+      expect(
+        tester.getTopLeft(find.byKey(const ValueKey('scope-list-A'))).dy,
+        lessThan(
+          tester.getTopLeft(find.byKey(const ValueKey('scope-list-C'))).dy,
+        ),
+      );
+      final inbox = find.byKey(const ValueKey('drawer-item-list-$inboxListId'));
+      expect(
+        find.descendant(
+          of: inbox,
+          matching: find.byWidgetPredicate((w) => w is LongPressDraggable),
+        ),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+      await finish(tester);
+    },
+  );
+
+  testWidgets(
+    'Drawer tag drag saves order, preserves settings and allows retry on failure',
+    (tester) async {
+      final failing = _FailingSwipeSettings(database: database)
+        ..failSave = false;
+      settings = failing;
+      await settings.saveSettings(
+        (await settings.getSettings()).copyWith(
+          urgentDueDays: 8,
+          hiddenFolderIds: {'other'},
+        ),
+      );
+      await pumpApp(tester);
+      await choosePeriod(tester, '이번 주');
+      await openDrawer(tester);
+      final beforeOrder = Map<String, int>.of(
+        (await settings.getSettings()).tagSortOrders,
+      );
+      failing.failSave = true;
+      await dragDrawer(
+        tester,
+        find.byKey(const ValueKey('scope-tag-tag-a')),
+        find.byKey(const ValueKey('drawer-drop-tag-tag-b')),
+      );
+      expect(find.text('순서나 위치를 저장하지 못했습니다. 다시 시도해주세요.'), findsOneWidget);
+      expect((await settings.getSettings()).tagSortOrders, beforeOrder);
+      failing.failSave = false;
+      await dragDrawer(
+        tester,
+        find.byKey(const ValueKey('scope-tag-tag-a')),
+        find.byKey(const ValueKey('drawer-drop-tag-tag-b')),
+      );
+      final saved = await settings.getSettings();
+      expect(saved.tagSortOrders, {'tag-a': 0, 'tag-b': 1});
+      expect(saved.urgentDueDays, 8);
+      expect(saved.homePeriod.mode, HomePeriod.week);
+      expect(saved.hiddenFolderIds, {'other'});
+      await restart(tester);
+      await openDrawer(tester);
+      expect(
+        tester.getTopLeft(find.byKey(const ValueKey('scope-tag-tag-a'))).dy,
+        lessThan(
+          tester.getTopLeft(find.byKey(const ValueKey('scope-tag-tag-b'))).dy,
+        ),
+      );
+      await tester.longPress(find.byKey(const ValueKey('scope-tag-tag-a')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('drawer-context-menu')), findsOneWidget);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('drawer-context-menu')), findsNothing);
+      expect(tester.takeException(), isNull);
+      await finish(tester);
+    },
+  );
+
+  testWidgets(
+    'trash opens with an independent all-date period and resets on reentry and tab changes',
+    (tester) async {
+      await trashItem('오래된 휴지통');
+      await (database.update(database.tasks)
+            ..where((t) => t.id.equals('오래된 휴지통')))
+          .write(db.TasksCompanion(deletedAt: Value(DateTime(2020, 1, 1))));
+      await pumpApp(tester);
+      await choosePeriod(tester, '이번 주');
+      await chooseScope(tester, 'trash');
+      expect(row('오래된 휴지통', 'trash'), findsOneWidget);
+      await capture(tester, 'trash-all-dates');
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-period')),
+          matching: find.text('전체'),
+        ),
+        findsOneWidget,
+      );
+      await choosePeriod(tester, '오늘');
+      expect(row('오래된 휴지통', 'trash'), findsNothing);
+      expect((await settings.getSettings()).homePeriod.mode, HomePeriod.week);
+      await chooseScope(tester, 'trash');
+      expect(row('오래된 휴지통', 'trash'), findsOneWidget);
+      await chooseScope(tester, 'period');
+      expect(find.text('이번 주'), findsNWidgets(2));
+      await chooseScope(tester, 'trash');
+      expect(row('오래된 휴지통', 'trash'), findsOneWidget);
+      await choosePeriod(tester, '이번 달');
+      await tester.tap(find.byKey(const ValueKey('nav-calendar')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('nav-home')));
+      await tester.pumpAndSettle();
+      expect(row('오래된 휴지통', 'trash'), findsOneWidget);
+      expect((await settings.getSettings()).homePeriod.mode, HomePeriod.week);
+      expect(tester.takeException(), isNull);
+      await finish(tester);
+    },
+  );
+
+  testWidgets(
+    'excluded eCampus navigation is below trash and reuses allow-import handling',
+    (tester) async {
+      await tasks.createTask(
+        Task(
+          id: 'excluded',
+          title: '제외 과제',
+          origin: TaskOrigin.ecampus,
+          status: TaskStatus.excluded,
+          createdAt: now,
+          updatedAt: now,
+          ecampus: const EcampusSyncMetadata(
+            sourceKey: 'course:1:report',
+            sourceCourse: '운영체제',
+          ),
+        ),
+      );
+      await pumpApp(tester);
+      await openDrawer(tester);
+      final excluded = find.byKey(const ValueKey('drawer-excluded'));
+      await tester.ensureVisible(excluded);
+      expect(
+        tester.getTopLeft(excluded).dy,
+        greaterThan(
+          tester.getTopLeft(find.byKey(const ValueKey('scope-trash-'))).dy,
+        ),
+      );
+      await tester.tap(excluded);
+      await tester.pumpAndSettle();
+      expect(find.text('제외 과제'), findsOneWidget);
+      await tester.tap(find.text('다시 가져오기 허용'));
+      await tester.pumpAndSettle();
+      expect(await tasks.getTaskById('excluded'), isNull);
+      expect(find.text('제외 과제'), findsNothing);
+      expect(tester.takeException(), isNull);
+      await finish(tester);
+    },
+  );
 
   for (final textScale in [1.0, 1.5]) {
     testWidgets(
@@ -1062,7 +1282,7 @@ void main() {
       expect(find.text('기타'), findsOneWidget);
       expect(find.text('보관'), findsNothing);
       final actionX = [
-        for (final label in ['숨김 관리', '폴더 추가', '목록 추가'])
+        for (final label in ['목록 숨김', '폴더 추가', '목록 추가'])
           tester.getCenter(find.byTooltip(label)).dx,
       ];
       expect(actionX, orderedEquals([...actionX]..sort()));
@@ -1125,7 +1345,7 @@ void main() {
   );
 
   testWidgets(
-    'visibility manager persists individual choices, protects Inbox and preserves tasks and other settings',
+    'separate visibility menus contain names and eyes only, persist changes and omit Inbox',
     (tester) async {
       await settings.saveSettings(
         (await settings.getSettings()).copyWith(
@@ -1138,12 +1358,7 @@ void main() {
       await add('숨긴 목록의 과제', due: today, list: 'course', tagIds: ['tag-a']);
       await pumpApp(tester);
       await openDrawer(tester);
-      await tester.tap(
-        find.descendant(
-          of: find.byKey(const ValueKey('drawer-folder-school')),
-          matching: find.text('학교'),
-        ),
-      );
+      await tester.tap(find.byKey(const ValueKey('drawer-folder-school')));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('scope-list-course')), findsNothing);
       expect(find.byKey(const ValueKey('scope-tag-tag-a')), findsNothing);
@@ -1151,81 +1366,145 @@ void main() {
         find.byKey(const ValueKey('scope-list-kutodo:inbox')),
         findsOneWidget,
       );
-      await tester.tap(find.byTooltip('숨김 관리'));
+      await tester.tap(find.byTooltip('목록 숨김'));
       await tester.pumpAndSettle();
-      final listSwitch = find.byKey(const ValueKey('visibility-list-course'));
-      final tagSwitch = find.byKey(const ValueKey('visibility-tag-tag-a'));
-      final inboxSwitch = tester.widget<SwitchListTile>(
+      final listMenu = find.byKey(const ValueKey('visibility-menu-list'));
+      final listRow = find.byKey(const ValueKey('visibility-list-course'));
+      final tagRow = find.byKey(const ValueKey('visibility-tag-tag-a'));
+      expect(listMenu, findsOneWidget);
+      expect(find.byType(BottomSheet), findsNothing);
+      expect(find.byType(SwitchListTile), findsNothing);
+      expect(
         find.byKey(const ValueKey('visibility-list-kutodo:inbox')),
+        findsNothing,
       );
-      expect(inboxSwitch.value, isFalse);
-      expect(inboxSwitch.onChanged, isNull);
-      expect(tester.widget<SwitchListTile>(listSwitch).value, isTrue);
-      await tester.tap(listSwitch);
-      await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(
-        tagSwitch,
-        100,
-        scrollable: find.descendant(
-          of: find.byType(BottomSheet),
-          matching: find.byType(Scrollable),
+      expect(tagRow, findsNothing);
+      expect(
+        find.descendant(of: listMenu, matching: find.text('학교')),
+        findsNothing,
+      );
+      expect(tester.getSize(listMenu).width, inInclusiveRange(152.0, 208.0));
+      expect(
+        find.descendant(of: listRow, matching: find.byType(Text)),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: listRow, matching: find.byType(IconButton)),
+        findsOneWidget,
+      );
+      final nameRect = tester.getRect(
+        find.descendant(of: listRow, matching: find.text('운영체제')),
+      );
+      final eyeRect = tester.getRect(
+        find.byKey(const ValueKey('visibility-toggle-course')),
+      );
+      expect(nameRect.left, greaterThan(tester.getRect(listMenu).left));
+      expect(eyeRect.left, greaterThan(nameRect.right));
+      expect(nameRect.center.dy, closeTo(eyeRect.center.dy, 1));
+      expect(
+        find.descendant(
+          of: listRow,
+          matching: find.byIcon(Icons.visibility_off_outlined),
         ),
+        findsOneWidget,
       );
-      await tester.ensureVisible(tagSwitch);
-      await tester.tap(tagSwitch);
+      await tester.tap(find.byKey(const ValueKey('visibility-toggle-course')));
       await tester.pumpAndSettle();
-      await capture(tester, 'visibility');
-      await tester.tap(find.widgetWithText(TextButton, '닫기'));
+      expect(
+        find.descendant(
+          of: listRow,
+          matching: find.byIcon(Icons.visibility_outlined),
+        ),
+        findsOneWidget,
+      );
+      await capture(tester, 'list-visibility');
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('태그 숨김'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('visibility-menu-tag')), findsOneWidget);
+      expect(listRow, findsNothing);
+      await tester.tap(find.byKey(const ValueKey('visibility-toggle-tag-a')));
+      await tester.pumpAndSettle();
+      await capture(tester, 'tag-visibility');
+      await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('scope-list-course')), findsOneWidget);
       expect(find.byKey(const ValueKey('scope-tag-tag-a')), findsOneWidget);
-      expect(
-        tester
-            .widget<ListTile>(find.byKey(const ValueKey('scope-period-')))
-            .selected,
-        isTrue,
-      );
-      expect(row('숨긴 목록의 과제'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('scope-list-course')));
       await tester.pumpAndSettle();
       await openDrawer(tester);
-      await tester.tap(find.byTooltip('숨김 관리'));
+      await tester.tap(find.byTooltip('목록 숨김'));
       await tester.pumpAndSettle();
-      await tester.tap(listSwitch);
+      await tester.tap(find.byKey(const ValueKey('visibility-toggle-course')));
       await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(
-        tagSwitch,
-        100,
-        scrollable: find.descendant(
-          of: find.byType(BottomSheet),
-          matching: find.byType(Scrollable),
-        ),
-      );
-      await tester.ensureVisible(tagSwitch);
-      await tester.tap(tagSwitch);
+      await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(TextButton, '닫기'));
+      await tester.tap(find.byTooltip('태그 숨김'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('visibility-toggle-tag-a')));
+      await tester.pumpAndSettle();
+      await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('scope-list-course')), findsNothing);
       expect(find.byKey(const ValueKey('scope-tag-tag-a')), findsNothing);
-      // Hiding only changes navigation visibility, including a selected list.
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
       expect(row('숨긴 목록의 과제'), findsOneWidget);
-      expect((await settings.getSettings()).hiddenFolderIds, {
-        'course',
-        inboxListId,
-      });
-      expect((await settings.getSettings()).hiddenTagIds, {'tag-a'});
-      expect((await settings.getSettings()).urgentDueDays, 7);
-      expect((await settings.getSettings()).homeView.sort, HomeSort.dueLate);
+      final saved = await settings.getSettings();
+      expect(saved.hiddenFolderIds, {'course', inboxListId});
+      expect(saved.hiddenTagIds, {'tag-a'});
+      expect(saved.urgentDueDays, 7);
+      expect(saved.homeView.sort, HomeSort.dueLate);
       expect((await tasks.getTasks()).single.listId, 'course');
       await restart(tester);
       await openDrawer(tester);
-      expect(find.byKey(const ValueKey('scope-tag-tag-a')), findsNothing);
-      await tester.tap(find.byTooltip('숨김 관리'));
+      await tester.tap(find.byTooltip('목록 숨김'));
       await tester.pumpAndSettle();
-      expect(tester.widget<SwitchListTile>(listSwitch).value, isTrue);
+      expect(
+        find.descendant(
+          of: listRow,
+          matching: find.byIcon(Icons.visibility_off_outlined),
+        ),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+      await finish(tester);
+    },
+  );
+
+  testWidgets(
+    'visibility save failure keeps the eye unchanged and retries without conversion',
+    (tester) async {
+      final failing = _FailingSwipeSettings(database: database);
+      settings = failing;
+      await pumpApp(tester);
+      await openDrawer(tester);
+      await tester.tap(find.byTooltip('목록 숨김'));
+      await tester.pumpAndSettle();
+      final row = find.byKey(const ValueKey('visibility-list-course'));
+      await tester.tap(find.byKey(const ValueKey('visibility-toggle-course')));
+      await tester.pumpAndSettle();
+      expect(find.text('숨김 설정을 저장하지 못했습니다. 다시 시도해주세요.'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: row,
+          matching: find.byIcon(Icons.visibility_outlined),
+        ),
+        findsOneWidget,
+      );
+      expect((await settings.getSettings()).hiddenFolderIds, isEmpty);
+      failing.failSave = false;
+      await tester.tap(find.byKey(const ValueKey('visibility-toggle-course')));
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: row,
+          matching: find.byIcon(Icons.visibility_off_outlined),
+        ),
+        findsOneWidget,
+      );
+      expect((await settings.getSettings()).hiddenFolderIds, {'course'});
       expect(tester.takeException(), isNull);
       await finish(tester);
     },
@@ -1380,7 +1659,7 @@ void main() {
       await pumpApp(tester);
       expect(row('먼 마감 일정'), findsNothing);
       expect((await tasks.getTasks()).length, 1);
-      await choosePeriod(tester, '전체');
+      await chooseScope(tester, 'all');
       expect(
         find.descendant(
           of: find.byKey(const ValueKey('home-period')),
@@ -1392,7 +1671,7 @@ void main() {
       await openDrawer(tester);
       expect(
         find.descendant(
-          of: find.byKey(const ValueKey('scope-period-')),
+          of: find.byKey(const ValueKey('scope-all-')),
           matching: find.text('전체'),
         ),
         findsOneWidget,
@@ -1450,7 +1729,7 @@ void main() {
             )
             .map((tile) => (tile.title! as Text).data)
             .toList();
-        expect(options, ['오늘', '이번 주', '이번 달', '전체', '기간 선택']);
+        expect(options, ['오늘', '이번 주', '이번 달', '기간 선택']);
         await tester.tap(find.text('기간 선택').last);
         await tester.pumpAndSettle();
         await tester.tap(find.text('날짜 구간'));
@@ -1662,7 +1941,7 @@ void main() {
         expect(row('마감 없음 유지'), findsOneWidget);
       }
 
-      for (final period in ['오늘', '이번 주', '이번 달', '전체']) {
+      for (final period in ['오늘', '이번 주', '이번 달']) {
         await choosePeriod(tester, period);
         checkCurrentAnchors();
         expect(row('오늘 완료한 미래 마감', 'completed'), findsOneWidget);
@@ -1977,12 +2256,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('drawer-settings')));
       await tester.pumpAndSettle();
       expect(find.text('세션/쿠키 정리'), findsOneWidget);
-      await tester.scrollUntilVisible(find.text('목록·태그 관리'), 250);
-      await tester.ensureVisible(find.text('목록·태그 관리'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('목록·태그 관리'));
-      await tester.pumpAndSettle();
-      expect(find.byTooltip('상위 폴더 추가'), findsOneWidget);
+      expect(find.text('목록·태그 관리'), findsNothing);
       expect(tester.takeException(), isNull);
       await finish(tester);
     },

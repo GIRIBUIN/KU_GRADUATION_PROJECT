@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-import '../../../core/theme/app_theme.dart';
 import '../../../data/models/task_models.dart';
 import '../../../data/repositories/folder_repository.dart';
 import '../../../data/repositories/settings_repository.dart';
@@ -38,6 +37,7 @@ class EcampusSyncProgressScreen extends StatefulWidget {
     this.authService,
     this.syncFlowService,
     this.openLogin,
+    this.loginBuilder,
     this.onOpenTask,
     this.onOrganizeUnassigned,
   });
@@ -52,6 +52,11 @@ class EcampusSyncProgressScreen extends StatefulWidget {
   final EcampusAuthService? authService;
   final EcampusSyncFlowService? syncFlowService;
   final Future<EcampusSession?> Function(BuildContext context)? openLogin;
+  final Widget Function(
+    BuildContext context,
+    ValueChanged<EcampusSession> onLoggedIn,
+  )?
+  loginBuilder;
   final Future<void> Function(Task)? onOpenTask;
   final Future<List<Task>> Function(Iterable<String>)? onOrganizeUnassigned;
 
@@ -65,7 +70,9 @@ class _EcampusSyncProgressScreenState extends State<EcampusSyncProgressScreen> {
   late final EcampusSyncFlowService _flowService;
 
   EcampusSession? _session;
-  _SyncStep _currentStep = _SyncStep.login;
+  Completer<EcampusSession?>? _inlineLogin;
+  ValueChanged<EcampusSession>? _inlineLoginComplete;
+  var _isFetching = false;
   String? _errorMessage;
   var _isSyncing = false;
   Future<void>? _cleanup;
@@ -118,6 +125,7 @@ class _EcampusSyncProgressScreenState extends State<EcampusSyncProgressScreen> {
 
   @override
   void dispose() {
+    _completeInlineLogin(null);
     unawaited(_finishSession());
     _httpClient.close();
     super.dispose();
@@ -130,101 +138,100 @@ class _EcampusSyncProgressScreenState extends State<EcampusSyncProgressScreen> {
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) unawaited(_cancelAndClose());
       },
-      child: Scaffold(
-        appBar: AppBar(title: const Text('e-campus 동기화')),
-        body: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              const SizedBox(height: 12),
-              Text(
-                '동기화 상태',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: 16),
-              for (final step in _SyncStep.values) ...[
-                _SyncStepTile(
-                  step: step,
-                  state: _stateFor(step),
-                  isCurrent: step == _currentStep,
-                ),
-                const SizedBox(height: 10),
-              ],
-              const SizedBox(height: 24),
-              Card(
-                color: AppTheme.primaryBlue.withValues(alpha: 0.06),
-                child: const Padding(
-                  padding: EdgeInsets.all(18),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.security_rounded,
-                        color: AppTheme.primaryBlue,
-                        size: 32,
-                      ),
-                      SizedBox(height: 12),
-                      Text(
-                        '로그인이 필요하면 WebView로 이동합니다.',
-                        style: TextStyle(fontWeight: FontWeight.w900),
-                        textAlign: TextAlign.center,
-                      ),
-                      SizedBox(height: 6),
-                      Text(
-                        '아이디와 비밀번호는 저장하지 않고, 로그인 세션으로만 todo를 가져옵니다.',
-                        style: TextStyle(color: AppTheme.muted),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              if (_errorMessage != null) ...[
-                const SizedBox(height: 18),
-                Card(
-                  color: AppTheme.dangerRed.withValues(alpha: 0.06),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
+      child: _inlineLogin != null
+          ? (widget.loginBuilder?.call(context, _inlineLoginComplete!) ??
+                EcampusLoginWebViewScreen(onLoggedIn: _inlineLoginComplete))
+          : Scaffold(
+              appBar: AppBar(title: const Text('eCampus 가져오기')),
+              body: SafeArea(
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text(
-                          '동기화 실패',
-                          style: TextStyle(
-                            color: AppTheme.dangerRed,
-                            fontWeight: FontWeight.w900,
+                        if (_errorMessage == null) ...[
+                          const CircularProgressIndicator(),
+                          const SizedBox(height: 20),
+                          Text(
+                            _isFetching ? '일정을 가져오는 중입니다.' : '로그인을 준비하고 있습니다.',
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(_errorMessage!),
+                        ] else ...[
+                          Icon(
+                            Icons.error_outline_rounded,
+                            color: Theme.of(context).colorScheme.error,
+                            size: 36,
+                          ),
+                          const SizedBox(height: 12),
+                          const Text('eCampus 가져오기에 실패했습니다.'),
+                          const SizedBox(height: 8),
+                          Text(_errorMessage!, textAlign: TextAlign.center),
+                          const SizedBox(height: 20),
+                          FilledButton.icon(
+                            onPressed: _isSyncing ? null : _startSync,
+                            icon: const Icon(Icons.refresh_rounded),
+                            label: const Text('다시 시도'),
+                          ),
+                        ],
                         const SizedBox(height: 12),
-                        FilledButton.icon(
-                          onPressed: _isSyncing ? null : _startSync,
-                          icon: const Icon(Icons.refresh_rounded),
-                          label: const Text('다시 시도'),
+                        TextButton(
+                          onPressed: _cancelAndClose,
+                          child: const Text('닫기'),
                         ),
                       ],
                     ),
                   ),
                 ),
-              ],
-            ],
-          ),
-        ),
-      ),
+              ),
+            ),
     );
   }
 
+  Future<EcampusSession?> _openInlineLogin() async {
+    final pending = Completer<EcampusSession?>();
+    var delivered = false;
+    setState(() {
+      _inlineLogin = pending;
+      _inlineLoginComplete = (session) {
+        if (delivered) return;
+        delivered = true;
+        if (!pending.isCompleted) {
+          pending.complete(session);
+        } else {
+          // Login can finish after cancellation or disposal. End that session
+          // without resuming the import or accepting a second completion.
+          _session = session;
+          _cleanup = null;
+          unawaited(_finishSession());
+        }
+      };
+    });
+    try {
+      return await pending.future;
+    } finally {
+      if (mounted) {
+        setState(() {
+          _inlineLogin = null;
+          _inlineLoginComplete = null;
+        });
+      }
+    }
+  }
+
+  void _completeInlineLogin(EcampusSession? session) {
+    final pending = _inlineLogin;
+    if (pending != null && !pending.isCompleted) pending.complete(session);
+  }
+
   Future<void> _startSync() async {
-    if (_isSyncing) {
+    if (_isSyncing || _cancelRequested) {
       return;
     }
 
     setState(() {
       _isSyncing = true;
       _errorMessage = null;
-      _currentStep = _SyncStep.login;
+      _isFetching = false;
     });
     _cleanup = null;
     bool? didChange;
@@ -236,31 +243,24 @@ class _EcampusSyncProgressScreenState extends State<EcampusSyncProgressScreen> {
       if (!mounted || _cancelRequested) return;
       final session = widget.openLogin != null
           ? await widget.openLogin!(context)
-          : await Navigator.of(context).push<EcampusSession>(
-              MaterialPageRoute(
-                builder: (_) => const EcampusLoginWebViewScreen(),
-                fullscreenDialog: true,
-              ),
-            );
+          : await _openInlineLogin();
 
       _session = session;
       if (!mounted || _cancelRequested) {
         // A login result delivered after disposal still needs cleanup.
-        _cleanup = null;
+        if (session != null) _cleanup = null;
         return;
       }
 
       if (session == null) {
-        setState(() {
-          _errorMessage = '로그인이 취소되었습니다.';
-        });
+        shouldClose = true;
         return;
       }
 
       widget.onSessionChanged?.call(session);
 
       setState(() {
-        _currentStep = _SyncStep.fetchTodo;
+        _isFetching = true;
       });
 
       final result = await _flowService.preview(session: session);
@@ -268,10 +268,6 @@ class _EcampusSyncProgressScreenState extends State<EcampusSyncProgressScreen> {
       if (!mounted || _cancelRequested) {
         return;
       }
-
-      setState(() {
-        _currentStep = _SyncStep.compare;
-      });
 
       didChange = await Navigator.of(context).push<bool>(
         MaterialPageRoute(
@@ -309,6 +305,7 @@ class _EcampusSyncProgressScreenState extends State<EcampusSyncProgressScreen> {
   Future<void> _cancelAndClose() async {
     if (_cancelRequested) return;
     _cancelRequested = true;
+    _completeInlineLogin(null);
     _httpClient.close();
     await _finishSession();
     if (mounted) Navigator.of(context).pop(false);
@@ -349,83 +346,4 @@ class _EcampusSyncProgressScreenState extends State<EcampusSyncProgressScreen> {
       }
     }
   }();
-
-  _SyncStepState _stateFor(_SyncStep step) {
-    if (_errorMessage != null && step == _currentStep) {
-      return _SyncStepState.failed;
-    }
-    if (step.index < _currentStep.index) {
-      return _SyncStepState.done;
-    }
-    if (step == _currentStep) {
-      return _SyncStepState.running;
-    }
-    return _SyncStepState.waiting;
-  }
 }
-
-class _SyncStepTile extends StatelessWidget {
-  const _SyncStepTile({
-    required this.step,
-    required this.state,
-    required this.isCurrent,
-  });
-
-  final _SyncStep step;
-  final _SyncStepState state;
-  final bool isCurrent;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = switch (state) {
-      _SyncStepState.done => AppTheme.successGreen,
-      _SyncStepState.running => AppTheme.primaryBlue,
-      _SyncStepState.failed => AppTheme.dangerRed,
-      _SyncStepState.waiting => AppTheme.muted,
-    };
-    final trailing = switch (state) {
-      _SyncStepState.done => '완료',
-      _SyncStepState.running => '진행 중',
-      _SyncStepState.failed => '실패',
-      _SyncStepState.waiting => '대기',
-    };
-
-    return Card(
-      child: ListTile(
-        leading: CircleAvatar(
-          radius: 12,
-          backgroundColor: color,
-          child: state == _SyncStepState.done
-              ? const Icon(Icons.check_rounded, color: Colors.white, size: 16)
-              : null,
-        ),
-        title: Text(
-          step.label,
-          style: const TextStyle(fontWeight: FontWeight.w900),
-        ),
-        trailing: isCurrent && state == _SyncStepState.running
-            ? const SizedBox.square(
-                dimension: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : Text(
-                trailing,
-                style: TextStyle(color: color, fontWeight: FontWeight.w800),
-              ),
-      ),
-    );
-  }
-}
-
-enum _SyncStep {
-  login('로그인 확인'),
-  fetchTodo('todo 가져오기'),
-  parse('HTML 파싱'),
-  compare('기존 작업 비교');
-
-  const _SyncStep(this.label);
-
-  final String label;
-}
-
-enum _SyncStepState { waiting, running, done, failed }

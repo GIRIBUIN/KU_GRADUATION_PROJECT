@@ -463,6 +463,170 @@ void main() {
 
   for (final scenario in [
     'success',
+    'cancel',
+    'retry',
+    'back during fetch',
+    'late login after cancel',
+  ]) {
+    testWidgets(
+      'inline login removes the extra route and preserves cleanup: $scenario',
+      (tester) async {
+        await largeScreen(tester);
+        final routes = _Routes();
+        final cookies = _Cookies();
+        final changes = <EcampusSession?>[];
+        var loginRequests = 0;
+        var logoutRequests = 0;
+        ValueChanged<EcampusSession>? completeLogin;
+        final client = MockClient((_) async {
+          logoutRequests++;
+          return http.Response('', 200);
+        });
+        addTearDown(client.close);
+        final auth = HttpEcampusAuthService(
+          httpClient: client,
+          cookieStore: cookies,
+        );
+        final results = _ResultService()
+          ..fail = scenario == 'retry'
+          ..pending = scenario == 'success' || scenario == 'back during fetch'
+              ? Completer<SyncResult>()
+              : null;
+        await tester.pumpWidget(
+          MaterialApp(
+            navigatorObservers: [routes],
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  child: const Text('Open'),
+                  onPressed: () => Navigator.of(context).push<bool>(
+                    MaterialPageRoute(
+                      builder: (_) => EcampusSyncProgressScreen(
+                        taskRepository: tasks,
+                        tagRepository: tags,
+                        folderRepository: folders,
+                        settingsRepository: settings,
+                        notificationRepository: reminders,
+                        localNotificationService: _NoNotifications(),
+                        authService: auth,
+                        syncFlowService: flow(results),
+                        onSessionChanged: changes.add,
+                        loginBuilder: (context, onLoggedIn) {
+                          completeLogin = onLoggedIn;
+                          return Scaffold(
+                            appBar: AppBar(title: const Text('eCampus 로그인')),
+                            body: FilledButton(
+                              child: const Text('Fixture login'),
+                              onPressed: () {
+                                loginRequests++;
+                                cookies.hasCookies = true;
+                                final session = EcampusSession(
+                                  cookies: const {'JSESSIONID': 'fixture'},
+                                  createdAt: DateTime.now(),
+                                );
+                                onLoggedIn(session);
+                                onLoggedIn(session);
+                              },
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.tap(find.text('Open'));
+        await tester.pumpAndSettle();
+        expect(find.text('eCampus 로그인'), findsOneWidget);
+        expect(find.text('동기화 상태'), findsNothing);
+        expect(routes.pushed, hasLength(2));
+        if (scenario == 'cancel' || scenario == 'late login after cancel') {
+          cookies.hasCookies = true;
+          await tester.pageBack();
+          await tester.pumpAndSettle();
+          if (scenario == 'late login after cancel') {
+            cookies.hasCookies = true;
+            final late = EcampusSession(
+              cookies: const {'JSESSIONID': 'late-fixture'},
+              createdAt: DateTime.now(),
+            );
+            completeLogin!(late);
+            completeLogin!(late);
+            await tester.pumpAndSettle();
+          }
+          expect(loginRequests, 0);
+          expect(results.requests, 0);
+        } else {
+          await tester.tap(find.text('Fixture login'));
+          if (results.pending != null) {
+            await tester.pump();
+            await tester.pump(const Duration(milliseconds: 400));
+            expect(find.text('일정을 가져오는 중입니다.'), findsOneWidget);
+            expect(routes.pushed, hasLength(2));
+            if (scenario == 'back during fetch') {
+              await tester.pageBack();
+              await tester.pump(const Duration(milliseconds: 400));
+            }
+            results.pending!.complete(
+              SyncResult(items: const [], syncedAt: DateTime.now()),
+            );
+          }
+          await tester.pumpAndSettle();
+          if (scenario == 'retry') {
+            expect(find.text('eCampus 가져오기에 실패했습니다.'), findsOneWidget);
+            expect(cookies.hasCookies, isFalse);
+            expect(changes.last, isNull);
+            expect(logoutRequests, 1);
+            results.fail = false;
+            await tester.tap(find.text('다시 시도'));
+            await tester.pumpAndSettle();
+            expect(find.text('eCampus 로그인'), findsOneWidget);
+            expect(routes.pushed, hasLength(2));
+            await tester.tap(find.text('Fixture login'));
+            await tester.pumpAndSettle();
+          }
+          if (scenario != 'back during fetch') {
+            expect(find.byType(EcampusSyncPreviewScreen), findsOneWidget);
+            expect(routes.pushed, hasLength(3));
+            await tester.tap(find.text('닫기'));
+            await tester.pumpAndSettle();
+          }
+          expect(loginRequests, scenario == 'retry' ? 2 : 1);
+          expect(results.requests, loginRequests);
+        }
+        expect(find.byType(EcampusSyncProgressScreen), findsNothing);
+        expect(find.text('Open'), findsOneWidget);
+        expect(cookies.hasCookies, isFalse);
+        expect(cookies.clears, greaterThanOrEqualTo(2));
+        expect(changes.last, isNull);
+        expect(
+          logoutRequests,
+          scenario == 'cancel'
+              ? 0
+              : scenario == 'retry'
+              ? 2
+              : 1,
+        );
+        expect(
+          routes.pushed,
+          hasLength(
+            scenario == 'cancel' ||
+                    scenario == 'late login after cancel' ||
+                    scenario == 'back during fetch'
+                ? 2
+                : 3,
+          ),
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
+  for (final scenario in [
+    'success',
     'cancel login',
     'fetch failure',
     'logout failure',
@@ -616,6 +780,7 @@ class _Cookies implements EcampusCookieStore {
 
 class _ResultService implements EcampusSyncService {
   bool fail = false;
+  int requests = 0;
   List<SyncItem> items = const [];
   Completer<SyncResult>? pending;
   @override
@@ -624,8 +789,18 @@ class _ResultService implements EcampusSyncService {
     required List<Task> existingTasks,
     DateTime? syncedAt,
   }) async {
+    requests++;
     if (fail) throw StateError('fixture fetch failure');
     if (pending != null) return pending!.future;
     return SyncResult(items: items, syncedAt: syncedAt ?? DateTime.now());
+  }
+}
+
+class _Routes extends NavigatorObserver {
+  final pushed = <Route<dynamic>>[];
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    pushed.add(route);
+    super.didPush(route, previousRoute);
   }
 }

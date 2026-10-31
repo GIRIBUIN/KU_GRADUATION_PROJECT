@@ -9,10 +9,12 @@ class EcampusLoginWebViewScreen extends StatefulWidget {
     super.key,
     this.initialUrl = 'https://ecampus.konkuk.ac.kr/ilos/main/main_form.acl',
     this.loginDetector = const EcampusLoginDetector(),
+    this.onLoggedIn,
   });
 
   final String initialUrl;
   final EcampusLoginDetector loginDetector;
+  final ValueChanged<EcampusSession>? onLoggedIn;
 
   @override
   State<EcampusLoginWebViewScreen> createState() =>
@@ -33,13 +35,14 @@ class _EcampusLoginWebViewScreenState extends State<EcampusLoginWebViewScreen> {
   InAppWebViewController? _controller;
   var _isLoading = true;
   var _isCompletingLogin = false;
+  var _didCompleteLogin = false;
   String? _currentUrl;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('e-campus 로그인'),
+        title: const Text('eCampus 로그인'),
         actions: [
           IconButton(
             tooltip: '로그인 완료 확인',
@@ -93,7 +96,7 @@ class _EcampusLoginWebViewScreenState extends State<EcampusLoginWebViewScreen> {
     InAppWebViewController controller, {
     bool showFailure = false,
   }) async {
-    if (_isCompletingLogin) {
+    if (_isCompletingLogin || _didCompleteLogin) {
       return false;
     }
 
@@ -118,13 +121,18 @@ class _EcampusLoginWebViewScreenState extends State<EcampusLoginWebViewScreen> {
           return false;
         }
         if (result.isLoggedIn) {
-          Navigator.of(context).pop(
-            EcampusSession(
-              cookies: cookieMap,
-              createdAt: DateTime.now(),
-              lastUrl: _currentUrl,
-            ),
+          final session = EcampusSession(
+            cookies: cookieMap,
+            createdAt: DateTime.now(),
+            lastUrl: _currentUrl,
           );
+          _didCompleteLogin = true;
+          final onLoggedIn = widget.onLoggedIn;
+          if (onLoggedIn != null) {
+            onLoggedIn(session);
+          } else {
+            Navigator.of(context).pop(session);
+          }
           return true;
         }
       }

@@ -2215,20 +2215,23 @@ void main() {
     },
   );
 
-  testWidgets('import button opens the existing eCampus progress route', (
-    tester,
-  ) async {
-    await pumpApp(tester);
-    await tester.tap(find.byTooltip('eCampus 가져오기'));
-    await tester.pump();
-    expect(
-      find.byType(EcampusSyncProgressScreen, skipOffstage: false),
-      findsOneWidget,
-    );
-    await finish(tester);
-    await tester.pumpAndSettle();
-    expect(tester.takeException(), isNull);
-  });
+  testWidgets(
+    'import button opens eCampus import without the old step dashboard',
+    (tester) async {
+      await pumpApp(tester);
+      await tester.tap(find.byTooltip('eCampus 가져오기'));
+      await tester.pump();
+      expect(
+        find.byType(EcampusSyncProgressScreen, skipOffstage: false),
+        findsOneWidget,
+      );
+      expect(find.text('동기화 상태'), findsNothing);
+      expect(find.text('e-campus 동기화'), findsNothing);
+      await finish(tester);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    },
+  );
 }
 
 class _Notifications extends LocalNotificationService {

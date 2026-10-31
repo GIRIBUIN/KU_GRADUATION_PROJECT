@@ -7,8 +7,11 @@ enum SyncItemKind {
   completed,
   deleted,
   excluded,
+  missing,
   error,
 }
+
+enum MissingItemDecision { keep, complete, delete }
 
 class ParsedEcampusTask {
   const ParsedEcampusTask({
@@ -37,10 +40,18 @@ class ParsedEcampusTask {
 }
 
 class EcampusTodoParseResult {
-  const EcampusTodoParseResult({required this.tasks, required this.failures});
+  const EcampusTodoParseResult({
+    required this.tasks,
+    required this.failures,
+    this.isComplete = true,
+    this.incompleteReasons = const [],
+  });
 
   final List<ParsedEcampusTask> tasks;
   final List<EcampusParseFailure> failures;
+  // A structurally incomplete/paginated response must not produce absences.
+  final bool isComplete;
+  final List<String> incompleteReasons;
 
   bool get hasFailures => failures.isNotEmpty;
 }
@@ -57,6 +68,9 @@ class SyncResult {
 
   final List<SyncItem> items;
   final DateTime syncedAt;
+
+  List<SyncItem> get missingItems =>
+      items.where((item) => item.kind == SyncItemKind.missing).toList();
 
   List<SyncItem> get importCandidates => items
       .where(
@@ -89,6 +103,8 @@ class SyncItem {
     this.errorMessage,
     this.applyTitle = true,
     this.applyDueDate = true,
+    this.missingDecision = MissingItemDecision.keep,
+    this.targetListId,
   });
 
   final SyncItemKind kind;
@@ -97,6 +113,25 @@ class SyncItem {
   final String? errorMessage;
   final bool applyTitle;
   final bool applyDueDate;
+  final MissingItemDecision missingDecision;
+  final String? targetListId;
+
+  SyncItem withTargetList(String? listId) => SyncItem(
+    kind: kind,
+    parsedTask: parsedTask,
+    existingTask: existingTask,
+    errorMessage: errorMessage,
+    applyTitle: applyTitle,
+    applyDueDate: applyDueDate,
+    missingDecision: missingDecision,
+    targetListId: listId,
+  );
+
+  SyncItem withMissingDecision(MissingItemDecision decision) => SyncItem(
+    kind: kind,
+    existingTask: existingTask,
+    missingDecision: decision,
+  );
 
   SyncItem withFields({required bool title, required bool dueDate}) => SyncItem(
     kind: kind,

@@ -25,12 +25,16 @@ class DefaultEcampusSyncApplyService implements EcampusSyncApplyService {
     required SettingsRepository settingsRepository,
     DateTime Function()? now,
     String Function(ParsedEcampusTask, TaskStatus)? createId,
+    this.afterTaskCommit,
+    this.onPostCommitError,
   }) : _tasks = taskRepository,
        _now = now ?? DateTime.now,
        _createId = createId ?? ((parsed, status) => newEntityId());
   final TaskRepository _tasks;
   final DateTime Function() _now;
   final String Function(ParsedEcampusTask, TaskStatus) _createId;
+  final Future<void> Function(Task before, Task after)? afterTaskCommit;
+  final void Function(Object error)? onPostCommitError;
   Future<List<Task>> _commit(
     Iterable<SyncItem> input,
     bool exclude,
@@ -40,12 +44,15 @@ class DefaultEcampusSyncApplyService implements EcampusSyncApplyService {
         .where(
           (item) =>
               item.kind == SyncItemKind.newItem ||
-              item.kind == SyncItemKind.updateCandidate,
+              item.kind == SyncItemKind.updateCandidate ||
+              (!exclude && item.kind == SyncItemKind.missing),
         )
         .toList();
     final keys = <String>{};
     for (final item in items) {
-      final key = item.parsedTask?.sourceKey.trim();
+      final key =
+          (item.parsedTask?.sourceKey ?? item.existingTask?.ecampus?.sourceKey)
+              ?.trim();
       if (item.kind == SyncItemKind.error ||
           key == null ||
           key.isEmpty ||
@@ -53,6 +60,7 @@ class DefaultEcampusSyncApplyService implements EcampusSyncApplyService {
         throw StateError('유효하지 않거나 중복된 동기화 항목입니다.');
       }
     }
+    final committedChanges = <(Task, Task)>[];
     Future<List<Task>> apply() async {
       final result = <Task>[];
       for (final item in items) {
@@ -60,36 +68,62 @@ class DefaultEcampusSyncApplyService implements EcampusSyncApplyService {
             item.existingTask?.status == TaskStatus.deleted) {
           continue;
         }
-        final parsed = item.parsedTask!;
-        final current = await _tasks.getTaskByEcampusSourceKey(
-          parsed.sourceKey,
-        );
+        final parsed = item.parsedTask;
+        final key = parsed?.sourceKey ?? item.existingTask!.ecampus!.sourceKey;
+        final current = await _tasks.getTaskByEcampusSourceKey(key);
         final expected = item.existingTask;
         if (expected != null &&
-            current != null &&
-            !_sameSnapshot(expected, current)) {
+            (current == null || !_sameSnapshot(expected, current))) {
           throw StateError('미리보기 이후 일정이 변경됐습니다. 다시 조회해주세요.');
         }
         if (current?.status == TaskStatus.completed ||
             current?.status == TaskStatus.deleted) {
           continue;
         }
+        if (item.kind == SyncItemKind.missing) {
+          if (expected == null ||
+              current == null ||
+              current.origin != TaskOrigin.ecampus ||
+              current.status != TaskStatus.active) {
+            throw StateError('누락 검토 대상이 변경됐습니다. 다시 조회해주세요.');
+          }
+          switch (item.missingDecision) {
+            case MissingItemDecision.keep:
+              result.add(current);
+            case MissingItemDecision.complete:
+              final saved = await _tasks.updateTaskStatus(
+                current.id,
+                TaskStatus.completed,
+              );
+              result.add(saved);
+              committedChanges.add((current, saved));
+            case MissingItemDecision.delete:
+              await _tasks.markDeleted(current.id);
+              final saved = (await _tasks.getTaskById(current.id))!;
+              result.add(saved);
+              committedChanges.add((current, saved));
+          }
+          continue;
+        }
+        if (parsed == null) throw StateError('원본 항목이 없습니다.');
         if (current != null && current.status != TaskStatus.excluded) {
           if (item.kind == SyncItemKind.newItem) {
             continue; // same selection replay
           }
-          result.add(
-            await _tasks.updateTask(
-              _copy(
-                current,
-                parsed,
-                at,
-                keepCurrent: exclude,
-                applyTitle: item.applyTitle,
-                applyDueDate: item.applyDueDate,
-              ),
+          final saved = await _tasks.updateTask(
+            _copy(
+              current,
+              parsed,
+              at,
+              keepCurrent: exclude,
+              applyTitle: item.applyTitle,
+              applyDueDate: item.applyDueDate,
             ),
           );
+          result.add(saved);
+          if (current.dueDate != saved.dueDate) {
+            committedChanges.add((current, saved));
+          }
         } else {
           if (current?.status == TaskStatus.excluded && !exclude) {
             throw StateError('제외 해제 후 가져와주세요.');
@@ -106,6 +140,9 @@ class DefaultEcampusSyncApplyService implements EcampusSyncApplyService {
                 title: parsed.title,
                 dueDate: parsed.dueDate,
                 priority: TaskPriority.medium,
+                folderIds: item.targetListId == null
+                    ? const []
+                    : [item.targetListId!],
                 ecampus: _metadata(parsed, at),
                 createdAt: at,
                 updatedAt: at,
@@ -126,9 +163,18 @@ class DefaultEcampusSyncApplyService implements EcampusSyncApplyService {
     }
 
     final backend = _tasks;
-    return backend is TransactionalTaskRepository
+    final result = await (backend is TransactionalTaskRepository
         ? (backend as TransactionalTaskRepository).atomic(apply)
-        : apply();
+        : apply());
+    // No OS calls before the entire selected batch has committed.
+    for (final (before, after) in committedChanges) {
+      try {
+        await afterTaskCommit?.call(before, after);
+      } catch (error) {
+        onPostCommitError?.call(error);
+      }
+    }
+    return result;
   }
 
   @override

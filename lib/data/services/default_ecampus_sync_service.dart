@@ -26,9 +26,10 @@ class DefaultEcampusSyncService implements EcampusSyncService {
       parsedTasks: parseResult.tasks,
       existingTasks: existingTasks,
       syncedAt: completedAt,
+      detectMissing: parseResult.isComplete && !parseResult.hasFailures,
     );
 
-    if (!parseResult.hasFailures) {
+    if (!parseResult.hasFailures && parseResult.isComplete) {
       return classified;
     }
 
@@ -37,6 +38,14 @@ class DefaultEcampusSyncService implements EcampusSyncService {
         ...classified.items,
         for (final failure in parseResult.failures)
           SyncItem(kind: SyncItemKind.error, errorMessage: failure.reason),
+        if (!parseResult.isComplete && !parseResult.hasFailures)
+          SyncItem(
+            kind: SyncItemKind.error,
+            errorMessage:
+                '누락 검토를 생략했습니다: '
+                '${parseResult.incompleteReasons.isEmpty ? "전체 목록 여부를 확인할 수 없습니다" : parseResult.incompleteReasons.join(" / ")}. '
+                '조회된 항목은 가져올 수 있습니다.',
+          ),
       ],
       syncedAt: classified.syncedAt,
     );

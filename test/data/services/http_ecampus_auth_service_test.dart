@@ -37,6 +37,23 @@ void main() {
   });
 
   group('HttpEcampusAuthService', () {
+    for (final networkFailure in [false, true]) {
+      test(
+        'clears local cookies despite logout failure (network=$networkFailure)',
+        () async {
+          final cookies = _FakeEcampusCookieStore();
+          final service = HttpEcampusAuthService(
+            httpClient: MockClient((_) async {
+              if (networkFailure) throw http.ClientException('offline');
+              return http.Response('server error', 500);
+            }),
+            cookieStore: cookies,
+          );
+          await expectLater(service.logout(session), throwsA(anything));
+          expect(cookies.clearCount, 1);
+        },
+      );
+    }
     test(
       'sends logout request with session cookies and clears cookies',
       () async {

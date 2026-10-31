@@ -4,16 +4,21 @@ import '../../../core/theme/app_theme.dart';
 import '../../../data/models/ecampus_models.dart';
 import '../../../data/models/task_models.dart';
 import '../../../data/services/ecampus_sync_flow_service.dart';
+import '../../../data/repositories/folder_repository.dart';
 
 class EcampusSyncPreviewScreen extends StatefulWidget {
   const EcampusSyncPreviewScreen({
     super.key,
     required this.syncResult,
     required this.syncFlowService,
+    this.onApplyFinished,
+    this.folderRepository,
   });
 
   final SyncResult syncResult;
   final EcampusSyncFlowService syncFlowService;
+  final Future<void> Function()? onApplyFinished;
+  final FolderRepository? folderRepository;
 
   @override
   State<EcampusSyncPreviewScreen> createState() =>
@@ -30,6 +35,10 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
   final Map<String, Task> _excludedTasksByKey = {};
   final Map<String, SyncItem> _savedExcludedItemsByKey = {};
   final Map<String, SyncItem> _importedItemsByKey = {};
+  final Map<String, MissingItemDecision> _missingDecisions = {};
+  final Set<String> _reviewedMissingKeys = {};
+  final Map<String, String> _targetLists = {};
+  List<Folder> _lists = const [];
   var _isSaving = false;
   var _isExcluding = false;
   var _isAllowing = false;
@@ -41,7 +50,20 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
     _selectedKeys = {
       for (final item in widget.syncResult.importCandidates) _itemKey(item),
     };
-    _hasChanges = widget.syncResult.items.any(_isAutoCompletedItem);
+    _loadLists();
+  }
+
+  Future<void> _loadLists() async {
+    try {
+      final lists = await widget.folderRepository?.getFolders() ?? <Folder>[];
+      if (mounted) setState(() => _lists = lists);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('목록을 불러오지 못했습니다. 다시 열어주세요.')),
+        );
+      }
+    }
   }
 
   @override
@@ -61,6 +83,16 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
       ..._importedItemsByKey.values,
     ];
     final errorItems = widget.syncResult.errorItems;
+    final missingItems = widget.syncResult.missingItems
+        .where((item) => !_reviewedMissingKeys.contains(_itemKey(item)))
+        .toList();
+    final selectedNewCount = visibleImportCandidates
+        .where(
+          (item) =>
+              item.kind == SyncItemKind.newItem &&
+              _selectedKeys.contains(_itemKey(item)),
+        )
+        .length;
     final newCount = widget.syncResult.items
         .where((item) => item.kind == SyncItemKind.newItem)
         .length;
@@ -111,7 +143,7 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
               ),
               const SizedBox(height: 24),
               _SectionTitle(
-                title: '가져올 항목',
+                title: '신규·변경 항목',
                 count: visibleImportCandidates.length,
                 trailing: TextButton(
                   onPressed: visibleImportCandidates.isEmpty
@@ -130,7 +162,39 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
                     selected: _selectedKeys.contains(_itemKey(item)),
                     onChanged: (selected) => _toggle(item, selected),
                   ),
+                  if (item.kind == SyncItemKind.newItem && _lists.isNotEmpty)
+                    DropdownButtonFormField<String>(
+                      key: ValueKey('new-list-${_itemKey(item)}'),
+                      initialValue: _targetLists[_itemKey(item)] ?? '',
+                      isExpanded: true,
+                      decoration: const InputDecoration(labelText: '추가할 목록'),
+                      items: [
+                        const DropdownMenuItem(
+                          value: '',
+                          child: Text('자동: 과목별 목록'),
+                        ),
+                        for (final list in _lists)
+                          DropdownMenuItem(
+                            value: list.id,
+                            child: Text(list.name),
+                          ),
+                      ],
+                      onChanged: _isBusy
+                          ? null
+                          : (value) => setState(() {
+                              if (value == null || value.isEmpty) {
+                                _targetLists.remove(_itemKey(item));
+                              } else {
+                                _targetLists[_itemKey(item)] = value;
+                              }
+                            }),
+                    ),
                   if (item.kind == SyncItemKind.updateCandidate) ...[
+                    Text('현재 제목: ${item.existingTask?.title ?? ""}'),
+                    Text(
+                      '현재 마감: ${item.existingTask?.dueDate?.toLocal().toString() ?? "없음"}',
+                    ),
+                    const Text('체크하지 않은 필드는 현재 값을 유지합니다.'),
                     CheckboxListTile(
                       dense: true,
                       title: const Text('원본 제목으로 변경'),
@@ -164,6 +228,46 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
                   ],
                   const SizedBox(height: 10),
                 ],
+              if (missingItems.isNotEmpty) ...[
+                const SizedBox(height: 24),
+                _SectionTitle(title: '누락 검토', count: missingItems.length),
+                const Text('조회 범위가 달라졌을 수 있습니다. 기본은 유지이며 자동 완료·삭제하지 않습니다.'),
+                for (final item in missingItems)
+                  ListTile(
+                    title: Text(item.existingTask!.title),
+                    trailing: DropdownButton<MissingItemDecision>(
+                      key: ValueKey('missing-${item.existingTask!.id}'),
+                      value:
+                          _missingDecisions[_itemKey(item)] ??
+                          MissingItemDecision.keep,
+                      items: const [
+                        DropdownMenuItem(
+                          value: MissingItemDecision.keep,
+                          child: Text('유지'),
+                        ),
+                        DropdownMenuItem(
+                          value: MissingItemDecision.complete,
+                          child: Text('완료'),
+                        ),
+                        DropdownMenuItem(
+                          value: MissingItemDecision.delete,
+                          child: Text('삭제 (휴지통)'),
+                        ),
+                      ],
+                      onChanged: _isBusy
+                          ? null
+                          : (decision) => setState(() {
+                              _missingDecisions[_itemKey(item)] = decision!;
+                            }),
+                    ),
+                  ),
+                OutlinedButton(
+                  onPressed: _isBusy
+                      ? null
+                      : () => _applyMissingItems(missingItems),
+                  child: const Text('누락 검토 반영'),
+                ),
+              ],
               const SizedBox(height: 24),
               _SectionTitle(title: '제외된 항목', count: excludedItems.length),
               const SizedBox(height: 10),
@@ -206,7 +310,7 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
                 ),
               if (errorItems.isNotEmpty) ...[
                 const SizedBox(height: 24),
-                _SectionTitle(title: '파싱 실패', count: errorItems.length),
+                _SectionTitle(title: '확인 필요', count: errorItems.length),
                 const SizedBox(height: 10),
                 Card(
                   color: AppTheme.dangerRed.withValues(alpha: 0.06),
@@ -243,7 +347,7 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: _selectedKeys.isEmpty || _isBusy
+                      onPressed: selectedNewCount == 0 || _isBusy
                           ? null
                           : _excludeSelectedItems,
                       icon: _isExcluding
@@ -252,7 +356,7 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.block_rounded, size: 18),
-                      label: const Text('선택 제외'),
+                      label: const Text('신규 선택 제외'),
                     ),
                   ),
                 ],
@@ -269,7 +373,7 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
                           dimension: 18,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : Text('가져오기 (${_selectedKeys.length})'),
+                      : Text('선택 반영 (${_selectedKeys.length})'),
                 ),
               ),
             ],
@@ -326,7 +430,7 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
                   title: _applyTitleKeys.contains(_itemKey(item)),
                   dueDate: _applyDueKeys.contains(_itemKey(item)),
                 )
-              : item,
+              : item.withTargetList(_targetLists[_itemKey(item)]),
         )
         .toList(growable: false);
 
@@ -339,9 +443,11 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
     });
 
     try {
-      final importedTasks = await widget.syncFlowService.importItems(
-        selectedItems,
-        syncedAt: widget.syncResult.syncedAt,
+      final importedTasks = await _applyAndEndSession(
+        () => widget.syncFlowService.importItems(
+          selectedItems,
+          syncedAt: widget.syncResult.syncedAt,
+        ),
       );
 
       if (!mounted) {
@@ -394,6 +500,7 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
     final selectedItems = _visibleImportCandidates()
         .where(
           (item) =>
+              item.kind == SyncItemKind.newItem &&
               _selectedKeys.contains(_itemKey(item)) &&
               !_isMovedFromImportSection(item),
         )
@@ -408,9 +515,11 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
     });
 
     try {
-      final excludedTasks = await widget.syncFlowService.excludeItems(
-        selectedItems,
-        syncedAt: widget.syncResult.syncedAt,
+      final excludedTasks = await _applyAndEndSession(
+        () => widget.syncFlowService.excludeItems(
+          selectedItems,
+          syncedAt: widget.syncResult.syncedAt,
+        ),
       );
 
       if (!mounted) {
@@ -445,6 +554,45 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('제외에 실패했습니다: $error')));
+    }
+  }
+
+  Future<void> _applyMissingItems(List<SyncItem> items) async {
+    setState(() => _isSaving = true);
+    try {
+      await _applyAndEndSession(
+        () => widget.syncFlowService.importItems([
+          for (final item in items)
+            item.withMissingDecision(
+              _missingDecisions[_itemKey(item)] ?? MissingItemDecision.keep,
+            ),
+        ], syncedAt: widget.syncResult.syncedAt),
+      );
+      if (!mounted) return;
+      setState(() {
+        _reviewedMissingKeys.addAll(items.map(_itemKey));
+        _hasChanges = true;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('누락 검토를 반영했습니다.')));
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('누락 검토 반영에 실패했습니다: $error')));
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<T> _applyAndEndSession<T>(Future<T> Function() action) async {
+    try {
+      return await action();
+    } finally {
+      // Further review uses only the local DB, even after an apply failure.
+      await widget.onApplyFinished?.call();
     }
   }
 
@@ -639,7 +787,12 @@ class _IgnoredItemTile extends StatelessWidget {
             item.existingTask?.ecampus?.sourceCourse ??
             'e-campus',
       ),
-      trailing: _MiniChip(label: _kindLabel(item.kind), color: AppTheme.muted),
+      trailing: _MiniChip(
+        label: item.kind == SyncItemKind.updateCandidate
+            ? (!item.applyTitle && !item.applyDueDate ? '현재 값 유지' : '변경 반영')
+            : _kindLabel(item.kind),
+        color: AppTheme.muted,
+      ),
     );
   }
 }
@@ -757,12 +910,6 @@ String _itemKey(SyncItem item) {
       item.kind.name;
 }
 
-bool _isAutoCompletedItem(SyncItem item) {
-  return item.kind == SyncItemKind.completed &&
-      item.parsedTask == null &&
-      item.existingTask != null;
-}
-
 String _kindLabel(SyncItemKind kind) {
   return switch (kind) {
     SyncItemKind.newItem => '신규',
@@ -771,6 +918,7 @@ String _kindLabel(SyncItemKind kind) {
     SyncItemKind.completed => '완료',
     SyncItemKind.deleted => '삭제됨',
     SyncItemKind.excluded => '제외됨',
+    SyncItemKind.missing => '확인되지 않음',
     SyncItemKind.error => '오류',
   };
 }

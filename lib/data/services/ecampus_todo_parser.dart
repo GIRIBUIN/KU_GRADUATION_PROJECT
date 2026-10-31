@@ -10,7 +10,8 @@ class EcampusTodoParser {
   final DateTime Function()? _now;
 
   EcampusTodoParseResult parse(String html) {
-    final document = html_parser.parse(html);
+    final parser = html_parser.HtmlParser(html);
+    final document = parser.parse();
     final tasks = <ParsedEcampusTask>[];
     final failures = <EcampusParseFailure>[];
 
@@ -43,7 +44,77 @@ class EcampusTodoParser {
         );
       }
     }
-    return EcampusTodoParseResult(tasks: tasks, failures: failures);
+    // Count actual HTML parse failures, not tag-looking strings in JS/comments.
+    // Empty paging shells and no_data placeholders can coexist with real items.
+    final incompleteReasons = <String>[
+      if (parser.errors.any(
+        (error) => error.errorCode.toLowerCase().contains('eof'),
+      ))
+        'HTML이 태그 또는 내용 중간에서 끝났습니다',
+      if (_hasMorePages(document)) '추가 페이지를 가리키는 표시가 있습니다',
+    ];
+    return EcampusTodoParseResult(
+      tasks: tasks,
+      failures: failures,
+      isComplete: failures.isEmpty && incompleteReasons.isEmpty,
+      incompleteReasons: incompleteReasons,
+    );
+  }
+
+  bool _hasMorePages(Document document) {
+    for (final element in document.querySelectorAll(
+      '[data-has-more], [data-next-page], a[rel~="next"], '
+      '.pagination a[href], .paging a[href]',
+    )) {
+      if (_isInactiveControl(element)) continue;
+      if (element.attributes['data-has-more']?.trim().toLowerCase() == 'true') {
+        return true;
+      }
+      final nextPage = element.attributes['data-next-page']
+          ?.trim()
+          .toLowerCase();
+      if (nextPage != null &&
+          !const [
+            '',
+            '0',
+            '-1',
+            'false',
+            'null',
+            'undefined',
+          ].contains(nextPage)) {
+        return true;
+      }
+      if (element.localName == 'a') {
+        final href = element.attributes['href']?.trim().toLowerCase() ?? '';
+        if (href.isNotEmpty && href != '#' && !href.startsWith('javascript:')) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  bool _isInactiveControl(Element element) {
+    for (Element? node = element; node != null; node = node.parent) {
+      final style = (node.attributes['style'] ?? '')
+          .replaceAll(RegExp(r'\s+'), '')
+          .toLowerCase();
+      if (node.attributes.containsKey('hidden') ||
+          node.attributes.containsKey('disabled') ||
+          node.attributes['aria-hidden'] == 'true' ||
+          node.attributes['aria-disabled'] == 'true' ||
+          node.classes.contains('disabled') ||
+          node.classes.contains('hidden') ||
+          ((node == element || node.localName == 'li') &&
+              (node.attributes['aria-current'] == 'page' ||
+                  node.classes.contains('active') ||
+                  node.classes.contains('current'))) ||
+          style.contains('display:none') ||
+          style.contains('visibility:hidden')) {
+        return true;
+      }
+    }
+    return false;
   }
 
   _ParsedTodoItem _parseItem(Element item) {

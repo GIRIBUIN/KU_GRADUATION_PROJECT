@@ -29,18 +29,23 @@ class HttpEcampusAuthService implements EcampusAuthService {
       return;
     }
 
-    final response = await httpClient.get(
-      Uri.parse('$baseUrl/ilos/lo/logout.acl'),
-      headers: {'Cookie': session.cookieHeader},
-    );
+    try {
+      final response = await httpClient
+          .get(
+            Uri.parse('$baseUrl/ilos/lo/logout.acl'),
+            headers: {'Cookie': session.cookieHeader},
+          )
+          .timeout(const Duration(seconds: 10));
 
-    if (response.statusCode < 200 || response.statusCode >= 400) {
-      throw EcampusLogoutException(
-        'failed to logout from e-campus: ${response.statusCode}',
-      );
+      if (response.statusCode < 200 || response.statusCode >= 400) {
+        throw EcampusLogoutException(
+          'failed to logout from e-campus: ${response.statusCode}',
+        );
+      }
+    } finally {
+      // Server errors must never prevent local cookie disposal.
+      await clearSession();
     }
-
-    await clearSession();
   }
 
   @override

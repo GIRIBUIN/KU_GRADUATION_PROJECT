@@ -197,7 +197,7 @@ class _MainShellScreenState extends State<MainShellScreen>
 
   Future<void> _openEcampusSync() async {
     if (_isEcampusSyncing) {
-      _showSnackBar(context, 'e-campus 동기화가 이미 진행 중입니다.');
+      _showSnackBar(context, 'eCampus 가져오기가 이미 진행 중입니다.');
       return;
     }
 
@@ -212,7 +212,8 @@ class _MainShellScreenState extends State<MainShellScreen>
             tagRepository: widget.tagRepository,
             folderRepository: widget.folderRepository,
             settingsRepository: widget.settingsRepository,
-            initialSession: _ecampusSession,
+            notificationRepository: widget.notificationRepository,
+            localNotificationService: widget.localNotificationService,
             onSessionChanged: (session) {
               if (!mounted) {
                 return;
@@ -256,20 +257,21 @@ class _MainShellScreenState extends State<MainShellScreen>
       } else {
         await authService.logout(session);
       }
-    } on EcampusLogoutException {
+    } catch (_) {
       if (mounted) {
-        _showSnackBar(context, 'e-campus 로그아웃 요청에 실패했습니다.');
+        _showSnackBar(
+          context,
+          '서버 로그아웃 또는 쿠키 정리 중 오류가 발생했습니다. 다음 가져오기는 다시 로그인합니다.',
+        );
       }
       return;
     } finally {
       httpClient.close();
+      if (mounted) setState(() => _ecampusSession = null);
     }
     if (!mounted) {
       return;
     }
-    setState(() {
-      _ecampusSession = null;
-    });
     _showSnackBar(context, 'e-campus 세션과 쿠키를 정리했습니다.');
   }
 

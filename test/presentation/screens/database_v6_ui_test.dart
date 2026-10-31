@@ -200,7 +200,7 @@ void main() {
     await tester.ensureVisible(find.text('원본 마감일로 변경'));
     await tester.tap(find.text('원본 마감일로 변경'));
     await tester.pump();
-    await tester.tap(find.text('가져오기 (1)'));
+    await tester.tap(find.text('선택 반영 (1)'));
     await tester.pumpAndSettle();
     final saved = (await tasks.getTaskById('task'))!;
     expect(saved.title, 'My title');

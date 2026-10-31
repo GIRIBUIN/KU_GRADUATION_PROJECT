@@ -6,6 +6,65 @@ void main() {
   final parser = EcampusTodoParser(now: () => DateTime(2026, 5, 14, 10));
 
   group('EcampusTodoParser', () {
+    const valid = '''
+      <div class="todo_wrap" onclick="goLecture('c','1','report')">
+        <div class="todo_title">Task</div><div class="todo_subjt">Course</div>
+      </div>
+    ''';
+    for (final (label, wrapper) in <(String, String Function(String))>[
+      (
+        'hidden no_data placeholder',
+        (body) =>
+            '$body<div class="todo_wrap no_data" id="no_data" style="display:none">Empty</div>',
+      ),
+      (
+        'empty paging containers',
+        (body) =>
+            '$body<div class="pagination"></div><div class="paging"></div>',
+      ),
+      (
+        'empty/false next-page attributes',
+        (body) => '$body<div data-next-page="" data-has-more="false"></div>',
+      ),
+      ('comment containing tag strings', (body) => '$body<!-- <div><html> -->'),
+      (
+        'script containing HTML template strings',
+        (body) =>
+            '''$body<script>const template = '<div class="example">';</script>''',
+      ),
+      ('optional body/html closing tags', (body) => '<html><body>$body'),
+      (
+        'current page and disabled next link',
+        (body) => '''$body
+        <div class="pagination"><a href="?page=1" aria-current="page">1</a>
+          <span class="disabled"><a href="?page=2" rel="next">Next</a></span>
+        </div>''',
+      ),
+    ]) {
+      test('accepts valid todo HTML with $label', () {
+        final result = parser.parse(wrapper(valid));
+        expect(result.tasks, hasLength(1));
+        expect(result.failures, isEmpty);
+        expect(result.isComplete, isTrue);
+        expect(result.incompleteReasons, isEmpty);
+      });
+    }
+    for (final (label, html) in [
+      ('unfinished real container', '<div>$valid'),
+      ('unfinished real tag', '$valid<div class="todo_wrap"'),
+      ('explicit more results', '$valid<div data-has-more="true"></div>'),
+      (
+        'real next page in active tab',
+        '<div class="tab-pane active">$valid<div class="paging"><a href="?page=2" rel="next">Next</a></div></div>',
+      ),
+    ]) {
+      test('still suppresses absence review for $label with a reason', () {
+        final result = parser.parse(html);
+        expect(result.tasks, hasLength(1));
+        expect(result.isComplete, isFalse);
+        expect(result.incompleteReasons, isNotEmpty);
+      });
+    }
     test('parses normal todo items from goLecture arguments', () {
       final result = parser.parse('''
         <div class="todo_wrap on"

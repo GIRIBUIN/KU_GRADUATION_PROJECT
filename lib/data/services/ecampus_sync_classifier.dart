@@ -8,6 +8,7 @@ class EcampusSyncClassifier {
     required List<ParsedEcampusTask> parsedTasks,
     required List<Task> existingTasks,
     required DateTime syncedAt,
+    bool detectMissing = true,
   }) {
     final existingBySourceKey = <String, Task>{};
 
@@ -38,7 +39,20 @@ class EcampusSyncClassifier {
         parsedTask: parsedTask,
         existingTask: existingTask,
       );
-    }).toList(growable: false);
+    }).toList();
+
+    final fetchedKeys = parsedTasks.map((task) => task.sourceKey).toSet();
+    if (detectMissing &&
+        !fetchedKeys.contains('') &&
+        fetchedKeys.length == parsedTasks.length) {
+      for (final task in existingBySourceKey.values) {
+        if (task.origin == TaskOrigin.ecampus &&
+            task.status == TaskStatus.active &&
+            !fetchedKeys.contains(task.ecampus!.sourceKey)) {
+          items.add(SyncItem(kind: SyncItemKind.missing, existingTask: task));
+        }
+      }
+    }
 
     return SyncResult(items: items, syncedAt: syncedAt);
   }
@@ -51,9 +65,10 @@ class EcampusSyncClassifier {
       TaskStatus.completed => SyncItemKind.completed,
       TaskStatus.deleted => SyncItemKind.deleted,
       TaskStatus.excluded => SyncItemKind.excluded,
-      TaskStatus.active => _hasSourceChanged(parsedTask, existingTask)
-          ? SyncItemKind.updateCandidate
-          : SyncItemKind.alreadyImported,
+      TaskStatus.active =>
+        _hasSourceChanged(parsedTask, existingTask)
+            ? SyncItemKind.updateCandidate
+            : SyncItemKind.alreadyImported,
     };
   }
 

@@ -24,9 +24,16 @@ class InAppWebViewEcampusCookieStore implements EcampusCookieStore {
   @override
   Future<void> clearEcampusCookies() async {
     final manager = _cookieManager ?? CookieManager.instance();
-
+    Object? firstError;
+    StackTrace? firstStack;
     for (final url in _cookieUrls) {
-      await manager.deleteCookies(url: WebUri(url));
+      try {
+        await manager.deleteCookies(url: WebUri(url));
+      } catch (error, stack) {
+        firstError ??= error;
+        firstStack ??= stack;
+      }
     }
+    if (firstError != null) Error.throwWithStackTrace(firstError, firstStack!);
   }
 }

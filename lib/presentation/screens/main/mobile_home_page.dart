@@ -11,6 +11,7 @@ import '../../../data/models/task_swipe_options.dart';
 import '../../../data/repositories/settings_repository.dart';
 import '../../../data/services/home_task_summary.dart';
 import '../../widgets/task_metadata_picker.dart' show colorFromHex;
+import '../../widgets/task_list_row.dart';
 import 'drawer_context_item.dart';
 
 enum _ScopeKind { period, all, list, tag, completed, trash, excluded }
@@ -1360,19 +1361,9 @@ class _MobileHomePageState extends State<MobileHomePage> {
         if (!_selectionMode)
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(fontSize: 13, color: AppTheme.muted),
-                  ),
-                ),
-                Text(
-                  '${tasks.length}',
-                  style: const TextStyle(fontSize: 12, color: AppTheme.muted),
-                ),
-              ],
+            child: Text(
+              title,
+              style: const TextStyle(fontSize: 13, color: AppTheme.muted),
             ),
           ),
         if (tasks.isEmpty)
@@ -1390,32 +1381,6 @@ class _MobileHomePageState extends State<MobileHomePage> {
 
   Widget _taskRow(Task task, String section) {
     final isExcluded = task.status == TaskStatus.excluded;
-    final list = isExcluded
-        ? null
-        : widget.lists.where((l) => l.id == task.listId).firstOrNull;
-    final group = widget.groups.where((g) => g.id == list?.groupId).firstOrNull;
-    final path = [
-      if (group != null) group.name,
-      if (list != null) list.name,
-    ].join(' > ');
-    final details = [
-      if (path.isNotEmpty) path,
-      if (isExcluded && path.isEmpty && task.ecampus?.sourceCourse != null)
-        task.ecampus!.sourceCourse!,
-      for (final tag in widget.tags.where((t) => task.tagIds.contains(t.id)))
-        '#${tag.name}',
-    ];
-    final due = task.dueDate?.toLocal();
-    final dueText = due == null
-        ? '마감 없음'
-        : DateFormat(
-            due.year == DateTime.now().year &&
-                    due.month == DateTime.now().month &&
-                    due.day == DateTime.now().day
-                ? 'HH:mm'
-                : 'M/d HH:mm',
-            'ko_KR',
-          ).format(due);
     return Dismissible(
       key: ValueKey('task-swipe-$section-${task.id}'),
       direction:
@@ -1449,9 +1414,12 @@ class _MobileHomePageState extends State<MobileHomePage> {
         // Repositories own removal/state changes; never dismiss optimistically.
         return false;
       },
-      child: ListTile(
+      child: buildTaskListRow(
+        task: task,
+        lists: widget.lists,
+        groups: widget.groups,
+        tags: widget.tags,
         key: ValueKey('home-task-$section-${task.id}'),
-        contentPadding: EdgeInsets.zero,
         onTap: _bulkBusy
             ? null
             : task.status == TaskStatus.deleted || isExcluded
@@ -1469,55 +1437,6 @@ class _MobileHomePageState extends State<MobileHomePage> {
                 value: task.status == TaskStatus.completed,
                 onChanged: (_) => widget.onToggleTask(task),
               ),
-        title: Text(
-          task.title,
-          softWrap: true,
-          style: TextStyle(
-            fontSize: 13,
-            decoration: task.status == TaskStatus.completed
-                ? TextDecoration.lineThrough
-                : null,
-          ),
-        ),
-        subtitle: details.isEmpty
-            ? null
-            : Text(
-                details.join(' · '),
-                softWrap: true,
-                style: const TextStyle(fontSize: 12, color: AppTheme.muted),
-              ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              dueText,
-              style: TextStyle(
-                fontSize: 12,
-                color:
-                    task.status == TaskStatus.active &&
-                        due != null &&
-                        isDueDateOverdue(due, now: DateTime.now())
-                    ? AppTheme.dangerRed
-                    : AppTheme.muted,
-              ),
-            ),
-            if (task.priority != null)
-              Text(
-                switch (task.priority!) {
-                  TaskPriority.high => '높음',
-                  TaskPriority.medium => '중간',
-                  TaskPriority.low => '낮음',
-                },
-                style: TextStyle(
-                  fontSize: 10,
-                  color: task.priority == TaskPriority.high
-                      ? AppTheme.warningOrange
-                      : AppTheme.muted,
-                ),
-              ),
-          ],
-        ),
       ),
     );
   }

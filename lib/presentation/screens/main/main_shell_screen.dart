@@ -580,19 +580,16 @@ class _MainShellScreenState extends State<MainShellScreen>
                     onDeleteTask: _deleteTask,
                   ),
                   SafeArea(
-                    child: ListView(
-                      padding: const EdgeInsets.all(16),
-                      children: [
-                        HomeCalendarSection(
-                          tasks: tasks,
-                          isLoading: isLoading,
-                          onCreateTask: (day) =>
-                              _openTaskCreate(initialDay: day),
-                          onOpenTask: _openTaskDetail,
-                          onToggleTask: _toggleTaskCompletion,
-                          onDeleteTask: _deleteTask,
-                        ),
-                      ],
+                    child: HomeCalendarSection(
+                      tasks: tasks,
+                      isLoading: isLoading,
+                      lists: metadata.lists,
+                      groups: metadata.groups,
+                      tags: metadata.tags,
+                      onCreateTask: (day) => _openTaskCreate(initialDay: day),
+                      onOpenTask: _openTaskDetail,
+                      onToggleTask: _toggleTaskCompletion,
+                      onDeleteTask: _deleteTask,
                     ),
                   ),
                   _ManagementPage(

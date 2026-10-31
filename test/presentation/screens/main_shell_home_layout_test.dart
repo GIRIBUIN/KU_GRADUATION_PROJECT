@@ -221,7 +221,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('수정한 일정'), findsOneWidget);
     expect(repositories.tasks.last.title, '수정한 일정');
-    await tester.tap(find.byTooltip('수정한 일정 일정 메뉴'));
+    await tester.longPress(find.byKey(ValueKey('calendar-task-${created.id}')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('삭제'));
     await tester.pumpAndSettle();

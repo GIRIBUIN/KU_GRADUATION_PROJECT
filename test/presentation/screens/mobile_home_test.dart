@@ -401,6 +401,13 @@ void main() {
       await pumpApp(tester);
       for (final section in ['period', 'urgent', 'overdue', 'completed']) {
         expect(find.byKey(ValueKey('home-section-$section')), findsOneWidget);
+        expect(
+          find.descendant(
+            of: find.byKey(ValueKey('home-section-$section')),
+            matching: find.text('0'),
+          ),
+          findsNothing,
+        );
       }
       expect(find.textContaining('오늘 ·'), findsOneWidget);
       expect(find.text('할 일이 없습니다.'), findsNWidgets(4));
@@ -2607,6 +2614,66 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(DropdownButton<TaskSwipeAction>), findsNWidgets(4));
       await capture(tester, 'swipe-large');
+      expect(tester.takeException(), isNull);
+      await finish(tester);
+    },
+  );
+
+  testWidgets(
+    'calendar uses the home task row and pins its adjustment header',
+    (tester) async {
+      const title = '캘린더에서도 긴 제목을 자르지 않고 여러 줄로 전부 표시하는 운영체제 과제';
+      await add(
+        title,
+        due: DateTime(now.year, now.month, now.day, 10),
+        list: 'course',
+        tagIds: ['tag-a'],
+        priority: TaskPriority.high,
+      );
+      for (var i = 0; i < 24; i++) {
+        await add('캘린더 과제 $i', due: today, list: 'course');
+      }
+      await pumpApp(tester);
+      await tester.tap(find.byKey(const ValueKey('nav-calendar')));
+      await tester.pumpAndSettle();
+      final row = find.byKey(const ValueKey('calendar-task-$title'));
+      expect(row, findsOneWidget);
+      final titleWidget = tester.widget<Text>(
+        find.descendant(of: row, matching: find.text(title)),
+      );
+      expect(titleWidget.style!.fontSize, 13);
+      expect(titleWidget.maxLines, isNull);
+      expect(titleWidget.overflow, isNot(TextOverflow.ellipsis));
+      expect(
+        find.descendant(of: row, matching: find.text('학교 > 운영체제 · #과제')),
+        findsOneWidget,
+      );
+      expect(tester.widget<ListTile>(row).trailing, isA<Column>());
+      expect(find.byType(PopupMenuButton<String>), findsNothing);
+      await capture(tester, 'calendar-month');
+      await tester.tap(find.text('주'));
+      await tester.pumpAndSettle();
+      await capture(tester, 'calendar-week');
+      final scroll = find
+          .descendant(
+            of: find.byKey(const ValueKey('calendar-scroll')),
+            matching: find.byType(Scrollable),
+          )
+          .first;
+      tester.state<ScrollableState>(scroll).position.jumpTo(600);
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .getTopLeft(find.byKey(const ValueKey('calendar-task-header')))
+            .dy,
+        0,
+      );
+      await capture(tester, 'calendar-pinned');
+      await tester.tap(find.byTooltip('캘린더 보기 조정'));
+      await tester.pumpAndSettle();
+      await capture(tester, 'calendar-adjustments');
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       await finish(tester);
     },

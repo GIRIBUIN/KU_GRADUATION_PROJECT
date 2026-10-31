@@ -303,6 +303,119 @@ void main() {
     },
   );
 
+  for (final textScale in [1.0, 1.5]) {
+    testWidgets(
+      'home task rows fully wrap titles and metadata at text scale $textScale',
+      (tester) async {
+        tester.view.physicalSize = const Size(360, 1000);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        const longTagName = '아주 긴 태그 이름을 줄바꿈해서 모두 확인';
+        await tags.createTag(
+          Tag(
+            id: 'long-tag',
+            name: longTagName,
+            color: '#1262D6',
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+        await lists.createFolder(
+          Folder(id: 'loose', name: '개인 목록', createdAt: now, updatedAt: now),
+        );
+        final title = List.filled(
+          4,
+          '운영체제 과제의 요구사항을 빠짐없이 확인하고 결과 정리하기',
+        ).join(' ');
+        await add(
+          title,
+          due: today,
+          list: 'course',
+          tagIds: ['tag-a', 'tag-b', 'long-tag'],
+        );
+        await add('짧은 제목', due: today);
+        await add('폴더 없는 목록', due: today, list: 'loose', tagIds: ['tag-a']);
+        await pumpApp(tester, textScale: textScale);
+        final longRow = row(title);
+        final titleFinder = find.descendant(
+          of: longRow,
+          matching: find.text(title),
+        );
+        final titleText = tester.widget<Text>(titleFinder);
+        final paragraph = tester.renderObject<RenderParagraph>(titleFinder);
+        expect(titleText.style!.fontSize, 13);
+        expect(paragraph.didExceedMaxLines, isFalse);
+        final lines = paragraph.getBoxesForSelection(
+          TextSelection(baseOffset: 0, extentOffset: title.length),
+        );
+        expect(lines.map((box) => box.top).toSet().length, greaterThan(2));
+        expect(
+          paragraph.getBoxesForSelection(
+            TextSelection(
+              baseOffset: title.length - 4,
+              extentOffset: title.length,
+            ),
+          ),
+          isNotEmpty,
+        );
+        expect(
+          tester.getSize(longRow).height,
+          greaterThan(tester.getSize(row('짧은 제목')).height),
+        );
+        const metadata = '학교 > 운영체제 · #개인 · #과제 · #$longTagName';
+        final metadataFinder = find.descendant(
+          of: longRow,
+          matching: find.text(metadata),
+        );
+        final metadataParagraph = tester.renderObject<RenderParagraph>(
+          metadataFinder,
+        );
+        expect(metadataParagraph.didExceedMaxLines, isFalse);
+        expect(
+          metadataParagraph
+              .getBoxesForSelection(
+                const TextSelection(
+                  baseOffset: 0,
+                  extentOffset: metadata.length,
+                ),
+              )
+              .map((box) => box.top)
+              .toSet()
+              .length,
+          greaterThan(1),
+        );
+        expect(
+          find.descendant(of: row('짧은 제목'), matching: find.text('미지정')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: row('폴더 없는 목록'),
+            matching: find.text('개인 목록 · #과제'),
+          ),
+          findsOneWidget,
+        );
+        await capture(
+          tester,
+          textScale == 1 ? 'wrapped-tasks' : 'wrapped-tasks-large',
+        );
+        await tester.tap(titleFinder);
+        await tester.pumpAndSettle();
+        expect(find.byType(TaskDetailScreen), findsOneWidget);
+        await tester.tap(find.byTooltip('작업 상세 닫기'));
+        await tester.pumpAndSettle();
+        final saved = (await tasks.getTaskById(title))!;
+        expect(saved.title, title);
+        expect(saved.listId, 'course');
+        expect(saved.tagIds.toSet(), {'tag-a', 'tag-b', 'long-tag'});
+        expect(saved.status, TaskStatus.active);
+        expect(tester.takeException(), isNull);
+        await finish(tester);
+      },
+    );
+  }
+
   testWidgets(
     'home left edge swipe opens Drawer and closing keeps the current scope',
     (tester) async {

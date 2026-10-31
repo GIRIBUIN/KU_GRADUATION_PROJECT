@@ -761,9 +761,9 @@ class _MobileHomePageState extends State<MobileHomePage> {
   Widget _taskRow(Task task, String section) {
     final list = widget.lists.where((l) => l.id == task.listId).firstOrNull;
     final group = widget.groups.where((g) => g.id == list?.groupId).firstOrNull;
+    final path = [if (group != null) group.name, if (list != null) list.name].join(' > ');
     final details = [
-      if (group != null) group.name,
-      if (list != null) list.name,
+      if (path.isNotEmpty) path,
       for (final tag in widget.tags.where((t) => task.tagIds.contains(t.id)))
         '#${tag.name}',
     ];
@@ -793,10 +793,9 @@ class _MobileHomePageState extends State<MobileHomePage> {
             ),
       title: Text(
         task.title,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
+        softWrap: true,
         style: TextStyle(
-          fontSize: 15,
+          fontSize: 13,
           decoration: task.status == TaskStatus.completed
               ? TextDecoration.lineThrough
               : null,
@@ -806,8 +805,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
           ? null
           : Text(
               details.join(' · '),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              softWrap: true,
               style: const TextStyle(fontSize: 12, color: AppTheme.muted),
             ),
       trailing: task.status == TaskStatus.deleted

@@ -210,6 +210,37 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  Future<void> trashItem(
+    String id, {
+    bool completed = false,
+    DateTime? due,
+    List<String> tagIds = const [],
+    TaskPriority? priority,
+  }) async {
+    await add(
+      id,
+      due: due ?? today,
+      list: 'course',
+      completed: completed,
+      tagIds: tagIds,
+      priority: priority,
+    );
+    await tasks.markDeleted(id);
+  }
+
+  Future<void> startTrashSelection(WidgetTester tester) async {
+    final checkbox = find
+        .descendant(
+          of: find.byKey(const ValueKey('home-section-trash')),
+          matching: find.byType(Checkbox),
+        )
+        .first;
+    await tester.tap(checkbox);
+    await tester.pumpAndSettle();
+    await tester.tap(checkbox);
+    await tester.pumpAndSettle();
+  }
+
   Future<void> finish(WidgetTester tester) =>
       tester.pumpWidget(const SizedBox.shrink());
   Future<void> restart(WidgetTester tester) async {
@@ -1749,6 +1780,410 @@ void main() {
   );
 
   testWidgets(
+    'trash row checkboxes start selection without a separate selection icon',
+    (tester) async {
+      await trashItem('체크로 선택');
+      await pumpApp(tester);
+      await chooseScope(tester, 'trash');
+      final checkbox = find.byKey(const ValueKey('trash-select-체크로 선택'));
+      expect(
+        tester.widget<ListTile>(row('체크로 선택', 'trash')).leading,
+        isA<Checkbox>(),
+      );
+      expect(find.byIcon(Icons.checklist_rounded), findsNothing);
+      expect(find.byKey(const ValueKey('trash-selection-mode')), findsNothing);
+      await tester.tap(checkbox);
+      await tester.pumpAndSettle();
+      expect(tester.widget<Checkbox>(checkbox).value, isTrue);
+      expect(find.text('1개 선택'), findsOneWidget);
+      expect(find.byType(TaskDetailScreen), findsNothing);
+      expect((await tasks.getTaskById('체크로 선택'))!.status, TaskStatus.deleted);
+      await tester.tap(find.byKey(const ValueKey('trash-selection-mode')));
+      await tester.pumpAndSettle();
+      expect(tester.widget<Checkbox>(checkbox).value, isFalse);
+      expect(
+        find.byKey(const ValueKey('trash-restore-selected')),
+        findsNothing,
+      );
+      await capture(tester, 'trash-checkboxes');
+      expect(tester.takeException(), isNull);
+      await finish(tester);
+    },
+  );
+
+  testWidgets(
+    'trash filter choices use only deleted tasks and filter retained completion state',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await trashItem(
+        '완료 원본',
+        completed: true,
+        priority: TaskPriority.high,
+        tagIds: ['tag-a'],
+      );
+      await trashItem('미완료 원본');
+      await add(
+        '휴지통 밖',
+        due: today,
+        priority: TaskPriority.medium,
+        tagIds: ['tag-b'],
+      );
+      await pumpApp(tester);
+      await chooseScope(tester, 'trash');
+      Finder chip(String label) => find.descendant(
+        of: find.byType(BottomSheet),
+        matching: find.widgetWithText(FilterChip, label),
+      );
+      Future<void> tapChip(String label) async {
+        await tester.ensureVisible(chip(label));
+        await tester.pumpAndSettle();
+        await tester.tap(chip(label));
+        await tester.pumpAndSettle();
+      }
+
+      await adjust(tester);
+      expect(chip('미완료'), findsOneWidget);
+      expect(chip('완료'), findsOneWidget);
+      expect(chip('높음'), findsOneWidget);
+      expect(chip('중간'), findsNothing);
+      expect(chip('낮음'), findsNothing);
+      expect(chip('#과제'), findsOneWidget);
+      expect(chip('#개인'), findsNothing);
+      await tapChip('미완료');
+      await tapChip('높음');
+      await tapChip('#과제');
+      await capture(tester, 'trash-filter-options');
+      await tester.tap(find.widgetWithText(TextButton, '닫기'));
+      await tester.pumpAndSettle();
+      expect(row('완료 원본', 'trash'), findsOneWidget);
+      expect(row('미완료 원본', 'trash'), findsNothing);
+      await adjust(tester);
+      // Choices stay based on all trash, not on the filtered result.
+      expect(chip('미완료'), findsOneWidget);
+      expect(chip('완료'), findsOneWidget);
+      await tapChip('완료');
+      await tester.tap(find.widgetWithText(TextButton, '닫기'));
+      await tester.pumpAndSettle();
+      expect(row('완료 원본', 'trash'), findsNothing);
+      expect(row('미완료 원본', 'trash'), findsNothing);
+      expect((await settings.getSettings()).homeView.isDefault, isTrue);
+      await tasks.deletePermanently('완료 원본');
+      await restart(tester);
+      await chooseScope(tester, 'trash');
+      await adjust(tester);
+      expect(chip('미완료'), findsOneWidget);
+      expect(chip('완료'), findsNothing);
+      expect(chip('높음'), findsNothing);
+      expect(chip('중간'), findsNothing);
+      expect(chip('낮음'), findsNothing);
+      expect(chip('#과제'), findsNothing);
+      expect(chip('#개인'), findsNothing);
+      expect(find.text('우선순위가 지정된 항목이 없습니다.'), findsOneWidget);
+      expect(find.text('휴지통에 사용한 태그가 없습니다.'), findsOneWidget);
+      await tester.tap(find.widgetWithText(TextButton, '닫기'));
+      await tester.pumpAndSettle();
+      await tasks.deletePermanently('미완료 원본');
+      await restart(tester);
+      await chooseScope(tester, 'trash');
+      await adjust(tester);
+      expect(chip('미완료'), findsNothing);
+      expect(chip('완료'), findsNothing);
+      expect(find.text('휴지통에 항목이 없습니다.'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await finish(tester);
+    },
+  );
+
+  testWidgets(
+    'trash selection restores only selected tasks and keeps completion and list metadata',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await trashItem('선택 A');
+      await trashItem('선택 B', completed: true);
+      await trashItem('남길 C');
+      await add('일반 D', due: today);
+      await pumpApp(tester, textScale: 1.5);
+      await chooseScope(tester, 'trash');
+      await startTrashSelection(tester);
+      expect(
+        tester
+            .widget<OutlinedButton>(
+              find.byKey(const ValueKey('trash-restore-selected')),
+            )
+            .onPressed,
+        isNull,
+      );
+      await tester.tap(find.byKey(const ValueKey('trash-select-all')));
+      await tester.pumpAndSettle();
+      expect(find.text('3개 선택'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('trash-select-all')));
+      await tester.pumpAndSettle();
+      expect(find.text('0개 선택'), findsOneWidget);
+      await tester.tap(row('선택 A', 'trash'));
+      await tester.pumpAndSettle();
+      expect(find.byType(TaskDetailScreen), findsNothing);
+      await swipeTask(tester, '선택 A', toRight: true, section: 'trash');
+      expect((await tasks.getTaskById('선택 A'))!.status, TaskStatus.deleted);
+      expect(find.byKey(const ValueKey('drawer-settings')), findsNothing);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<Checkbox>(find.byKey(const ValueKey('trash-select-선택 A')))
+            .value,
+        isFalse,
+      );
+      expect(
+        find.byKey(const ValueKey('trash-restore-selected')),
+        findsNothing,
+      );
+      await startTrashSelection(tester);
+      await tester.tap(row('선택 A', 'trash'));
+      await tester.tap(row('선택 B', 'trash'));
+      await tester.pumpAndSettle();
+      await capture(tester, 'trash-selection');
+      await tester.tap(find.byKey(const ValueKey('trash-restore-selected')));
+      await tester.pumpAndSettle();
+      final a = (await tasks.getTaskById('선택 A'))!;
+      final b = (await tasks.getTaskById('선택 B'))!;
+      expect(a.status, TaskStatus.active);
+      expect(b.status, TaskStatus.completed);
+      expect(a.listId, 'course');
+      expect(b.listId, 'course');
+      expect((await tasks.getTaskById('남길 C'))!.status, TaskStatus.deleted);
+      expect((await tasks.getTaskById('일반 D'))!.status, TaskStatus.active);
+      expect(
+        find.byKey(const ValueKey('trash-restore-selected')),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+      await finish(tester);
+    },
+  );
+
+  testWidgets(
+    'trash selected delete confirms once, cancels safely and deletes only checked rows',
+    (tester) async {
+      for (final id in ['선택 A', '선택 B', '남길 C']) {
+        await trashItem(id);
+      }
+      await pumpApp(tester);
+      await chooseScope(tester, 'trash');
+      await startTrashSelection(tester);
+      await tester.tap(row('선택 A', 'trash'));
+      await tester.tap(row('선택 B', 'trash'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('trash-delete-selected')));
+      await tester.pumpAndSettle();
+      expect(find.text('선택한 2개를 영구 삭제할까요?'), findsOneWidget);
+      await tester.tap(find.widgetWithText(TextButton, '취소'));
+      await tester.pumpAndSettle();
+      expect((await tasks.getTasks(status: TaskStatus.deleted)).length, 3);
+      expect(find.text('2개 선택'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('trash-delete-selected')));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.widgetWithText(FilledButton, '선택 삭제'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(await tasks.getTaskById('선택 A'), isNull);
+      expect(await tasks.getTaskById('선택 B'), isNull);
+      expect((await tasks.getTaskById('남길 C'))!.status, TaskStatus.deleted);
+      expect(tester.takeException(), isNull);
+      await finish(tester);
+    },
+  );
+
+  testWidgets(
+    'trash view is temporary and independent of saved home sorting and filters',
+    (tester) async {
+      const homeView = HomeViewOptions(
+        sort: HomeSort.dueLate,
+        tagIds: {'tag-a'},
+      );
+      await settings.saveSettings(
+        (await settings.getSettings()).copyWith(homeView: homeView),
+      );
+      final early = DateTime(now.year, now.month, now.day, 10);
+      final late = DateTime(now.year, now.month, now.day, 23, 59);
+      await trashItem('A 이른 마감', due: early, tagIds: ['tag-a']);
+      await trashItem('B 늦은 마감', due: late, tagIds: ['tag-b']);
+      await add('홈 이른 마감', due: early, tagIds: ['tag-a']);
+      await add('홈 늦은 마감', due: late, tagIds: ['tag-a']);
+      await pumpApp(tester);
+      await chooseScope(tester, 'trash');
+      expect(row('B 늦은 마감', 'trash'), findsOneWidget);
+      expect(
+        tester.getTopLeft(row('A 이른 마감', 'trash')).dy,
+        lessThan(tester.getTopLeft(row('B 늦은 마감', 'trash')).dy),
+      );
+      Future<void> setTemporarySort() async {
+        await adjust(tester);
+        expect(find.text('휴지통 보기 (임시)'), findsOneWidget);
+        expect(find.widgetWithText(FilledButton, '저장'), findsNothing);
+        await tester.tap(find.text('마감 늦은 순'));
+        await capture(tester, 'trash-view');
+        await tester.tap(find.widgetWithText(TextButton, '닫기'));
+        await tester.pumpAndSettle();
+      }
+
+      await setTemporarySort();
+      expect(
+        tester.getTopLeft(row('B 늦은 마감', 'trash')).dy,
+        lessThan(tester.getTopLeft(row('A 이른 마감', 'trash')).dy),
+      );
+      expect(
+        (await settings.getSettings()).homeView.encode(),
+        homeView.encode(),
+      );
+      await chooseScope(tester, 'all');
+      expect(
+        tester.getTopLeft(row('홈 늦은 마감')).dy,
+        lessThan(tester.getTopLeft(row('홈 이른 마감')).dy),
+      );
+      await chooseScope(tester, 'trash');
+      expect(
+        tester.getTopLeft(row('A 이른 마감', 'trash')).dy,
+        lessThan(tester.getTopLeft(row('B 늦은 마감', 'trash')).dy),
+      );
+      await setTemporarySort();
+      await tester.tap(find.byKey(const ValueKey('nav-calendar')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('nav-home')));
+      await tester.pumpAndSettle();
+      expect(
+        tester.getTopLeft(row('A 이른 마감', 'trash')).dy,
+        lessThan(tester.getTopLeft(row('B 늦은 마감', 'trash')).dy),
+      );
+      await restart(tester);
+      await chooseScope(tester, 'trash');
+      expect(
+        tester.getTopLeft(row('A 이른 마감', 'trash')).dy,
+        lessThan(tester.getTopLeft(row('B 늦은 마감', 'trash')).dy),
+      );
+      expect(
+        (await settings.getSettings()).homeView.encode(),
+        homeView.encode(),
+      );
+      expect(tester.takeException(), isNull);
+      await finish(tester);
+    },
+  );
+
+  testWidgets(
+    'trash select all only targets visible rows and clears selection when filters or dates change',
+    (tester) async {
+      await trashItem('보이는 A', tagIds: ['tag-a']);
+      await trashItem('숨길 B', tagIds: ['tag-b']);
+      await pumpApp(tester);
+      await chooseScope(tester, 'trash');
+      await startTrashSelection(tester);
+      await tester.tap(row('숨길 B', 'trash'));
+      await tester.pumpAndSettle();
+      await adjust(tester);
+      final chip = find.widgetWithText(FilterChip, '#과제');
+      await tester.ensureVisible(chip);
+      await tester.tap(chip);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, '닫기'));
+      await tester.pumpAndSettle();
+      expect(find.text('0개 선택'), findsOneWidget);
+      expect(row('숨길 B', 'trash'), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('trash-select-all')));
+      await tester.pumpAndSettle();
+      expect(find.text('1개 선택'), findsOneWidget);
+      await choosePeriod(tester, '이번 주');
+      expect(find.text('0개 선택'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('trash-select-all')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('trash-restore-selected')));
+      await tester.pumpAndSettle();
+      expect((await tasks.getTaskById('보이는 A'))!.status, TaskStatus.active);
+      expect((await tasks.getTaskById('숨길 B'))!.status, TaskStatus.deleted);
+      expect(tester.takeException(), isNull);
+      await finish(tester);
+    },
+  );
+
+  for (final restore in [true, false]) {
+    testWidgets(
+      'trash bulk failure retains only failed selection and supports retry: restore=$restore',
+      (tester) async {
+        final failing = _FailingBulkTrashTasks(database: database);
+        tasks = failing;
+        for (final id in ['선택 A', '선택 B', '남길 C']) {
+          await trashItem(id);
+        }
+        await pumpApp(tester);
+        await chooseScope(tester, 'trash');
+        await startTrashSelection(tester);
+        await tester.tap(row('선택 A', 'trash'));
+        await tester.tap(row('선택 B', 'trash'));
+        await tester.pumpAndSettle();
+        Future<void> apply() async {
+          await tester.tap(
+            find.byKey(
+              ValueKey(
+                restore ? 'trash-restore-selected' : 'trash-delete-selected',
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          if (!restore) {
+            await tester.tap(
+              find.descendant(
+                of: find.byType(AlertDialog),
+                matching: find.widgetWithText(FilledButton, '선택 삭제'),
+              ),
+            );
+            await tester.pumpAndSettle();
+          }
+        }
+
+        await apply();
+        expect(
+          (await tasks.getTaskById('선택 A'))?.status,
+          restore ? TaskStatus.active : isNull,
+        );
+        expect((await tasks.getTaskById('선택 B'))!.status, TaskStatus.deleted);
+        expect(
+          tester
+              .widget<Checkbox>(find.byKey(const ValueKey('trash-select-선택 B')))
+              .value,
+          isTrue,
+        );
+        expect(
+          tester
+              .widget<Checkbox>(find.byKey(const ValueKey('trash-select-남길 C')))
+              .value,
+          isFalse,
+        );
+        expect(find.text('1개 선택'), findsOneWidget);
+        expect(find.textContaining('1개 처리, 1개 오류'), findsWidgets);
+        failing.failB = false;
+        await apply();
+        expect(
+          (await tasks.getTaskById('선택 B'))?.status,
+          restore ? TaskStatus.active : isNull,
+        );
+        expect((await tasks.getTaskById('남길 C'))!.status, TaskStatus.deleted);
+        expect(tester.takeException(), isNull);
+        await finish(tester);
+      },
+    );
+  }
+
+  testWidgets(
     'completed and trash scopes use existing completion and restore policies',
     (tester) async {
       await add('완료 항목', due: today, list: 'course', completed: true);
@@ -1842,6 +2277,22 @@ class _FailingSwipeSettings extends DriftSettingsRepository {
   Future<AppSettings> saveSettings(AppSettings settings) {
     if (failSave) throw StateError('test settings save failure');
     return super.saveSettings(settings);
+  }
+}
+
+class _FailingBulkTrashTasks extends DriftTaskRepository {
+  _FailingBulkTrashTasks({required super.database});
+  bool failB = true;
+  @override
+  Future<Task> restoreTask(String id) {
+    if (failB && id == '선택 B') throw StateError('test restore failure');
+    return super.restoreTask(id);
+  }
+
+  @override
+  Future<void> deletePermanently(String id) {
+    if (failB && id == '선택 B') throw StateError('test delete failure');
+    return super.deletePermanently(id);
   }
 }
 

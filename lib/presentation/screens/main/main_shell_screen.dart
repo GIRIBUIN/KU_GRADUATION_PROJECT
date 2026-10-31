@@ -561,6 +561,7 @@ class _MainShellScreenState extends State<MainShellScreen>
                     metadataSnapshot.data ?? const _TaskMetadataLookup.empty();
                 final pages = [
                   MobileHomePage(
+                    isActive: _selectedIndex == 0,
                     tasks: tasks,
                     isLoading: isLoading,
                     settings: settings,

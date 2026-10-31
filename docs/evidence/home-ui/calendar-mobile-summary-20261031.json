@@ -1,0 +1,108 @@
+{
+  "recorded_at_utc": "2026-10-31T12:16:54.106343+00:00",
+  "git_base": "e1226d776f9b0ba4108b06b611a4e4745c9a71df",
+  "uncommitted_changes": true,
+  "scope": "Mobile calendar: full-width month/week selector, today/previous/current-period/next/add row, shared home Task row presentation, pinned Task/adjustment header.",
+  "final_related_tests": {
+    "raw": "calendar-mobile-verified-tests-20261031.jsonl",
+    "passed": 74,
+    "failed": 0,
+    "success": true,
+    "elapsed_ms": 30268
+  },
+  "capture_tests": {
+    "raw": "calendar-mobile-no-count-capture-tests-20261031.jsonl",
+    "passed": 1,
+    "failed": 0,
+    "success": true,
+    "elapsed_ms": 3144
+  },
+  "counts_overlap": true,
+  "coverage": "74 related tests: calendar widget 6, home UI 57, shell/calendar/widget integration 6, CalendarTaskIndex 5. Capture test overlaps and is not additive. The final visual count removal was then verified by 6 calendar + 1 home + 1 capture tests (overlapping).",
+  "earlier_runs": [
+    {
+      "raw": "calendar-mobile-first-tests-20261031.jsonl",
+      "passed": 10,
+      "failed": 0,
+      "success": true,
+      "elapsed_ms": 6602
+    },
+    {
+      "raw": "calendar-mobile-final-tests-20261031.jsonl",
+      "passed": 73,
+      "failed": 1,
+      "success": false,
+      "elapsed_ms": 33821
+    }
+  ],
+  "earlier_run_note": "Initial 10 existing tests passed. The first expanded regression run passed 73 and failed the new loading test because pumpAndSettle waited for an intentionally indefinite spinner. The helper now pumps one frame for loading; the full final 74-test run passed.",
+  "analysis": {
+    "raw": "calendar-mobile-analyze-20261031.txt",
+    "exit_code": 0,
+    "errors": 0,
+    "warnings": 0,
+    "info": 0,
+    "capture_method": "Exact stdout copied from direct flutter analyze --no-pub output"
+  },
+  "behavior": {
+    "calendar": "Existing TableCalendar/date index retained: selected day, month/week paging, today, date picker, markers and separate undated tasks. Week navigation shows the focused week range.",
+    "header": "Remove Calendar/title/add header. Expand month/week across available width. Second row order: today, previous, current period, next, add with selected date.",
+    "list": "buildTaskListRow is shared presentation only; Home retains its selection/swipe/CRUD handlers. Calendar displays the same 13px wrapped title, folder > list and tags, due time/date, priority and completion checkbox, with real metadata supplied by the existing shell lookup.",
+    "adjustment": "Move existing all/personal/eCampus and completed visibility controls into a Bottom Sheet. Same in-memory calendar state; no saved settings or new filters introduced.",
+    "pinned_header": "CustomScrollView with a 48-dp SliverPersistentHeader between calendar and tasks; Task label/tune remains pinned after the calendar scrolls away.",
+    "actions": "Calendar row tap opens existing detail Bottom Sheet, checkbox calls existing completion handler. Prior edit/delete menu retained on row long press so the row trailing area can use the shared due-date layout.",
+    "empty_loading": "Shared empty text (할 일이 없습니다.), loading spinner remains; no substitute data or Task copies."
+  },
+  "protected_paths_unchanged": [
+    "lib/data",
+    "lib/presentation/services",
+    "lib/presentation/screens/sync",
+    "lib/presentation/screens/login"
+  ],
+  "limits": "In-memory Drift/widget/mock integration and rendered widget screenshots; no Android installation, OS notifications or live eCampus login verified in this task.",
+  "full_suite_run": false,
+  "android_build_run": false,
+  "installed_on_device": false,
+  "commit_created": false,
+  "push_run": false,
+  "source_git_blob_hashes": {
+    "lib/presentation/widgets/home_calendar_section.dart": "6af41d055c2acbf1615153fd90a415735204d507",
+    "lib/presentation/widgets/task_list_row.dart": "c939d2b88091b05ea4c0452bdf3a2813796724e0",
+    "lib/presentation/screens/main/main_shell_screen.dart": "1e4fbe3a40836c8d0ce4fc7987aa15bf07ffccd0",
+    "lib/presentation/screens/main/mobile_home_page.dart": "9c10941fed3e2412a8e9da223a2d098f6baeda85",
+    "test/presentation/widgets/home_calendar_section_test.dart": "2293175718eebe6b803c35adb3409696d3a36b0b",
+    "test/presentation/screens/main_shell_home_layout_test.dart": "c4705831a60e91453e4c8551746f9bc9044dfc30",
+    "test/presentation/screens/mobile_home_test.dart": "802fc5172ca872d4bd3c1ac00cfb44f672b298cd"
+  },
+  "widget_captures": [
+    "calendar-mobile-calendar-month.png",
+    "calendar-mobile-calendar-week.png",
+    "calendar-mobile-calendar-pinned.png",
+    "calendar-mobile-calendar-adjustments.png"
+  ],
+  "header_count_followup": {
+    "policy": "Remove visible task counts from all small pale section titles (home period/urgent/overdue/completed, trash, excluded, calendar tasks and undated). Preserve selection-toolbar counts and accessibility labels.",
+    "calendar_tests": {
+      "raw": "calendar-mobile-no-count-calendar-tests-20261031.jsonl",
+      "passed": 6,
+      "failed": 0,
+      "success": true,
+      "elapsed_ms": 3349
+    },
+    "home_tests": {
+      "raw": "calendar-mobile-no-count-home-tests-20261031.jsonl",
+      "passed": 1,
+      "failed": 0,
+      "success": true,
+      "elapsed_ms": 3656
+    },
+    "capture_test": {
+      "raw": "calendar-mobile-no-count-capture-tests-20261031.jsonl",
+      "passed": 1,
+      "failed": 0,
+      "success": true,
+      "elapsed_ms": 3144
+    },
+    "note": "8 affected checks after count removal; overlap with the preceding 74 tests. Do not sum as unique coverage. No full related rerun for this visual-only follow-up."
+  }
+}

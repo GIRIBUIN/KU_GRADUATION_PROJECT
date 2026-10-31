@@ -1,5 +1,9 @@
 # 모바일 홈 UI 개편 — 2026-10-30
 
+UI-023 최종 보완: 홈·휴지통·제외·캘린더의 작고 연한 섹션 제목 옆 개수는 모두 제거했다. 선택 모드의 숫자는 유지한다. 최신 소스 해시와 개수 제거 후 8건 검증은 calendar-mobile-summary에 기록했다.
+
+최신 UI-023: 캘린더 월/주·날짜 도구 순서와 공통 Task 행, 고정 할 일/조정 줄을 적용했다. 검증은 문서 하단 ‘캘린더 모바일 상단·할 일 목록 통일’을 본다. UI-022는 `a9aac0e`/`e1226d7`로 커밋됐고 아래 미커밋 표시는 당시 기록이다. 이번 UI-023은 커밋·push하지 않았다.
+
 UI-022 최신 보완: 제외 항목 작업은 체크 아이콘이며, 양쪽 선택 상단 높이/본문 여백을 줄였다. 최종 검증·캡처·소스 해시는 문서 맨 아래 height 기록을 기준으로 한다.
 
 최신 UI-022: 휴지통·제외된 eCampus 항목의 체크 선택과 고정 상단을 통일했다. 검증은 문서 하단 ‘휴지통·제외 항목 체크 선택 상단 통일’을 본다. UI-021은 `b55d523`/`229771e`로 커밋됐으며 아래 미커밋 표시는 당시 기록이다. 이번 UI-022는 커밋·push하지 않았다.
@@ -304,3 +308,18 @@ C:\flutter\bin\flutter.bat build apk --debug --no-pub
 - UI-022 최종 시각 보완: 제외 항목 작업 아이콘을 체크로 변경했다. 양쪽 공통 선택 상단의 모두 선택 줄은 56→48, 본문 위 여백은 12→0으로 줄였고 숫자/라벨 크기도 기존 홈에 맞췄다. 전체 선택 상단은 두 범위 모두 104이며 체크 터치 영역 48은 유지한다.
 - [최종 영향 UI 4건 통과·캡처](archive-selection-height-final-tests-20261031.jsonl): 휴지통/제외 × 기본/큰 글씨. 아이콘, 상단/체크 줄 높이, 행 시작 위치가 더 내려가지 않음, 체크 정렬·선택/해제·스크롤 고정·이전키를 확인했다. 큰 글씨에서는 기존 긴 섹션 제목이 사라져 본문이 위로 이동할 수 있다. 이전 88건과 중복이며 이번 시각 수정 뒤 전체 관련 테스트는 반복하지 않았다. [분석](archive-selection-height-analyze-20261031.txt) 문제 없음, [최종 소스 해시·측정](archive-selection-height-summary-20261031.json). 기존 archive-selection-summary/capture는 보완 전 스냅샷이다.
 - 최종 화면: [휴지통](archive-selection-height-trash-selection-header.png) · [제외 체크](archive-selection-height-excluded-selection-header.png) · [큰 글씨 휴지통](archive-selection-height-trash-large-selection-header.png) · [큰 글씨 제외](archive-selection-height-excluded-large-selection-header.png). height-tests 원본은 큰 글씨의 의도된 위쪽 이동까지 절댓값으로 제한해 2건 통과/2건 실패한 중간 실행이고, 최종은 height-final-tests다. 실제 기기 설치·커밋·push는 하지 않았다.
+
+## 캘린더 모바일 상단·할 일 목록 통일 — 2026-10-31
+
+- UI-023. 캘린더 제목/추가 행을 제거하고 전체 폭의 월/주 선택, 다음 줄의 오늘 아이콘·이전·현재 기간·다음·추가 순서로 바꿨다. 기존 날짜 선택기와 선택일 기준 Task 생성·월/주 이동·오늘 이동은 유지한다. 주 보기의 현재 기간은 실제 조회 중인 주의 날짜 구간이다.
+- 홈의 Task 행 표시만 `task_list_row.dart`로 공유했다. 제목 13/전체 줄바꿈, `폴더 > 목록 · #태그`, 마감·우선순위·완료 표시를 동일하게 사용하고 기존 shell의 실제 폴더/목록/태그 조회 결과를 캘린더에도 전달한다. 홈의 체크 선택·스와이프·CRUD는 이동하지 않았다.
+- 캘린더는 Task 탭→기존 상세 Bottom Sheet, 체크→기존 완료 처리다. 예전 행 오른쪽 메뉴는 마감 정보 자리와 겹치지 않도록 길게 누르기의 편집/삭제 메뉴로 옮겼다. 동일 callback을 사용하며 DB·알림·위젯·삭제 정책은 유지한다.
+- 달력과 목록 사이에 작은 ‘할 일’과 조정 아이콘을 뒀다. 전체를 CustomScrollView로 연결해 달력을 올리면 이 48 높이 줄이 상단에 고정된다. 조정 하단창은 기존 전체/개인/eCampus 및 완료 표시만 옮겼으며 앱 실행 중의 기존 메모리 상태를 유지한다. 정렬/새 필터/영구 저장을 추가하지 않았다. 날짜 미지정 목록도 기존처럼 접어서 접근할 수 있다.
+- 변경 앱 코드: `home_calendar_section.dart`, `main_shell_screen.dart`, `mobile_home_page.dart`, 신규 `task_list_row.dart`. 테스트 3개 파일을 갱신했다. CalendarTaskIndex·DB/repository·eCampus/session·notification 서비스는 변경하지 않았다.
+- [최종 관련 74건 통과](calendar-mobile-verified-tests-20261031.jsonl): 캘린더 UI 6 + 홈 UI 57 + shell/캘린더/위젯 6 + 날짜 인덱스 5. [별도 캡처 1건](calendar-mobile-capture-tests-20261031.jsonl)도 통과했으며 중복 검증이다. [분석](calendar-mobile-analyze-20261031.txt) 문제 없음. [요약·소스 해시](calendar-mobile-summary-20261031.json).
+- 중간 원본 first-tests는 기존 10건 통과, final-tests는 확장 회귀 73건 통과/1건 실패다. 신규 로딩 테스트가 무한 spinner의 종료를 pumpAndSettle로 기다리던 것이 원인이며 로딩 상태에서는 한 프레임만 진행하도록 테스트 helper를 보완했다. 최종은 verified-tests다.
+- widget 렌더: [월](calendar-mobile-calendar-month.png) · [주](calendar-mobile-calendar-week.png) · [조정 줄 고정](calendar-mobile-calendar-pinned.png) · [조정 하단창](calendar-mobile-calendar-adjustments.png). 모의 데이터로 렌더했으며 실제 Android 캡처가 아니다.
+- Android 확인: 월/주 전환 → 오늘·이전/다음·현재 기간 날짜 선택 → 선택일에 추가 → 긴 제목/마감/폴더·태그 → 스크롤 후 조정 줄 고정 → 조정의 유형/완료 표시 → 행 탭 상세·체크 완료·길게 누르기 편집/삭제 → 날짜 미지정 접근. 기존 홈 선택/스와이프도 유지되는지 확인한다. 전체 테스트·APK 빌드·설치·커밋·push는 하지 않았다.
+
+- UI-023 최종 요청: 작고 연한 섹션 제목 옆 개수를 홈 모든 섹션/휴지통/제외 항목/캘린더에서 제거했고 날짜 미지정 제목의 괄호 개수도 제거했다. 선택 모드의 선택 개수·실제 Task 조회/선택 동작은 유지했다.
+- 개수 제거 뒤 [캘린더 기존 6건](calendar-mobile-no-count-calendar-tests-20261031.jsonl) + [홈 기본 1건](calendar-mobile-no-count-home-tests-20261031.jsonl) + [실제 화면 연결·캡처 1건](calendar-mobile-no-count-capture-tests-20261031.jsonl) 통과. 앞선 74건과 중복이며 이번 시각 보완 후 전체 관련 테스트는 반복하지 않았다. 분석 문제 없음. 위 월/주/고정/조정 PNG와 summary의 소스 해시도 최신 상태로 갱신했다. 커밋·push는 하지 않았다.

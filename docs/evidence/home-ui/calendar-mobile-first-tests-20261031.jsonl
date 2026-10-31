@@ -1,0 +1,39 @@
+{"protocolVersion":"0.1.1","runnerVersion":null,"pid":32756,"type":"start","time":0}
+{"suite":{"id":0,"platform":"vm","path":"D:/_workspace/repos/kutodo/test/presentation/widgets/home_calendar_section_test.dart"},"type":"suite","time":0}
+{"test":{"id":1,"name":"loading D:/_workspace/repos/kutodo/test/presentation/widgets/home_calendar_section_test.dart","suiteID":0,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":0}
+{"count":2,"time":2,"type":"allSuites"}
+{"testID":1,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":1351}
+{"group":{"id":2,"suiteID":0,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":4,"line":null,"column":null,"url":null},"type":"group","time":1352}
+{"test":{"id":3,"name":"(setUpAll)","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":12,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/presentation/widgets/home_calendar_section_test.dart"},"type":"testStart","time":1352}
+{"testID":3,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":1369}
+{"test":{"id":4,"name":"selects a date, adds on that date, opens and completes existing tasks","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":56,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/widgets/home_calendar_section_test.dart"},"type":"testStart","time":1369}
+{"testID":4,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2164}
+{"test":{"id":5,"name":"navigates months and weeks, jumps to today, and reflects refreshed tasks","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":105,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/widgets/home_calendar_section_test.dart"},"type":"testStart","time":2164}
+{"testID":5,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2645}
+{"test":{"id":6,"name":"filters completed and source types and makes undated tasks accessible","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":147,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/widgets/home_calendar_section_test.dart"},"type":"testStart","time":2645}
+{"testID":6,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2975}
+{"test":{"id":7,"name":"fits a narrow screen with large text","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":181,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/widgets/home_calendar_section_test.dart"},"type":"testStart","time":2975}
+{"testID":7,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":3090}
+{"test":{"id":8,"name":"(tearDownAll)","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":3090}
+{"testID":8,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":3091}
+{"suite":{"id":9,"platform":"vm","path":"D:/_workspace/repos/kutodo/test/presentation/screens/main_shell_home_layout_test.dart"},"type":"suite","time":3113}
+{"test":{"id":10,"name":"loading D:/_workspace/repos/kutodo/test/presentation/screens/main_shell_home_layout_test.dart","suiteID":9,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":3114}
+{"testID":10,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":3599}
+{"group":{"id":11,"suiteID":9,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":6,"line":null,"column":null,"url":null},"type":"group","time":3599}
+{"test":{"id":12,"name":"(setUpAll)","suiteID":9,"groupIDs":[11],"metadata":{"skip":false,"skipReason":null},"line":26,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/presentation/screens/main_shell_home_layout_test.dart"},"type":"testStart","time":3599}
+{"testID":12,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":3615}
+{"test":{"id":13,"name":"applies weekly widget completion before reloading the calendar on resume","suiteID":9,"groupIDs":[11],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":94,"root_column":5,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/screens/main_shell_home_layout_test.dart"},"type":"testStart","time":3616}
+{"testID":13,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":4520}
+{"test":{"id":14,"name":"applies weekly widget uncompletion before reloading the calendar on resume","suiteID":9,"groupIDs":[11],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":94,"root_column":5,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/screens/main_shell_home_layout_test.dart"},"type":"testStart","time":4520}
+{"testID":14,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":4794}
+{"test":{"id":15,"name":"settings changes preserve saved view and existing home preferences","suiteID":9,"groupIDs":[11],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":148,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/screens/main_shell_home_layout_test.dart"},"type":"testStart","time":4794}
+{"testID":15,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":5176}
+{"test":{"id":16,"name":"creates and edits calendar tasks in the shared app repository","suiteID":9,"groupIDs":[11],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":178,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/screens/main_shell_home_layout_test.dart"},"type":"testStart","time":5176}
+{"testID":16,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":6114}
+{"test":{"id":17,"name":"a prefilled calendar date alone can be cancelled without a draft prompt","suiteID":9,"groupIDs":[11],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":234,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/screens/main_shell_home_layout_test.dart"},"type":"testStart","time":6114}
+{"testID":17,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":6428}
+{"test":{"id":18,"name":"new home sections remain available with legacy layouts; calendar has its own tab","suiteID":9,"groupIDs":[11],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":254,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/screens/main_shell_home_layout_test.dart"},"type":"testStart","time":6428}
+{"testID":18,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":6578}
+{"test":{"id":19,"name":"(tearDownAll)","suiteID":9,"groupIDs":[11],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":6578}
+{"testID":19,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":6580}
+{"success":true,"type":"done","time":6602}

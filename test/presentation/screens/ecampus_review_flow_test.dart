@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:ku_task_management/core/utils/list_defaults.dart';
 import 'package:ku_task_management/data/local/app_database.dart' as db;
 import 'package:ku_task_management/data/models/ecampus_models.dart';
 import 'package:ku_task_management/data/models/task_models.dart';
@@ -138,6 +139,194 @@ void main() {
       );
       await tester.ensureVisible(find.text('현재 값 유지'));
       expect(find.text('현재 값 유지'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  for (final archived in [false, true]) {
+    testWidgets(
+      'already imported task exposes its actual saved list and task ID (archived=$archived)',
+      (tester) async {
+        await largeScreen(tester);
+        final at = DateTime.now();
+        if (archived) {
+          await folders.createFolder(
+            Folder(
+              id: 'archived',
+              name: 'Old course',
+              createdAt: at,
+              updatedAt: at,
+            ),
+          );
+        }
+        final saved = await tasks.createTask(
+          Task(
+            id: 'existing',
+            title: 'Saved task',
+            origin: TaskOrigin.ecampus,
+            status: TaskStatus.active,
+            folderIds: [archived ? 'archived' : inboxListId],
+            createdAt: at,
+            updatedAt: at,
+            ecampus: const EcampusSyncMetadata(
+              sourceKey: 'course:existing:report',
+              sourceTitle: 'Saved task',
+            ),
+          ),
+        );
+        if (archived) await folders.deleteFolder('archived');
+        Task? opened;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: EcampusSyncPreviewScreen(
+              syncResult: SyncResult(
+                items: [
+                  SyncItem(
+                    kind: SyncItemKind.alreadyImported,
+                    existingTask: saved,
+                  ),
+                ],
+                syncedAt: at,
+              ),
+              syncFlowService: flow(),
+              folderRepository: folders,
+              onOpenTask: (task) async => opened = task,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          find.text(archived ? '현재 목록: Old course (보관됨)' : '현재 목록: 미지정'),
+          findsOneWidget,
+        );
+        await tester.ensureVisible(find.text('할 일 보기'));
+        await tester.tap(find.text('할 일 보기'));
+        await tester.pumpAndSettle();
+        expect(opened?.id, saved.id);
+        expect((await tasks.getTaskById(saved.id))!.listId, saved.listId);
+        expect((await tasks.getTasks()).length, 1);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
+  testWidgets(
+    'newly imported task reveals its generated course list without another import',
+    (tester) async {
+      await largeScreen(tester);
+      final at = DateTime.now();
+      Task? opened;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: EcampusSyncPreviewScreen(
+            syncResult: SyncResult(
+              items: [
+                SyncItem(
+                  kind: SyncItemKind.newItem,
+                  parsedTask: ParsedEcampusTask(
+                    sourceKey: 'new-course:item:report',
+                    title: 'Imported task',
+                    course: 'New course',
+                    type: EcampusTaskType.report,
+                    dueDate: at.add(const Duration(days: 40)),
+                  ),
+                ),
+              ],
+              syncedAt: at,
+            ),
+            syncFlowService: flow(),
+            folderRepository: folders,
+            onOpenTask: (task) async => opened = task,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('선택 반영 (1)'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('확인'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('할 일 보기'));
+      expect(find.text('현재 목록: New course'), findsOneWidget);
+      await tester.tap(find.text('할 일 보기'));
+      await tester.pumpAndSettle();
+      final saved = (await tasks.getTasks()).single;
+      expect(opened?.id, saved.id);
+      expect(saved.listId, isNot(inboxListId));
+      expect((await folders.getFolderById(saved.listId))!.name, 'New course');
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'review can organize existing unassigned imports without moving completed tasks or duplicating rows',
+    (tester) async {
+      await largeScreen(tester);
+      final at = DateTime.now();
+      final active = await tasks.createTask(
+        Task(
+          id: 'active',
+          title: 'Active source',
+          origin: TaskOrigin.ecampus,
+          status: TaskStatus.active,
+          folderIds: [inboxListId],
+          createdAt: at,
+          updatedAt: at,
+          ecampus: const EcampusSyncMetadata(
+            sourceKey: 'c:1:report',
+            sourceTitle: 'Active source',
+            sourceCourse: 'Course',
+          ),
+        ),
+      );
+      await tasks.createTask(
+        Task(
+          id: 'done',
+          title: 'Completed source',
+          origin: TaskOrigin.ecampus,
+          status: TaskStatus.active,
+          folderIds: [inboxListId],
+          createdAt: at,
+          updatedAt: at,
+          ecampus: const EcampusSyncMetadata(
+            sourceKey: 'c:2:report',
+            sourceTitle: 'Completed source',
+            sourceCourse: 'Course',
+          ),
+        ),
+      );
+      final done = await tasks.updateTaskStatus('done', TaskStatus.completed);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: EcampusSyncPreviewScreen(
+            folderRepository: folders,
+            syncFlowService: flow(),
+            onOrganizeUnassigned: tasks.organizeUnassignedEcampusTasks,
+            syncResult: SyncResult(
+              items: [
+                SyncItem(
+                  kind: SyncItemKind.alreadyImported,
+                  existingTask: active,
+                ),
+                SyncItem(kind: SyncItemKind.completed, existingTask: done),
+              ],
+              syncedAt: at,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('미지정 1개 과목별 정리'));
+      await tester.tap(find.text('미지정 1개 과목별 정리'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, '정리'));
+      await tester.pumpAndSettle();
+      expect((await tasks.getTaskById('active'))!.listId, isNot(inboxListId));
+      expect((await tasks.getTaskById('done'))!.listId, inboxListId);
+      expect(find.text('현재 목록: Course'), findsOneWidget);
+      expect(find.text('Active source'), findsOneWidget);
+      expect(find.text('Completed source'), findsOneWidget);
+      expect(find.text('미지정 1개 과목별 정리'), findsNothing);
+      expect((await tasks.getTasks(includeArchived: true)).length, 2);
       expect(tester.takeException(), isNull);
     },
   );

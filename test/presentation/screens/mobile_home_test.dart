@@ -607,6 +607,52 @@ void main() {
     },
   );
 
+  testWidgets(
+    'all-date option reveals future tasks and navigation names follow the selected period',
+    (tester) async {
+      await add(
+        '먼 마감 일정',
+        due: today.add(const Duration(days: 40)),
+        list: 'course',
+      );
+      await pumpApp(tester);
+      expect(row('먼 마감 일정'), findsNothing);
+      expect((await tasks.getTasks()).length, 1);
+      await choosePeriod(tester, '전체 기간');
+      expect(find.text('전체 기간'), findsNWidgets(2));
+      expect(row('먼 마감 일정'), findsOneWidget);
+      await openDrawer(tester);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('scope-all-')),
+          matching: find.text('전체'),
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const ValueKey('scope-all-')));
+      await tester.pumpAndSettle();
+      await capture(tester, 'all-dates');
+      await choosePeriod(tester, '오늘');
+      expect(row('먼 마감 일정'), findsNothing);
+      for (final label in ['오늘', '이번 주', '이번 달']) {
+        await choosePeriod(tester, label);
+        await openDrawer(tester);
+        expect(
+          find.descendant(
+            of: find.byKey(const ValueKey('scope-all-')),
+            matching: find.text(label),
+          ),
+          findsOneWidget,
+        );
+        await tester.tap(find.byKey(const ValueKey('scope-all-')));
+        await tester.pumpAndSettle();
+      }
+      expect((await tasks.getTasks()).length, 1);
+      expect(tester.takeException(), isNull);
+      await finish(tester);
+    },
+  );
+
   testWidgets('month and specific year month day are session state only', (
     tester,
   ) async {

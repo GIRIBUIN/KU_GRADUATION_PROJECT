@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/list_defaults.dart';
 import '../../../data/models/ecampus_models.dart';
 import '../../../data/models/task_models.dart';
 import '../../../data/services/ecampus_sync_flow_service.dart';
@@ -13,12 +14,16 @@ class EcampusSyncPreviewScreen extends StatefulWidget {
     required this.syncFlowService,
     this.onApplyFinished,
     this.folderRepository,
+    this.onOpenTask,
+    this.onOrganizeUnassigned,
   });
 
   final SyncResult syncResult;
   final EcampusSyncFlowService syncFlowService;
   final Future<void> Function()? onApplyFinished;
   final FolderRepository? folderRepository;
+  final Future<void> Function(Task)? onOpenTask;
+  final Future<List<Task>> Function(Iterable<String>)? onOrganizeUnassigned;
 
   @override
   State<EcampusSyncPreviewScreen> createState() =>
@@ -55,7 +60,19 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
 
   Future<void> _loadLists() async {
     try {
-      final lists = await widget.folderRepository?.getFolders() ?? <Folder>[];
+      final repository = widget.folderRepository;
+      final lists = await repository?.getFolders() ?? <Folder>[];
+      if (repository != null) {
+        final referenced = {
+          ...widget.syncResult.items,
+          ..._importedItemsByKey.values,
+        }.map((item) => item.existingTask?.listId).whereType<String>().toSet();
+        for (final id in referenced) {
+          if (lists.any((list) => list.id == id)) continue;
+          final archived = await repository.getFolderById(id);
+          if (archived != null) lists.add(archived);
+        }
+      }
       if (mounted) setState(() => _lists = lists);
     } catch (_) {
       if (mounted) {
@@ -78,10 +95,17 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
       ),
       ..._savedExcludedItemsByKey.values,
     ];
-    final importedItems = [
-      ...ignoredItems.where((item) => item.kind != SyncItemKind.excluded),
-      ..._importedItemsByKey.values,
-    ];
+    final importedItems = _importedItems();
+    final unassigned = importedItems
+        .map((item) => item.existingTask)
+        .whereType<Task>()
+        .where(
+          (task) =>
+              task.origin == TaskOrigin.ecampus &&
+              task.status == TaskStatus.active &&
+              task.listId == inboxListId,
+        )
+        .toList();
     final errorItems = widget.syncResult.errorItems;
     final missingItems = widget.syncResult.missingItems
         .where((item) => !_reviewedMissingKeys.contains(_itemKey(item)))
@@ -292,6 +316,17 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
                 ),
               const SizedBox(height: 24),
               _SectionTitle(title: '가져온 항목', count: importedItems.length),
+              if (unassigned.isNotEmpty && widget.onOrganizeUnassigned != null)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: _isBusy
+                        ? null
+                        : () => _organizeUnassigned(unassigned),
+                    icon: const Icon(Icons.drive_file_move_outlined),
+                    label: Text('미지정 ${unassigned.length}개 과목별 정리'),
+                  ),
+                ),
               const SizedBox(height: 10),
               if (importedItems.isEmpty)
                 const _EmptyPreviewCard(message: '이미 가져온 항목이 없습니다.')
@@ -301,7 +336,17 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
                   child: Column(
                     children: [
                       for (var i = 0; i < importedItems.length; i++) ...[
-                        _IgnoredItemTile(item: importedItems[i]),
+                        _IgnoredItemTile(
+                          item: importedItems[i],
+                          list: _lists
+                              .where(
+                                (list) =>
+                                    list.id ==
+                                    importedItems[i].existingTask?.listId,
+                              )
+                              .firstOrNull,
+                          onOpenTask: widget.onOpenTask,
+                        ),
                         if (i != importedItems.length - 1)
                           const Divider(height: 1, indent: 60),
                       ],
@@ -383,6 +428,79 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
     );
   }
 
+  List<SyncItem> _importedItems() {
+    final existing = widget.syncResult.ignoredItems
+        .where((item) => item.kind != SyncItemKind.excluded)
+        .toList();
+    final existingKeys = existing.map(_itemKey).toSet();
+    return [
+      for (final item in existing) _importedItemsByKey[_itemKey(item)] ?? item,
+      for (final entry in _importedItemsByKey.entries)
+        if (!existingKeys.contains(entry.key)) entry.value,
+    ];
+  }
+
+  Future<void> _organizeUnassigned(List<Task> selected) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('과목 목록으로 정리할까요?'),
+        content: Text(
+          '미지정의 미완료 eCampus 일정 ${selected.length}개를 eCampus 폴더의 과목 목록으로 옮깁니다. 완료·휴지통 및 다른 목록에 있는 일정은 유지합니다.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('정리'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _isSaving = true);
+    try {
+      final moved = await _applyAndEndSession(
+        () => widget.onOrganizeUnassigned!(selected.map((t) => t.id)),
+      );
+      if (!mounted) return;
+      final byId = {for (final task in moved) task.id: task};
+      final before = _importedItems();
+      setState(() {
+        for (final item in before) {
+          final saved = byId[item.existingTask?.id];
+          if (saved != null) {
+            _importedItemsByKey[_itemKey(item)] = SyncItem(
+              kind: item.kind,
+              parsedTask: item.parsedTask,
+              existingTask: saved,
+              applyTitle: item.applyTitle,
+              applyDueDate: item.applyDueDate,
+            );
+          }
+        }
+        _hasChanges = _hasChanges || moved.isNotEmpty;
+      });
+      await _loadLists();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${moved.length}개 일정을 과목 목록으로 정리했습니다.')),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('과목 목록 정리에 실패했습니다. 다시 확인해주세요.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
   bool get _isBusy => _isSaving || _isExcluding || _isAllowing;
 
   void _closePreview() {
@@ -454,7 +572,28 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
         return;
       }
 
-      setState(() => _isSaving = false);
+      final savedByKey = {
+        for (final task in importedTasks)
+          if (task.ecampus != null) task.ecampus!.sourceKey: task,
+      };
+      setState(() {
+        _isSaving = false;
+        _hasChanges = true;
+        for (final item in selectedItems) {
+          final key = _itemKey(item);
+          _importedKeys.add(key);
+          _importedItemsByKey[key] = SyncItem(
+            kind: item.kind,
+            parsedTask: item.parsedTask,
+            existingTask: savedByKey[key] ?? item.existingTask,
+            applyTitle: item.applyTitle,
+            applyDueDate: item.applyDueDate,
+          );
+          _selectedKeys.remove(key);
+        }
+      });
+      await _loadLists();
+      if (!mounted) return;
 
       await showDialog<void>(
         context: context,
@@ -469,19 +608,6 @@ class _EcampusSyncPreviewScreenState extends State<EcampusSyncPreviewScreen> {
           ],
         ),
       );
-
-      if (mounted) {
-        setState(() {
-          for (final item in selectedItems) {
-            final key = _itemKey(item);
-            _importedKeys.add(key);
-            _importedItemsByKey[key] = item;
-            _selectedKeys.remove(key);
-          }
-          _isSaving = false;
-          _hasChanges = true;
-        });
-      }
     } catch (error) {
       if (!mounted) {
         return;
@@ -766,9 +892,11 @@ class _SyncItemCard extends StatelessWidget {
 }
 
 class _IgnoredItemTile extends StatelessWidget {
-  const _IgnoredItemTile({required this.item});
+  const _IgnoredItemTile({required this.item, this.list, this.onOpenTask});
 
   final SyncItem item;
+  final Folder? list;
+  final Future<void> Function(Task)? onOpenTask;
 
   @override
   Widget build(BuildContext context) {
@@ -782,10 +910,25 @@ class _IgnoredItemTile extends StatelessWidget {
             '항목 없음',
         style: const TextStyle(fontWeight: FontWeight.w800),
       ),
-      subtitle: Text(
-        parsedTask?.course ??
-            item.existingTask?.ecampus?.sourceCourse ??
-            'e-campus',
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            parsedTask?.course ??
+                item.existingTask?.ecampus?.sourceCourse ??
+                'e-campus',
+          ),
+          if (item.existingTask != null)
+            Text(
+              '현재 목록: ${list?.name ?? (item.existingTask!.listId == inboxListId ? inboxListName : '확인 필요')}${list?.archivedAt == null ? '' : ' (보관됨)'}',
+            ),
+          if (item.existingTask != null && onOpenTask != null)
+            TextButton.icon(
+              onPressed: () => onOpenTask!(item.existingTask!),
+              icon: const Icon(Icons.open_in_new_rounded, size: 16),
+              label: const Text('할 일 보기'),
+            ),
+        ],
       ),
       trailing: _MiniChip(
         label: item.kind == SyncItemKind.updateCandidate

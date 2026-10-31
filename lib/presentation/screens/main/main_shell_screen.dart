@@ -222,6 +222,11 @@ class _MainShellScreenState extends State<MainShellScreen>
             settingsRepository: widget.settingsRepository,
             notificationRepository: widget.notificationRepository,
             localNotificationService: widget.localNotificationService,
+            onOpenTask: _openTaskDetail,
+            onOrganizeUnassigned: widget.taskRepository is EcampusListOrganizer
+                ? (ids) => (widget.taskRepository as EcampusListOrganizer)
+                      .organizeUnassignedEcampusTasks(ids)
+                : null,
             onSessionChanged: (session) {
               if (!mounted) {
                 return;

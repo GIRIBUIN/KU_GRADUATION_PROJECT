@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/theme/app_theme.dart';
+import '../../../data/models/task_models.dart';
 import '../../../data/repositories/folder_repository.dart';
 import '../../../data/repositories/settings_repository.dart';
 import '../../../data/repositories/tag_repository.dart';
@@ -37,6 +38,8 @@ class EcampusSyncProgressScreen extends StatefulWidget {
     this.authService,
     this.syncFlowService,
     this.openLogin,
+    this.onOpenTask,
+    this.onOrganizeUnassigned,
   });
 
   final TaskRepository taskRepository;
@@ -49,6 +52,8 @@ class EcampusSyncProgressScreen extends StatefulWidget {
   final EcampusAuthService? authService;
   final EcampusSyncFlowService? syncFlowService;
   final Future<EcampusSession?> Function(BuildContext context)? openLogin;
+  final Future<void> Function(Task)? onOpenTask;
+  final Future<List<Task>> Function(Iterable<String>)? onOrganizeUnassigned;
 
   @override
   State<EcampusSyncProgressScreen> createState() =>
@@ -271,6 +276,8 @@ class _EcampusSyncProgressScreenState extends State<EcampusSyncProgressScreen> {
       didChange = await Navigator.of(context).push<bool>(
         MaterialPageRoute(
           builder: (_) => EcampusSyncPreviewScreen(
+            onOrganizeUnassigned: widget.onOrganizeUnassigned,
+            onOpenTask: widget.onOpenTask,
             syncResult: result,
             syncFlowService: _flowService,
             onApplyFinished: _finishSession,

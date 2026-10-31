@@ -11,7 +11,7 @@ import '../../widgets/task_metadata_picker.dart' show colorFromHex;
 
 enum _ScopeKind { all, list, tag, completed, trash }
 
-enum _Period { today, week, month, day }
+enum _Period { today, week, month, day, all }
 
 class MobileHomePage extends StatefulWidget {
   const MobileHomePage({
@@ -97,6 +97,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
         DateTime(today.year, today.month + 1),
       ),
       _Period.day => (_day!, DateTime(_day!.year, _day!.month, _day!.day + 1)),
+      _Period.all => (DateTime(1), DateTime(10000)),
     };
   }
 
@@ -105,6 +106,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
     _Period.week => '이번 주',
     _Period.month => '이번 달',
     _Period.day => DateFormat('yyyy년 M월 d일', 'ko_KR').format(_day!),
+    _Period.all => '전체 기간',
   };
 
   void _selectScope(_ScopeKind scope, [String? id]) {
@@ -186,7 +188,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
                   padding: EdgeInsets.zero,
                   children: [
                     _drawerEntry(
-                      '전체',
+                      _period == _Period.all ? '전체' : _periodLabel,
                       Icons.format_list_bulleted_rounded,
                       _ScopeKind.all,
                     ),
@@ -370,6 +372,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
                   _Period.week => '이번 주',
                   _Period.month => '이번 달',
                   _Period.day => '특정 날짜 선택',
+                  _Period.all => '전체 기간',
                 }),
                 trailing: _period == period
                     ? const Icon(Icons.check_rounded)

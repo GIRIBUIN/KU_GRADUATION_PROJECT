@@ -84,10 +84,16 @@ class _HomeLayoutScreenState extends State<HomeLayoutScreen> {
             padding: const EdgeInsets.symmetric(vertical: 12),
             buildDefaultDragHandles: false,
             itemCount: _order.length,
-            onReorderItem: (oldIndex, newIndex) {
+            onReorder: (oldIndex, newIndex) {
               if (_isSaving) return;
+
               setState(() {
-                _order.insert(newIndex, _order.removeAt(oldIndex));
+                if (oldIndex < newIndex) {
+                  newIndex -= 1;
+                }
+
+                final item = _order.removeAt(oldIndex);
+                _order.insert(newIndex, item);
               });
             },
             itemBuilder: (context, index) {

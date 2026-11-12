@@ -4,6 +4,20 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class WidgetPageTest {
+    @Test fun registrationGrowthPreservesCurrentPage() {
+        assertEquals(1, widgetPage(3, 3, 0).count)
+        assertEquals(2, widgetPage(4, 3, 0).count)
+        assertEquals(1, widgetPage(5, 5, 0).count)
+        assertEquals(2, widgetPage(6, 5, 0).count)
+        for (pageSize in listOf(3, 5)) {
+            val before = widgetPage(pageSize + 1, pageSize, 1)
+            val after = widgetPage(pageSize + 2, pageSize, before.index)
+            assertEquals(1, after.index)
+            assertEquals(pageSize, after.start)
+            assertEquals(2, after.end - after.start)
+        }
+    }
+
     @Test fun countsAndBoundaries() {
         for (size in listOf(0, 1, 3, 4, 5, 8, 10, 12)) {
             for (pageSize in listOf(3, 5)) {

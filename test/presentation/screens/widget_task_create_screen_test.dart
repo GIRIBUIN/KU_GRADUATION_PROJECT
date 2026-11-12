@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -162,6 +164,23 @@ void main() {
     expect((await tasks.getTasks()).single.tagIds, isEmpty);
   });
 
+  testWidgets('rapid save taps create exactly one task', (tester) async {
+    final blocking = _BlockingRepository(tasks);
+    await open(tester, repository: blocking);
+    await tester.enterText(find.byType(TextFormField), '한 번만 저장');
+    await tester.ensureVisible(find.text('저장'));
+    await tester.tap(find.byType(FilledButton));
+    await tester.pump();
+    await tester.tap(find.byType(FilledButton));
+    await tester.pump();
+    expect(blocking.calls, 1);
+    expect(saved, isFalse);
+    blocking.ready.complete();
+    await tester.pumpAndSettle();
+    expect(await tasks.getTasks(), hasLength(1));
+    expect(saved, isTrue);
+  });
+
   testWidgets('rejects blank title without saving', (tester) async {
     await open(tester);
     await tester.enterText(find.byType(TextFormField), '   ');
@@ -287,6 +306,19 @@ class _FailingRepository extends Fake implements TaskRepository {
   @override
   Future<Task> createTask(Task task) {
     if (fail) throw StateError('injected DB write failure');
+    return delegate.createTask(task);
+  }
+}
+
+class _BlockingRepository extends Fake implements TaskRepository {
+  _BlockingRepository(this.delegate);
+  final TaskRepository delegate;
+  final ready = Completer<void>();
+  int calls = 0;
+  @override
+  Future<Task> createTask(Task task) async {
+    calls++;
+    await ready.future;
     return delegate.createTask(task);
   }
 }

@@ -7,6 +7,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.graphics.Paint
 import android.graphics.Color
 import android.os.Build
 import android.view.View
@@ -20,6 +21,21 @@ import org.json.JSONObject
 /** 오늘 할 일정 홈 위젯: schedule_widget_data JSON → RemoteViews */
 class ScheduleWidgetProvider : HomeWidgetProvider() {
 
+    override fun onReceive(context: Context, intent: Intent) {
+        val prefs = HomeWidgetPlugin.getData(context)
+        val id = WidgetPagination.receive(context, intent, ScheduleWidgetProvider::class.java, prefs)
+        if (id != null) {
+            onUpdate(context, AppWidgetManager.getInstance(context), intArrayOf(id), prefs)
+            return
+        }
+        super.onReceive(context, intent)
+    }
+
+    override fun onDeleted(context: Context, appWidgetIds: IntArray) {
+        WidgetPagination.delete(HomeWidgetPlugin.getData(context), appWidgetIds)
+        super.onDeleted(context, appWidgetIds)
+    }
+
     override fun onUpdate(
         context: Context,
         appWidgetManager: AppWidgetManager,
@@ -29,6 +45,8 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
         val payload = parseWidgetData(widgetData.getString(WIDGET_DATA_KEY, null))
 
         appWidgetIds.forEach { widgetId ->
+            val page = WidgetPagination.page(widgetData, widgetId, payload.tasks.size, 3)
+            val pagePayload = payload.copy(tasks = payload.tasks.subList(page.start, page.end))
             val views = RemoteViews(context.packageName, R.layout.schedule_widget).apply {
                 val openAppIntent =
                     HomeWidgetLaunchIntent.getActivity(context, MainActivity::class.java)
@@ -48,7 +66,7 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
                 val titleIds = intArrayOf(R.id.task_title_0, R.id.task_title_1, R.id.task_title_2)
 
                 for (index in rowIds.indices) {
-                    val task = payload.tasks.getOrNull(index)
+                    val task = pagePayload.tasks.getOrNull(index)
                     if (task == null) {
                         setViewVisibility(rowIds[index], View.GONE)
                         if (index < dividerIds.size) {
@@ -61,7 +79,7 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
                     if (index < dividerIds.size) {
                         setViewVisibility(
                             dividerIds[index],
-                            if (payload.tasks.size > index + 1) View.VISIBLE else View.GONE,
+                            if (pagePayload.tasks.size > index + 1) View.VISIBLE else View.GONE,
                         )
                     }
 
@@ -69,7 +87,13 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
                     setTextViewText(titleIds[index], task.title)
                     setInt(accentIds[index], "setBackgroundColor", parseColor(task.accentColorHex))
 
-                    // 체크 시 투명 Activity → DB 즉시 완료 + JSON에서 제거
+                    setImageViewResource(checkboxIds[index], if (task.isCompleted)
+                        R.drawable.widget_checkbox_checked else R.drawable.widget_checkbox_unchecked)
+                    setTextColor(titleIds[index], Color.parseColor(if (task.isCompleted) "#9CA3AF" else "#111827"))
+                    setInt(titleIds[index], "setPaintFlags", Paint.ANTI_ALIAS_FLAG or
+                        if (task.isCompleted) Paint.STRIKE_THRU_TEXT_FLAG else 0)
+
+                    // 고유 ID 기반 체크 토글
                     val completeIntent = completeTaskPendingIntent(
                         context = context,
                         taskId = task.id,
@@ -80,6 +104,7 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
                 }
             }
 
+            WidgetPagination.bind(context, views, ScheduleWidgetProvider::class.java, widgetId, page, payload.tasks.isEmpty())
             appWidgetManager.updateAppWidget(widgetId, views)
         }
     }
@@ -89,6 +114,7 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
         val title: String,
         val timeLabel: String,
         val accentColorHex: String,
+        val isCompleted: Boolean,
     )
 
     private data class WidgetPayload(
@@ -118,6 +144,7 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
                     }
                     add(
                         WidgetTask(
+                            isCompleted = taskJson.optBoolean("isCompleted", false),
                             id = id,
                             title = title,
                             timeLabel = taskJson.optString("timeLabel", "--:--"),

@@ -1,26 +1,21 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ku_task_management/data/models/task_models.dart';
-import 'package:ku_task_management/data/services/home_task_summary.dart';
 import 'package:ku_task_management/data/services/widget_format.dart';
 import 'package:ku_task_management/data/services/widget_today_selection.dart';
 import 'package:ku_task_management/data/services/widget_week_selection.dart';
 
 void main() {
   group('selectWidgetTasks', () {
-    test('shows only today tasks up to three items sorted by due time', () {
+    test('shows only today tasks without a query limit sorted by due time', () {
       final now = DateTime(2026, 5, 10, 10);
-      final summary = HomeTaskSummary.fromTasks(
-        tasks: [
-          _task(id: 'overdue', dueDate: DateTime(2026, 5, 9, 23, 59)),
-          _task(id: 'today-late', dueDate: DateTime(2026, 5, 10, 18)),
-          _task(id: 'today-early', dueDate: DateTime(2026, 5, 10, 11)),
-          _task(id: 'urgent', dueDate: DateTime(2026, 5, 12, 9)),
-        ],
-        now: now,
-        urgentDueDays: 3,
-      );
+      final tasks = [
+        _task(id: 'overdue', dueDate: DateTime(2026, 5, 9, 23, 59)),
+        _task(id: 'today-late', dueDate: DateTime(2026, 5, 10, 18)),
+        _task(id: 'today-early', dueDate: DateTime(2026, 5, 10, 11)),
+        _task(id: 'urgent', dueDate: DateTime(2026, 5, 12, 9)),
+      ];
 
-      expect(selectWidgetTasks(summary).map((task) => task.id), [
+      expect(selectWidgetTasks(tasks, now: now).map((task) => task.id), [
         'today-early',
         'today-late',
       ]);
@@ -28,18 +23,49 @@ void main() {
 
     test('returns empty list when there are no today tasks', () {
       final now = DateTime(2026, 5, 10, 10);
-      final summary = HomeTaskSummary.fromTasks(
-        tasks: [
-          _task(id: 'overdue', dueDate: DateTime(2026, 5, 9, 23, 59)),
-          _task(id: 'urgent', dueDate: DateTime(2026, 5, 12, 9)),
-        ],
-        now: now,
-        urgentDueDays: 3,
-      );
+      final tasks = [
+        _task(id: 'overdue', dueDate: DateTime(2026, 5, 9, 23, 59)),
+        _task(id: 'urgent', dueDate: DateTime(2026, 5, 12, 9)),
+      ];
 
-      expect(selectWidgetTasks(summary), isEmpty);
+      expect(selectWidgetTasks(tasks, now: now), isEmpty);
     });
   });
+
+  for (final count in [0, 1, 3, 4, 5, 8, 10, 12]) {
+    test(
+      'widget queries retain all $count tasks including completed and past times',
+      () {
+        final now = DateTime(2026, 9, 16, 23);
+        final tasks = List.generate(
+          count,
+          (i) => _task(
+            id: '$i',
+            dueDate: DateTime(2026, 9, 16, i),
+            status: i.isEven ? TaskStatus.completed : TaskStatus.active,
+          ),
+        );
+        final today = selectWidgetTasks(tasks, now: now);
+        final weekly = selectWidgetWeekTasks(
+          tasksForWeek(tasks, weekWindowFor(now)),
+        );
+        expect(today.length, count);
+        expect(weekly.length, count);
+        expect(today.map((t) => t.id), weekly.map((t) => t.id));
+        final firstDone = today.indexWhere(
+          (t) => t.status == TaskStatus.completed,
+        );
+        if (firstDone >= 0) {
+          expect(
+            today
+                .skip(firstDone)
+                .every((t) => t.status == TaskStatus.completed),
+            isTrue,
+          );
+        }
+      },
+    );
+  }
 
   group('weekWindowFor', () {
     test('returns Monday through Sunday for the current week', () {
@@ -54,20 +80,17 @@ void main() {
   group('selectWidgetWeekTasks', () {
     test('shows incomplete tasks first then due date within each group', () {
       final week = weekWindowFor(DateTime(2026, 9, 16, 10));
-      final weekTasks = tasksForWeek(
-        [
-          _task(
-            id: 'done',
-            dueDate: DateTime(2026, 9, 15, 18),
-            status: TaskStatus.completed,
-          ),
-          _task(id: 'later', dueDate: DateTime(2026, 9, 19, 18)),
-          _task(id: 'soon', dueDate: DateTime(2026, 9, 16, 11)),
-          _task(id: 'next', dueDate: DateTime(2026, 9, 17, 9)),
-          _task(id: 'outside', dueDate: DateTime(2026, 9, 27, 9)),
-        ],
-        week,
-      );
+      final weekTasks = tasksForWeek([
+        _task(
+          id: 'done',
+          dueDate: DateTime(2026, 9, 15, 18),
+          status: TaskStatus.completed,
+        ),
+        _task(id: 'later', dueDate: DateTime(2026, 9, 19, 18)),
+        _task(id: 'soon', dueDate: DateTime(2026, 9, 16, 11)),
+        _task(id: 'next', dueDate: DateTime(2026, 9, 17, 9)),
+        _task(id: 'outside', dueDate: DateTime(2026, 9, 27, 9)),
+      ], week);
 
       expect(selectWidgetWeekTasks(weekTasks).map((task) => task.id), [
         'soon',
@@ -80,11 +103,7 @@ void main() {
     test('prefers incomplete tasks when due dates match', () {
       final dueDate = DateTime(2026, 9, 16, 11);
       final weekTasks = [
-        _task(
-          id: 'done',
-          dueDate: dueDate,
-          status: TaskStatus.completed,
-        ),
+        _task(id: 'done', dueDate: dueDate, status: TaskStatus.completed),
         _task(id: 'active', dueDate: dueDate),
       ];
 
@@ -98,47 +117,35 @@ void main() {
   group('weekProgressCounts', () {
     test('counts all week tasks, not just displayed five', () {
       final week = weekWindowFor(DateTime(2026, 9, 16, 10));
-      final weekTasks = tasksForWeek(
-        [
-          _task(
-            id: 'done-1',
-            dueDate: DateTime(2026, 9, 15, 18),
-            status: TaskStatus.completed,
-          ),
-          _task(id: 'active-1', dueDate: DateTime(2026, 9, 16, 11)),
-          _task(id: 'active-2', dueDate: DateTime(2026, 9, 17, 9)),
-          _task(id: 'active-3', dueDate: DateTime(2026, 9, 18, 9)),
-          _task(
-            id: 'done-2',
-            dueDate: DateTime(2026, 9, 19, 9),
-            status: TaskStatus.completed,
-          ),
-          _task(id: 'active-4', dueDate: DateTime(2026, 9, 20, 9)),
-        ],
-        week,
-      );
+      final weekTasks = tasksForWeek([
+        _task(
+          id: 'done-1',
+          dueDate: DateTime(2026, 9, 15, 18),
+          status: TaskStatus.completed,
+        ),
+        _task(id: 'active-1', dueDate: DateTime(2026, 9, 16, 11)),
+        _task(id: 'active-2', dueDate: DateTime(2026, 9, 17, 9)),
+        _task(id: 'active-3', dueDate: DateTime(2026, 9, 18, 9)),
+        _task(
+          id: 'done-2',
+          dueDate: DateTime(2026, 9, 19, 9),
+          status: TaskStatus.completed,
+        ),
+        _task(id: 'active-4', dueDate: DateTime(2026, 9, 20, 9)),
+      ], week);
 
       expect(weekProgressCounts(weekTasks).completedCount, 2);
       expect(weekProgressCounts(weekTasks).totalCount, 6);
-      expect(selectWidgetWeekTasks(weekTasks).length, 5);
+      expect(selectWidgetWeekTasks(weekTasks).length, 6);
     });
   });
 
   group('widget format helpers', () {
     test('formats today and weekly labels', () {
+      expect(formatWidgetHeaderDate(DateTime(2026, 9, 11)), '9월 11일 (금)');
+      expect(formatWidgetTime(DateTime(2026, 9, 11, 9)), '09:00');
       expect(
-        formatWidgetHeaderDate(DateTime(2026, 9, 11)),
-        '9월 11일 (금)',
-      );
-      expect(
-        formatWidgetTime(DateTime(2026, 9, 11, 9)),
-        '09:00',
-      );
-      expect(
-        formatWidgetWeekRange(
-          DateTime(2026, 9, 14),
-          DateTime(2026, 9, 20),
-        ),
+        formatWidgetWeekRange(DateTime(2026, 9, 14), DateTime(2026, 9, 20)),
         '9월 14일 (월) ~ 9월 20일 (일)',
       );
     });
@@ -163,10 +170,7 @@ void main() {
         ),
       };
 
-      expect(
-        accentColorForTask(task, tagsById: tagsById),
-        '#3B82F6',
-      );
+      expect(accentColorForTask(task, tagsById: tagsById), '#3B82F6');
     });
   });
 }

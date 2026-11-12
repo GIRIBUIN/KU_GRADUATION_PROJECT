@@ -3,28 +3,36 @@ import 'dart:convert';
 class TodayWidgetTaskSnapshot {
   const TodayWidgetTaskSnapshot({
     required this.id,
+    this.sortTimestamp = 0,
     required this.title,
     required this.timeLabel,
     required this.accentColorHex,
+    this.isCompleted = false,
   });
 
   final String id;
+  final int sortTimestamp;
   final String title;
   final String timeLabel;
   final String accentColorHex;
+  final bool isCompleted;
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'sortTimestamp': sortTimestamp,
       'title': title,
       'timeLabel': timeLabel,
       'accentColorHex': accentColorHex,
+      'isCompleted': isCompleted,
     };
   }
 
   factory TodayWidgetTaskSnapshot.fromJson(Map<String, dynamic> json) {
     return TodayWidgetTaskSnapshot(
+      isCompleted: json['isCompleted'] as bool? ?? false,
       id: json['id'] as String,
+      sortTimestamp: json['sortTimestamp'] as int? ?? 0,
       title: json['title'] as String,
       timeLabel: json['timeLabel'] as String? ?? '--:--',
       accentColorHex: json['accentColorHex'] as String? ?? '#1262D6',
@@ -41,6 +49,7 @@ class TodayWidgetData {
   });
 
   static const maxTasks = 3;
+
   /// ScheduleWidgetProvider와 공유하는 home_widget 키.
   static const storageKey = 'schedule_widget_data';
 
@@ -71,7 +80,8 @@ class TodayWidgetData {
                 .toList(growable: false)
           : const [],
       todayCount: json['todayCount'] as int? ?? 0,
-      updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? '') ??
+      updatedAt:
+          DateTime.tryParse(json['updatedAt'] as String? ?? '') ??
           DateTime.fromMillisecondsSinceEpoch(0),
     );
   }

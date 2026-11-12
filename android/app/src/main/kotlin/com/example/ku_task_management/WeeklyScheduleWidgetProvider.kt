@@ -21,6 +21,21 @@ import org.json.JSONObject
 /** 이번 주 일정 홈 위젯: weekly_schedule_widget_data JSON → RemoteViews */
 class WeeklyScheduleWidgetProvider : HomeWidgetProvider() {
 
+    override fun onReceive(context: Context, intent: Intent) {
+        val prefs = HomeWidgetPlugin.getData(context)
+        val id = WidgetPagination.receive(context, intent, WeeklyScheduleWidgetProvider::class.java, prefs)
+        if (id != null) {
+            onUpdate(context, AppWidgetManager.getInstance(context), intArrayOf(id), prefs)
+            return
+        }
+        super.onReceive(context, intent)
+    }
+
+    override fun onDeleted(context: Context, appWidgetIds: IntArray) {
+        WidgetPagination.delete(HomeWidgetPlugin.getData(context), appWidgetIds)
+        super.onDeleted(context, appWidgetIds)
+    }
+
     override fun onUpdate(
         context: Context,
         appWidgetManager: AppWidgetManager,
@@ -30,6 +45,8 @@ class WeeklyScheduleWidgetProvider : HomeWidgetProvider() {
         val payload = parseWidgetData(widgetData.getString(WIDGET_DATA_KEY, null))
 
         appWidgetIds.forEach { widgetId ->
+            val page = WidgetPagination.page(widgetData, widgetId, payload.tasks.size, 5)
+            val pagePayload = payload.copy(tasks = payload.tasks.subList(page.start, page.end))
             val views = RemoteViews(context.packageName, R.layout.weekly_schedule_widget).apply {
                 val openAppIntent =
                     HomeWidgetLaunchIntent.getActivity(context, MainActivity::class.java)
@@ -47,9 +64,10 @@ class WeeklyScheduleWidgetProvider : HomeWidgetProvider() {
                     false,
                 )
 
-                bindTaskRows(context, payload)
+                bindTaskRows(context, pagePayload)
             }
 
+            WidgetPagination.bind(context, views, WeeklyScheduleWidgetProvider::class.java, widgetId, page, payload.tasks.isEmpty())
             appWidgetManager.updateAppWidget(widgetId, views)
         }
     }

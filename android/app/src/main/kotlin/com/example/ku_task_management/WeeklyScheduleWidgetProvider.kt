@@ -135,6 +135,7 @@ class WeeklyScheduleWidgetProvider : HomeWidgetProvider() {
 
             setTextViewText(titleIds[index], task.title)
             setTextViewText(categoryIds[index], task.categoryLabel)
+            setViewVisibility(categoryIds[index], if (task.categoryLabel.isBlank()) View.GONE else View.VISIBLE)
             setInt(categoryIds[index], "setBackgroundColor", parseColor(task.categoryBackgroundHex))
             setTextColor(categoryIds[index], parseColor(task.categoryTextHex))
             setTextViewText(dueIds[index], task.dueLabel)
@@ -223,7 +224,7 @@ class WeeklyScheduleWidgetProvider : HomeWidgetProvider() {
                         WidgetTask(
                             id = id,
                             title = title,
-                            categoryLabel = taskJson.optString("categoryLabel", "태그 없음"),
+                            categoryLabel = taskJson.optString("categoryLabel", ""),
                             categoryBackgroundHex = taskJson.optString(
                                 "categoryBackgroundHex",
                                 DEFAULT_CATEGORY_BACKGROUND,

@@ -97,7 +97,7 @@ Tag? _displayTag(Task task, Map<String, Tag> tagsById) {
 }
 
 String categoryLabelForTask(Task task, {required Map<String, Tag> tagsById}) {
-  return _displayTag(task, tagsById)?.name.trim() ?? '태그 없음';
+  return _displayTag(task, tagsById)?.name.trim() ?? '';
 }
 
 String categoryBackgroundHexForTask(

@@ -3,10 +3,10 @@
     android:description="@string/weekly_schedule_widget_description"
     android:initialLayout="@layout/weekly_schedule_widget"
     android:minWidth="276dp"
-    android:minHeight="203dp"
+    android:minHeight="340dp"
     android:previewLayout="@layout/weekly_schedule_widget"
-    android:resizeMode="none"
+    android:resizeMode="horizontal|vertical"
     android:targetCellWidth="4"
-    android:targetCellHeight="3"
+    android:targetCellHeight="5"
     android:updatePeriodMillis="86400000"
     android:widgetCategory="home_screen" />

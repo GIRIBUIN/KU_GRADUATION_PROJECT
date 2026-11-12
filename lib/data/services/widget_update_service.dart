@@ -9,7 +9,6 @@ import '../models/weekly_widget_data.dart';
 import '../repositories/settings_repository.dart';
 import '../repositories/tag_repository.dart';
 import '../repositories/task_repository.dart';
-import 'home_task_summary.dart';
 import 'widget_format.dart';
 import 'widget_today_selection.dart';
 import 'widget_week_selection.dart';
@@ -22,7 +21,6 @@ class WidgetUpdateService {
     required TagRepository tagRepository,
     DateTime Function()? now,
   }) : _taskRepository = taskRepository,
-       _settingsRepository = settingsRepository,
        _tagRepository = tagRepository,
        _now = now ?? DateTime.now;
 
@@ -34,13 +32,14 @@ class WidgetUpdateService {
   static const widgetDatabasePathKey = 'widget_db_path';
 
   final TaskRepository _taskRepository;
-  final SettingsRepository _settingsRepository;
   final TagRepository _tagRepository;
   final DateTime Function() _now;
 
   /// 주간 위젯에서만 쌓인 완료/해제 요청을 Drift에 반영한다.
   Future<void> applyPendingWidgetCompletions() async {
-    final uncompletionIds = await _readPendingTaskIds(widgetPendingUncompletionsKey);
+    final uncompletionIds = await _readPendingTaskIds(
+      widgetPendingUncompletionsKey,
+    );
     for (final taskId in uncompletionIds) {
       final task = await _taskRepository.getTaskById(taskId);
       if (task == null || task.status != TaskStatus.completed) {
@@ -50,7 +49,9 @@ class WidgetUpdateService {
     }
     await HomeWidget.saveWidgetData(widgetPendingUncompletionsKey, null);
 
-    final completionIds = await _readPendingTaskIds(widgetPendingCompletionsKey);
+    final completionIds = await _readPendingTaskIds(
+      widgetPendingCompletionsKey,
+    );
     for (final taskId in completionIds) {
       final task = await _taskRepository.getTaskById(taskId);
       if (task == null || task.status != TaskStatus.active) {
@@ -109,17 +110,11 @@ class WidgetUpdateService {
   /// 오늘 할 일정 위젯(ScheduleWidgetProvider)용 스냅샷.
   Future<TodayWidgetData> buildTodayWidgetData({DateTime? now}) async {
     final current = now ?? _now();
-    final tasks = await _taskRepository.getTasks(includeArchived: false);
-    final settings = await _settingsRepository.getSettings();
+    final tasks = await _taskRepository.getTasks(includeArchived: true);
     final tagsById = {
       for (final tag in await _tagRepository.getTags()) tag.id: tag,
     };
-    final summary = HomeTaskSummary.fromTasks(
-      tasks: tasks,
-      now: current,
-      urgentDueDays: settings.urgentDueDays,
-    );
-    final selectedTasks = selectWidgetTasks(summary);
+    final selectedTasks = selectWidgetTasks(tasks, now: current);
 
     return TodayWidgetData(
       headerDateLabel: formatWidgetHeaderDate(current),
@@ -127,13 +122,15 @@ class WidgetUpdateService {
           .map(
             (task) => TodayWidgetTaskSnapshot(
               id: task.id,
+              sortTimestamp: task.dueDate!.millisecondsSinceEpoch,
               title: task.title,
               timeLabel: formatWidgetTime(task.dueDate),
               accentColorHex: accentColorForTask(task, tagsById: tagsById),
+              isCompleted: isTaskCompletedForWidget(task),
             ),
           )
           .toList(growable: false),
-      todayCount: summary.todayTasks.length,
+      todayCount: selectedTasks.length,
       updatedAt: current,
     );
   }
@@ -158,10 +155,14 @@ class WidgetUpdateService {
     );
   }
 
-  WeeklyWidgetTaskSnapshot _toWeeklySnapshot(Task task, {required DateTime now}) {
+  WeeklyWidgetTaskSnapshot _toWeeklySnapshot(
+    Task task, {
+    required DateTime now,
+  }) {
     final dueDate = task.dueDate!;
     return WeeklyWidgetTaskSnapshot(
       id: task.id,
+      sortTimestamp: dueDate.millisecondsSinceEpoch,
       title: task.title,
       categoryLabel: categoryLabelForTask(task),
       categoryBackgroundHex: categoryBackgroundHexForTask(task),

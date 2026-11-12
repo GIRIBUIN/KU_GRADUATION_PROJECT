@@ -223,7 +223,7 @@ class WeeklyScheduleWidgetProvider : HomeWidgetProvider() {
                         WidgetTask(
                             id = id,
                             title = title,
-                            categoryLabel = taskJson.optString("categoryLabel", "개인"),
+                            categoryLabel = taskJson.optString("categoryLabel", "태그 없음"),
                             categoryBackgroundHex = taskJson.optString(
                                 "categoryBackgroundHex",
                                 DEFAULT_CATEGORY_BACKGROUND,

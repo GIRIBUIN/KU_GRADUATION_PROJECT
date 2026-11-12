@@ -1,3 +1,5 @@
+import 'package:flutter/painting.dart' show Color;
+
 import '../models/task_models.dart';
 
 const widgetDefaultAccentColorHex = '#1262D6';
@@ -29,10 +31,7 @@ String formatWidgetTime(DateTime? dueDate) {
   return '$hour:$minute';
 }
 
-String accentColorForTask(
-  Task task, {
-  required Map<String, Tag> tagsById,
-}) {
+String accentColorForTask(Task task, {required Map<String, Tag> tagsById}) {
   for (final tagId in task.tagIds) {
     final tag = tagsById[tagId];
     if (tag != null) {
@@ -89,20 +88,33 @@ String dueColorHexForDate(DateTime dueDate, {required DateTime now}) {
   return widgetDuePrimaryColorHex;
 }
 
-String categoryLabelForTask(Task task) {
-  return task.origin == TaskOrigin.ecampus ? '학업' : '개인';
+Tag? _displayTag(Task task, Map<String, Tag> tagsById) {
+  for (final id in task.tagIds) {
+    final tag = tagsById[id];
+    if (tag != null && tag.name.trim().isNotEmpty) return tag;
+  }
+  return null;
 }
 
-String categoryBackgroundHexForTask(Task task) {
-  return task.origin == TaskOrigin.ecampus
-      ? widgetCategoryEcampusBackgroundHex
-      : widgetCategoryPersonalBackgroundHex;
+String categoryLabelForTask(Task task, {required Map<String, Tag> tagsById}) {
+  return _displayTag(task, tagsById)?.name.trim() ?? '태그 없음';
 }
 
-String categoryTextHexForTask(Task task) {
-  return task.origin == TaskOrigin.ecampus
-      ? widgetCategoryEcampusTextHex
-      : widgetCategoryPersonalTextHex;
+String categoryBackgroundHexForTask(
+  Task task, {
+  required Map<String, Tag> tagsById,
+}) {
+  final tag = _displayTag(task, tagsById);
+  return tag == null ? '#E5E7EB' : normalizeWidgetColorHex(tag.color);
+}
+
+String categoryTextHexForTask(Task task, {required Map<String, Tag> tagsById}) {
+  final background = categoryBackgroundHexForTask(task, tagsById: tagsById);
+  final rgb = int.tryParse(background.replaceFirst('#', ''), radix: 16);
+  if (rgb == null) return '#111827';
+  final luminance = Color(0xFF000000 | rgb).computeLuminance();
+  // Choose the stronger contrast against the actual stored tag color.
+  return luminance > 0.179 ? '#000000' : '#FFFFFF';
 }
 
 String normalizeWidgetColorHex(String color) {

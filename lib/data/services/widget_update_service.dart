@@ -140,6 +140,9 @@ class WidgetUpdateService {
     final current = now ?? _now();
     final week = weekWindowFor(current);
     final tasks = await _taskRepository.getTasks(includeArchived: true);
+    final tagsById = {
+      for (final tag in await _tagRepository.getTags()) tag.id: tag,
+    };
     final weekTasks = tasksForWeek(tasks, week);
     final selectedTasks = selectWidgetWeekTasks(weekTasks);
     final progress = weekProgressCounts(weekTasks);
@@ -149,7 +152,9 @@ class WidgetUpdateService {
       completedCount: progress.completedCount,
       totalCount: progress.totalCount,
       tasks: selectedTasks
-          .map((task) => _toWeeklySnapshot(task, now: current))
+          .map(
+            (task) => _toWeeklySnapshot(task, now: current, tagsById: tagsById),
+          )
           .toList(growable: false),
       updatedAt: current,
     );
@@ -158,15 +163,19 @@ class WidgetUpdateService {
   WeeklyWidgetTaskSnapshot _toWeeklySnapshot(
     Task task, {
     required DateTime now,
+    required Map<String, Tag> tagsById,
   }) {
     final dueDate = task.dueDate!;
     return WeeklyWidgetTaskSnapshot(
       id: task.id,
       sortTimestamp: dueDate.millisecondsSinceEpoch,
       title: task.title,
-      categoryLabel: categoryLabelForTask(task),
-      categoryBackgroundHex: categoryBackgroundHexForTask(task),
-      categoryTextHex: categoryTextHexForTask(task),
+      categoryLabel: categoryLabelForTask(task, tagsById: tagsById),
+      categoryBackgroundHex: categoryBackgroundHexForTask(
+        task,
+        tagsById: tagsById,
+      ),
+      categoryTextHex: categoryTextHexForTask(task, tagsById: tagsById),
       dueLabel: formatWidgetDueLabel(dueDate, now: now),
       dueColorHex: dueColorHexForDate(dueDate, now: now),
       isCompleted: isTaskCompletedForWidget(task),

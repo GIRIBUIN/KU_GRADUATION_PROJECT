@@ -88,6 +88,21 @@
             android:value="2" />
 
         <activity
+            android:name=".WidgetTaskCreateActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:taskAffinity="com.example.ku_task_management.widget_quick_create"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/WidgetQuickCreateTheme">
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/WidgetQuickCreateTheme" />
+        </activity>
+
+        <activity
             android:name=".WidgetTaskCompleteActivity"
             android:excludeFromRecents="true"
             android:exported="true"

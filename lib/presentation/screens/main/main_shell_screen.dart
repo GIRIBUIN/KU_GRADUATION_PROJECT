@@ -239,6 +239,7 @@ class _MainShellScreenState extends State<MainShellScreen>
       _metadataFuture = _loadMetadata();
       _metadataVersion++;
     });
+    _refreshHomeWidget();
   }
 
   void _refreshTasksAndMetadata() {

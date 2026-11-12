@@ -9,6 +9,7 @@ import '../../../data/repositories/sub_task_repository.dart';
 import '../../../data/repositories/tag_repository.dart';
 import '../../../data/repositories/task_repository.dart';
 import '../../../data/services/sub_task_progress.dart';
+import '../../../data/services/personal_task_draft.dart';
 import '../../services/local_notification_service.dart';
 import '../../widgets/task_metadata_picker.dart';
 
@@ -279,22 +280,14 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
     });
 
     final now = DateTime.now();
-    final taskId = 'task_${now.microsecondsSinceEpoch}';
     final task = await widget.taskRepository.createTask(
-      Task(
-        id: taskId,
-        origin: TaskOrigin.personal,
-        status: TaskStatus.active,
+      personalTaskDraft(
         title: title,
+        now: now,
         dueDate: _dueDate,
         priority: _priority,
-        memo: _memoController.text.trim().isEmpty
-            ? null
-            : _memoController.text.trim(),
-        tagIds: _selectedTagIds.toList(growable: false),
-        folderIds: const [],
-        createdAt: now,
-        updatedAt: now,
+        memo: _memoController.text,
+        tagIds: _selectedTagIds,
       ),
     );
 

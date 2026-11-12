@@ -42,7 +42,7 @@ class WeeklyWidgetTaskSnapshot {
       id: json['id'] as String,
       sortTimestamp: json['sortTimestamp'] as int? ?? 0,
       title: json['title'] as String,
-      categoryLabel: json['categoryLabel'] as String? ?? '개인',
+      categoryLabel: json['categoryLabel'] as String? ?? '',
       categoryBackgroundHex:
           json['categoryBackgroundHex'] as String? ?? '#FCE7F3',
       categoryTextHex: json['categoryTextHex'] as String? ?? '#DB2777',

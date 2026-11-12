@@ -97,6 +97,8 @@
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/WidgetQuickCreateTheme">
+            <!-- PendingIntent 식별용 URI가 Flutter 화면 이동으로 처리되지 않게 한다. -->
+            <meta-data android:name="flutter_deeplinking_enabled" android:value="false" />
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/WidgetQuickCreateTheme" />

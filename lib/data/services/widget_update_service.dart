@@ -92,18 +92,19 @@ class WidgetUpdateService {
       '${documentsDir.path}/ku_task_management.sqlite',
     );
 
+    // 두 범위의 전체 데이터를 재조회·정렬한 뒤 위젯들을 갱신한다.
     final todayData = await buildTodayWidgetData(now: now);
+    final weeklyData = await buildWeeklyWidgetData(now: now);
     await HomeWidget.saveWidgetData(
       TodayWidgetData.storageKey,
       todayData.toJsonString(),
     );
-    await HomeWidget.updateWidget(androidName: todayAndroidProviderName);
-
-    final weeklyData = await buildWeeklyWidgetData(now: now);
     await HomeWidget.saveWidgetData(
       WeeklyWidgetData.storageKey,
       weeklyData.toJsonString(),
     );
+    // Provider가 설치된 모든 인스턴스의 페이지 수를 다시 계산하고 현재 페이지를 보정한다.
+    await HomeWidget.updateWidget(androidName: todayAndroidProviderName);
     await HomeWidget.updateWidget(androidName: weeklyAndroidProviderName);
   }
 

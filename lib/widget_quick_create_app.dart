@@ -13,7 +13,15 @@ import 'presentation/screens/task/widget_task_create_screen.dart';
 
 /// 메인 화면 대신 등록 팝업만 구성하는 전용 Flutter 앱.
 class WidgetQuickCreateApp extends StatefulWidget {
-  const WidgetQuickCreateApp({super.key});
+  const WidgetQuickCreateApp({
+    super.key,
+    this.source = 'unknown',
+    this.sourceWidgetId,
+  });
+
+  // 실행 위젯 정보는 보존하되, 폼과 저장 정책은 두 위젯에서 동일하게 사용한다.
+  final String source;
+  final int? sourceWidgetId;
 
   @override
   State<WidgetQuickCreateApp> createState() => _WidgetQuickCreateAppState();

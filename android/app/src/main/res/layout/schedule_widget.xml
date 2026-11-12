@@ -5,7 +5,9 @@
     android:layout_height="match_parent"
     android:background="@drawable/widget_background"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="16dp"
+    android:paddingTop="12dp"
+    android:paddingBottom="8dp">
 
     <LinearLayout
         android:id="@+id/widget_header"
@@ -31,12 +33,13 @@
             android:textColor="@color/widget_muted"
             android:textSize="12sp"
             tools:text="9월 11일 (목)" />
+        <include layout="@layout/widget_add_button" />
     </LinearLayout>
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="4dp"
         android:layout_marginBottom="4dp"
         android:background="@drawable/widget_divider" />
 
@@ -47,10 +50,10 @@
         android:clickable="true"
         android:focusable="true"
         android:gravity="center_vertical"
-        android:minHeight="44dp"
+        android:minHeight="40dp"
         android:orientation="horizontal"
-        android:paddingTop="6dp"
-        android:paddingBottom="6dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp"
         android:visibility="gone"
         tools:visibility="visible">
 
@@ -112,10 +115,10 @@
         android:clickable="true"
         android:focusable="true"
         android:gravity="center_vertical"
-        android:minHeight="44dp"
+        android:minHeight="40dp"
         android:orientation="horizontal"
-        android:paddingTop="6dp"
-        android:paddingBottom="6dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp"
         android:visibility="gone"
         tools:visibility="visible">
 
@@ -177,10 +180,10 @@
         android:clickable="true"
         android:focusable="true"
         android:gravity="center_vertical"
-        android:minHeight="44dp"
+        android:minHeight="40dp"
         android:orientation="horizontal"
-        android:paddingTop="6dp"
-        android:paddingBottom="6dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp"
         android:visibility="gone"
         tools:visibility="visible">
 

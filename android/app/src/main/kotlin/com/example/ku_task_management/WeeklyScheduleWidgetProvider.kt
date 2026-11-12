@@ -51,6 +51,10 @@ class WeeklyScheduleWidgetProvider : HomeWidgetProvider() {
                 val openAppIntent =
                     HomeWidgetLaunchIntent.getActivity(context, MainActivity::class.java)
                 setOnClickPendingIntent(R.id.widget_header, openAppIntent)
+                // 등록 이벤트는 + 버튼에만 연결한다. 체크·페이지 이동 이벤트는 유지한다.
+                setOnClickPendingIntent(R.id.widget_add, WidgetTaskCreateActivity.pendingIntent(
+                    context, WidgetActions.WIDGET_KIND_WEEKLY, widgetId,
+                ))
 
                 setTextViewText(R.id.widget_week_range, payload.weekRangeLabel)
                 setTextViewText(

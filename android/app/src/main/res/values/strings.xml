@@ -10,4 +10,5 @@
     <string name="widget_empty_message">마감 일정이 없습니다</string>
     <string name="widget_previous">이전</string>
     <string name="widget_next">다음</string>
+    <string name="widget_add_task">일정 등록</string>
 </resources>

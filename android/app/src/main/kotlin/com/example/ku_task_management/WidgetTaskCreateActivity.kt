@@ -1,5 +1,10 @@
 package com.example.ku_task_management
 
+import android.app.ActivityOptions
+import android.app.PendingIntent
+import android.appwidget.AppWidgetManager
+import android.net.Uri
+import android.os.Build
 import android.content.Context
 import android.content.Intent
 import es.antonborri.home_widget.HomeWidgetPlugin
@@ -11,6 +16,12 @@ import io.flutter.plugin.common.MethodChannel
 /** 메인 Activity를 열지 않고 두 위젯의 공통 등록 팝업을 실행한다. */
 class WidgetTaskCreateActivity : FlutterActivity() {
     override fun getDartEntrypointFunctionName() = "widgetQuickCreate"
+
+    // 최초 실행 위젯 정보를 Dart에 전달한다. singleTask 재호출은 기존 폼을 유지한다.
+    override fun getDartEntrypointArgs(): List<String> = listOf(
+        intent.getStringExtra(WidgetActions.EXTRA_SOURCE) ?: "unknown",
+        intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID).toString(),
+    )
 
     // 홈 화면이 팝업 뒤로 보이도록 Flutter 배경을 투명하게 렌더링한다.
     override fun getBackgroundMode() = BackgroundMode.transparent
@@ -37,8 +48,32 @@ class WidgetTaskCreateActivity : FlutterActivity() {
     }
 
     companion object {
-        /** 두 위젯의 + 버튼에서 공통으로 사용할 명시적 실행 Intent. */
-        fun createIntent(context: Context) = Intent(context, WidgetTaskCreateActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        /** singleTask와 SINGLE_TOP으로 연속 클릭 시 입력 중인 팝업을 재사용한다. */
+        fun createIntent(context: Context, source: String, widgetId: Int) =
+            Intent(context, WidgetTaskCreateActivity::class.java).apply {
+                data = Uri.parse("kutodo://widget/$source/$widgetId/create")
+                putExtra(WidgetActions.EXTRA_SOURCE, source)
+                putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            }
+
+        fun pendingIntent(context: Context, source: String, widgetId: Int): PendingIntent {
+            // 위젯별 URI로 PendingIntent를 구분해 다른 인스턴스의 source 덮어쓰기를 막는다.
+            val intent = createIntent(context, source, widgetId)
+            val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                val options = ActivityOptions.makeBasic()
+                if (Build.VERSION.SDK_INT >= 35) {
+                    options.setPendingIntentCreatorBackgroundActivityStartMode(
+                        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED,
+                    )
+                } else {
+                    options.pendingIntentBackgroundActivityStartMode =
+                        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+                }
+                return PendingIntent.getActivity(context, 0, intent, flags, options.toBundle())
+            }
+            return PendingIntent.getActivity(context, 0, intent, flags)
+        }
     }
 }

@@ -4,6 +4,8 @@ class TodayWidgetTaskSnapshot {
   const TodayWidgetTaskSnapshot({
     required this.id,
     this.sortTimestamp = 0,
+    this.sortOrder = 0,
+    this.createdTimestamp = 0,
     required this.title,
     required this.timeLabel,
     required this.accentColorHex,
@@ -12,6 +14,8 @@ class TodayWidgetTaskSnapshot {
 
   final String id;
   final int sortTimestamp;
+  final int sortOrder;
+  final int createdTimestamp;
   final String title;
   final String timeLabel;
   final String accentColorHex;
@@ -21,6 +25,8 @@ class TodayWidgetTaskSnapshot {
     return {
       'id': id,
       'sortTimestamp': sortTimestamp,
+      'sortOrder': sortOrder,
+      'createdTimestamp': createdTimestamp,
       'title': title,
       'timeLabel': timeLabel,
       'accentColorHex': accentColorHex,
@@ -33,6 +39,8 @@ class TodayWidgetTaskSnapshot {
       isCompleted: json['isCompleted'] as bool? ?? false,
       id: json['id'] as String,
       sortTimestamp: json['sortTimestamp'] as int? ?? 0,
+      sortOrder: json['sortOrder'] as int? ?? 0,
+      createdTimestamp: json['createdTimestamp'] as int? ?? 0,
       title: json['title'] as String,
       timeLabel: json['timeLabel'] as String? ?? '--:--',
       accentColorHex: json['accentColorHex'] as String? ?? '#1262D6',

@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.Paint
 import android.graphics.Color
+import android.net.Uri
 import android.os.Build
 import android.view.View
 import android.widget.RemoteViews
@@ -31,9 +32,15 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
         super.onReceive(context, intent)
     }
 
+    override fun onDisabled(context: Context) {
+        super.onDisabled(context)
+        WidgetDateRefresh.schedule(context)
+    }
+
     override fun onDeleted(context: Context, appWidgetIds: IntArray) {
         WidgetPagination.delete(HomeWidgetPlugin.getData(context), appWidgetIds)
         super.onDeleted(context, appWidgetIds)
+        WidgetDateRefresh.schedule(context)
     }
 
     override fun onUpdate(
@@ -42,6 +49,8 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
         appWidgetIds: IntArray,
         widgetData: SharedPreferences,
     ) {
+        WidgetDateRefresh.schedule(context)
+        WidgetDateRefresh.request(context)
         val payload = parseWidgetData(widgetData.getString(WIDGET_DATA_KEY, null))
 
         appWidgetIds.forEach { widgetId ->
@@ -173,6 +182,8 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
         requestCode: Int,
     ): PendingIntent {
         val intent = Intent(context, WidgetTaskCompleteActivity::class.java).apply {
+            data = Uri.Builder().scheme("kutodo").authority("widget")
+                .appendPath(WidgetActions.WIDGET_KIND_TODAY).appendPath("toggle").appendPath(taskId).build()
             putExtra(WidgetActions.EXTRA_TASK_ID, taskId)
             putExtra(WidgetActions.EXTRA_WIDGET_KIND, WidgetActions.WIDGET_KIND_TODAY)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)

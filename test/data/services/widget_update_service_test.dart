@@ -140,6 +140,41 @@ void main() {
     });
   });
 
+  test('midnight and Sunday to Monday change both query windows', () {
+    final sunday = DateTime(2026, 11, 15, 23, 59, 59);
+    final monday = DateTime(2026, 11, 16);
+    final tasks = [
+      _task(id: 'sunday', dueDate: sunday),
+      _task(id: 'monday', dueDate: monday),
+    ];
+    expect(selectWidgetTasks(tasks, now: sunday).single.id, 'sunday');
+    expect(selectWidgetTasks(tasks, now: monday).single.id, 'monday');
+    expect(tasksForWeek(tasks, weekWindowFor(sunday)).single.id, 'sunday');
+    expect(tasksForWeek(tasks, weekWindowFor(monday)).single.id, 'monday');
+  });
+
+  test('all completed tasks stay visible and have full progress', () {
+    final now = DateTime(2026, 11, 13);
+    final tasks = List.generate(
+      6,
+      (i) => _task(
+        id: '$i',
+        dueDate: now.add(Duration(hours: i)),
+        status: TaskStatus.completed,
+      ),
+    ).reversed.toList();
+    expect(selectWidgetTasks(tasks, now: now).map((t) => t.id), [
+      '0',
+      '1',
+      '2',
+      '3',
+      '4',
+      '5',
+    ]);
+    expect(weekProgressCounts(tasks).completedCount, 6);
+    expect(weekProgressCounts(tasks).totalCount, 6);
+  });
+
   group('widget format helpers', () {
     test('formats today and weekly labels', () {
       expect(formatWidgetHeaderDate(DateTime(2026, 9, 11)), '9월 11일 (금)');

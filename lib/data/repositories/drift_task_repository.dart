@@ -133,6 +133,8 @@ class DriftTaskRepository implements TaskRepository {
         updatedAt: now,
         completedAt: status == TaskStatus.completed
             ? now
+            : status == TaskStatus.active
+            ? null
             : existing.completedAt,
         deletedAt: status == TaskStatus.deleted ? now : existing.deletedAt,
       ),

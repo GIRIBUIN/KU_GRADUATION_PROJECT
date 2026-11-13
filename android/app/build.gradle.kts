@@ -38,6 +38,9 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
     buildFeatures {
         viewBinding = true
     }
@@ -49,5 +52,6 @@ flutter {
 
 dependencies {
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.14.1")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }

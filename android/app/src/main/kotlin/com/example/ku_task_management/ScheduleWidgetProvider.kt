@@ -32,9 +32,15 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
         super.onReceive(context, intent)
     }
 
+    override fun onDisabled(context: Context) {
+        super.onDisabled(context)
+        WidgetDateRefresh.schedule(context)
+    }
+
     override fun onDeleted(context: Context, appWidgetIds: IntArray) {
         WidgetPagination.delete(HomeWidgetPlugin.getData(context), appWidgetIds)
         super.onDeleted(context, appWidgetIds)
+        WidgetDateRefresh.schedule(context)
     }
 
     override fun onUpdate(
@@ -43,6 +49,8 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
         appWidgetIds: IntArray,
         widgetData: SharedPreferences,
     ) {
+        WidgetDateRefresh.schedule(context)
+        WidgetDateRefresh.request(context)
         val payload = parseWidgetData(widgetData.getString(WIDGET_DATA_KEY, null))
 
         appWidgetIds.forEach { widgetId ->

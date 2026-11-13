@@ -4,6 +4,8 @@ class WeeklyWidgetTaskSnapshot {
   const WeeklyWidgetTaskSnapshot({
     required this.id,
     this.sortTimestamp = 0,
+    this.sortOrder = 0,
+    this.createdTimestamp = 0,
     required this.title,
     required this.categoryLabel,
     required this.categoryBackgroundHex,
@@ -15,6 +17,8 @@ class WeeklyWidgetTaskSnapshot {
 
   final String id;
   final int sortTimestamp;
+  final int sortOrder;
+  final int createdTimestamp;
   final String title;
   final String categoryLabel;
   final String categoryBackgroundHex;
@@ -27,6 +31,8 @@ class WeeklyWidgetTaskSnapshot {
     return {
       'id': id,
       'sortTimestamp': sortTimestamp,
+      'sortOrder': sortOrder,
+      'createdTimestamp': createdTimestamp,
       'title': title,
       'categoryLabel': categoryLabel,
       'categoryBackgroundHex': categoryBackgroundHex,
@@ -41,6 +47,8 @@ class WeeklyWidgetTaskSnapshot {
     return WeeklyWidgetTaskSnapshot(
       id: json['id'] as String,
       sortTimestamp: json['sortTimestamp'] as int? ?? 0,
+      sortOrder: json['sortOrder'] as int? ?? 0,
+      createdTimestamp: json['createdTimestamp'] as int? ?? 0,
       title: json['title'] as String,
       categoryLabel: json['categoryLabel'] as String? ?? '',
       categoryBackgroundHex:

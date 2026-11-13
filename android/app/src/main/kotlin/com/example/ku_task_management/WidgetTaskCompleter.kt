@@ -170,7 +170,10 @@ object WidgetTaskCompleter {
             root.put("completedCount", completedCount)
             val sorted = (0 until tasksArray.length()).map { tasksArray.getJSONObject(it) }
                 .sortedWith(compareBy<JSONObject> { it.optBoolean("isCompleted", false) }
-                    .thenBy { it.optLong("sortTimestamp", 0L) })
+                    .thenBy { it.optLong("sortTimestamp", 0L) }
+                    .thenBy { it.optInt("sortOrder", 0) }
+                    .thenBy { it.optLong("createdTimestamp", 0L) }
+                    .thenBy { it.optString("id") })
             root.put("tasks", JSONArray(sorted))
             prefs.edit().putString(key, root.toString()).commit()
             toggledToCompleted

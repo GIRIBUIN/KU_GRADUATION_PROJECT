@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ku_task_management/data/local/app_database.dart'
     show AppDatabase;
 import 'package:ku_task_management/data/models/today_widget_data.dart';
+import 'package:ku_task_management/data/models/task_models.dart';
 import 'package:ku_task_management/data/models/weekly_widget_data.dart';
 import 'package:ku_task_management/data/repositories/drift_settings_repository.dart';
 import 'package:ku_task_management/data/repositories/drift_tag_repository.dart';
@@ -83,6 +84,63 @@ void main() {
     );
     await db.close();
   });
+
+  test(
+    'pending checkbox completion and undo update DB and both snapshots',
+    () async {
+      final first = personalTaskDraft(title: 'first', now: now, dueDate: now);
+      final second = personalTaskDraft(
+        title: 'second',
+        now: now.add(const Duration(seconds: 1)),
+        dueDate: now.add(const Duration(hours: 1)),
+      );
+      await creator.save(first, const []);
+      await creator.save(second, const []);
+      storage[WidgetUpdateService.widgetPendingCompletionsKey] = jsonEncode([
+        first.id,
+        'deleted',
+      ]);
+      await widgets.refresh();
+      expect((await tasks.getTaskById(first.id))!.status, TaskStatus.completed);
+      expect((await tasks.getTaskById(first.id))!.completedAt, isNotNull);
+      for (final key in [
+        TodayWidgetData.storageKey,
+        WeeklyWidgetData.storageKey,
+      ]) {
+        final rows = jsonDecode(storage[key] as String)['tasks'] as List;
+        expect(rows.map((row) => row['id']), [second.id, first.id]);
+        expect(rows.last['isCompleted'], isTrue);
+      }
+      expect(storage[WidgetUpdateService.widgetPendingCompletionsKey], isNull);
+      storage[WidgetUpdateService.widgetPendingUncompletionsKey] = jsonEncode([
+        first.id,
+      ]);
+      await widgets.refresh();
+      expect((await tasks.getTaskById(first.id))!.status, TaskStatus.active);
+      expect((await tasks.getTaskById(first.id))!.completedAt, isNull);
+      for (final key in [
+        TodayWidgetData.storageKey,
+        WeeklyWidgetData.storageKey,
+      ]) {
+        final rows = jsonDecode(storage[key] as String)['tasks'] as List;
+        expect(rows.map((row) => row['id']), [first.id, second.id]);
+        expect(rows.every((row) => row['isCompleted'] == false), isTrue);
+      }
+      expect(
+        storage[WidgetUpdateService.widgetPendingUncompletionsKey],
+        isNull,
+      );
+    },
+  );
+
+  for (final raw in ['broken json', '{}', '[null, 12, ""]']) {
+    test('malformed pending queue $raw does not prevent refresh', () async {
+      storage[WidgetUpdateService.widgetPendingCompletionsKey] = raw;
+      await widgets.refresh();
+      expect(updates, hasLength(2));
+      expect(storage[WidgetUpdateService.widgetPendingCompletionsKey], isNull);
+    });
+  }
 
   for (final count in [3, 5, 8]) {
     test(

@@ -35,7 +35,7 @@ class WidgetUpdateService {
   final TagRepository _tagRepository;
   final DateTime Function() _now;
 
-  /// 주간 위젯에서만 쌓인 완료/해제 요청을 Drift에 반영한다.
+  /// 두 위젯에서 쌓인 완료/해제 요청을 Drift에 반영한다.
   Future<void> applyPendingWidgetCompletions() async {
     final uncompletionIds = await _readPendingTaskIds(
       widgetPendingUncompletionsKey,
@@ -124,6 +124,8 @@ class WidgetUpdateService {
             (task) => TodayWidgetTaskSnapshot(
               id: task.id,
               sortTimestamp: task.dueDate!.millisecondsSinceEpoch,
+              sortOrder: task.sortOrder,
+              createdTimestamp: task.createdAt.millisecondsSinceEpoch,
               title: task.title,
               timeLabel: formatWidgetTime(task.dueDate),
               accentColorHex: accentColorForTask(task, tagsById: tagsById),
@@ -170,6 +172,8 @@ class WidgetUpdateService {
     return WeeklyWidgetTaskSnapshot(
       id: task.id,
       sortTimestamp: dueDate.millisecondsSinceEpoch,
+      sortOrder: task.sortOrder,
+      createdTimestamp: task.createdAt.millisecondsSinceEpoch,
       title: task.title,
       categoryLabel: categoryLabelForTask(task, tagsById: tagsById),
       categoryBackgroundHex: categoryBackgroundHexForTask(

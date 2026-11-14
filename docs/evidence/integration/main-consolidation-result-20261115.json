@@ -1,0 +1,137 @@
+{
+  "recorded_at": "2026-11-15T02:48:59.446473+09:00",
+  "integration_snapshot": "2ceb2f16b9d459a41e694afdc06da2d7c8473650",
+  "old_remote_main": "3df50dd6fff9b5a197e45fdc1af6ef5d8b5437fd",
+  "old_local_main": "7fabd858d7d3acee03360e8e03d5186fa80326b3",
+  "verified_remote_main_before_record_commit": "2ceb2f16b9d459a41e694afdc06da2d7c8473650",
+  "remaining_remote_branches": [
+    "main"
+  ],
+  "remaining_local_branches": [
+    "main"
+  ],
+  "existing_tags_preserved": true,
+  "archive_tag_count": 15,
+  "archives": [
+    {
+      "source": "remote",
+      "branch": "codex/ios-sideload-ipa",
+      "sha": "34bb8e33458d5ecd3ce9aa60249f4f5dc26be516",
+      "tag": "archive/2026-11-15/remote/codex/ios-sideload-ipa"
+    },
+    {
+      "source": "remote",
+      "branch": "codex/widget-workspace-actions",
+      "sha": "12aa89f97b64e68caddd35545bf88c1a2dcac8f6",
+      "tag": "archive/2026-11-15/remote/codex/widget-workspace-actions"
+    },
+    {
+      "source": "remote",
+      "branch": "feature/ImprovedHomeWidget",
+      "sha": "142416cf8ed61c7c03fff5d778bde9c532d259d7",
+      "tag": "archive/2026-11-15/remote/feature/ImprovedHomeWidget"
+    },
+    {
+      "source": "remote",
+      "branch": "feature/backend-core",
+      "sha": "ec6cc4cdfaa1005694b205b8fe7bebee4b5de21d",
+      "tag": "archive/2026-11-15/remote/feature/backend-core"
+    },
+    {
+      "source": "remote",
+      "branch": "feature/calendar",
+      "sha": "fe8e65fb688d1ea919a7f32ec4d67924dae248db",
+      "tag": "archive/2026-11-15/remote/feature/calendar"
+    },
+    {
+      "source": "remote",
+      "branch": "feature/test",
+      "sha": "1d27279c562b98235c5610bda57e91d84d30f501",
+      "tag": "archive/2026-11-15/remote/feature/test"
+    },
+    {
+      "source": "remote",
+      "branch": "integration/db-v7-widgets",
+      "sha": "2ceb2f16b9d459a41e694afdc06da2d7c8473650",
+      "tag": "archive/2026-11-15/remote/integration/db-v7-widgets"
+    },
+    {
+      "source": "remote",
+      "branch": "refactor/flutter-db-v6",
+      "sha": "ea6f9a9480e80ed755bad1b975381dcf157bfd44",
+      "tag": "archive/2026-11-15/remote/refactor/flutter-db-v6"
+    },
+    {
+      "source": "remote",
+      "branch": "v1.0.0-beta.1",
+      "sha": "022db08e91d9fbb70641ca32dc413a675e134e79",
+      "tag": "archive/2026-11-15/remote/v1.0.0-beta.1"
+    },
+    {
+      "source": "local",
+      "branch": "0r",
+      "sha": "52e5a3d935c4121ca63b1e5860b2c19542abdb01",
+      "tag": "archive/2026-11-15/local/0r"
+    },
+    {
+      "source": "local",
+      "branch": "backup-before-rollback",
+      "sha": "bda2d5b08b350fd8d669155b2a32b19048348769",
+      "tag": "archive/2026-11-15/local/backup-before-rollback"
+    },
+    {
+      "source": "local",
+      "branch": "cal",
+      "sha": "534f0d256b97fc447fa6b9ef91d255d741f6ad06",
+      "tag": "archive/2026-11-15/local/cal"
+    },
+    {
+      "source": "local",
+      "branch": "integration/db-v7-widgets",
+      "sha": "2ceb2f16b9d459a41e694afdc06da2d7c8473650",
+      "tag": "archive/2026-11-15/local/integration/db-v7-widgets"
+    },
+    {
+      "source": "local",
+      "branch": "refactor/flutter-db-v6",
+      "sha": "ea6f9a9480e80ed755bad1b975381dcf157bfd44",
+      "tag": "archive/2026-11-15/local/refactor/flutter-db-v6"
+    },
+    {
+      "source": "local",
+      "branch": "test/meeting-calendar-widget-20261014",
+      "sha": "7fabd858d7d3acee03360e8e03d5186fa80326b3",
+      "tag": "archive/2026-11-15/local/test/meeting-calendar-widget-20261014"
+    }
+  ],
+  "deleted_remote_branches": [
+    "codex/ios-sideload-ipa",
+    "codex/widget-workspace-actions",
+    "feature/ImprovedHomeWidget",
+    "feature/backend-core",
+    "feature/calendar",
+    "feature/test",
+    "integration/db-v7-widgets",
+    "refactor/flutter-db-v6",
+    "v1.0.0-beta.1"
+  ],
+  "deleted_local_branches": [
+    "0r",
+    "backup-before-rollback",
+    "cal",
+    "integration/db-v7-widgets",
+    "refactor/flutter-db-v6",
+    "test/meeting-calendar-widget-20261014"
+  ],
+  "remote_main_and_all_archives_verified_before_deletion_at": "2026-11-15T02:47:05.429949+09:00",
+  "remote_delete_protection": "Atomic delete, each branch protected by force-with-lease against its captured SHA; main excluded",
+  "local_delete_protection": "Expected SHA and archive verified; git branch -d without force",
+  "application_diff_from_tested_integration": [],
+  "tests": "No executable changes during consolidation; reuse recorded integration/UI/widget tests and S24 installation. No test rerun.",
+  "notes": [
+    "Separate iOS/widget and docs histories are preserved by archive tags rather than merged into the tested app.",
+    "Only documentation/evidence is committed after this verification snapshot; the final main tip can therefore differ from the snapshot SHA.",
+    "Unrelated untracked PPTX/assets/build/output/diff files were not modified or staged.",
+    "Some remote branches had already been removed before this run; only branches present in the live snapshot were archived and deleted here."
+  ]
+}

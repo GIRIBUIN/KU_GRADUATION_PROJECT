@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.Color
 import android.graphics.Paint
+import android.net.Uri
 import android.os.Build
 import android.view.View
 import android.widget.RemoteViews
@@ -21,19 +22,48 @@ import org.json.JSONObject
 /** 이번 주 일정 홈 위젯: weekly_schedule_widget_data JSON → RemoteViews */
 class WeeklyScheduleWidgetProvider : HomeWidgetProvider() {
 
+    override fun onReceive(context: Context, intent: Intent) {
+        val prefs = HomeWidgetPlugin.getData(context)
+        val id = WidgetPagination.receive(context, intent, WeeklyScheduleWidgetProvider::class.java, prefs)
+        if (id != null) {
+            onUpdate(context, AppWidgetManager.getInstance(context), intArrayOf(id), prefs)
+            return
+        }
+        super.onReceive(context, intent)
+    }
+
+    override fun onDisabled(context: Context) {
+        super.onDisabled(context)
+        WidgetDateRefresh.schedule(context)
+    }
+
+    override fun onDeleted(context: Context, appWidgetIds: IntArray) {
+        WidgetPagination.delete(HomeWidgetPlugin.getData(context), appWidgetIds)
+        super.onDeleted(context, appWidgetIds)
+        WidgetDateRefresh.schedule(context)
+    }
+
     override fun onUpdate(
         context: Context,
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray,
         widgetData: SharedPreferences,
     ) {
+        WidgetDateRefresh.schedule(context)
+        WidgetDateRefresh.request(context)
         val payload = parseWidgetData(widgetData.getString(WIDGET_DATA_KEY, null))
 
         appWidgetIds.forEach { widgetId ->
+            val page = WidgetPagination.page(widgetData, widgetId, payload.tasks.size, 5)
+            val pagePayload = payload.copy(tasks = payload.tasks.subList(page.start, page.end))
             val views = RemoteViews(context.packageName, R.layout.weekly_schedule_widget).apply {
                 val openAppIntent =
                     HomeWidgetLaunchIntent.getActivity(context, MainActivity::class.java)
                 setOnClickPendingIntent(R.id.widget_header, openAppIntent)
+                // 등록 이벤트는 + 버튼에만 연결한다. 체크·페이지 이동 이벤트는 유지한다.
+                setOnClickPendingIntent(R.id.widget_add, WidgetTaskCreateActivity.pendingIntent(
+                    context, WidgetActions.WIDGET_KIND_WEEKLY, widgetId,
+                ))
 
                 setTextViewText(R.id.widget_week_range, payload.weekRangeLabel)
                 setTextViewText(
@@ -47,9 +77,10 @@ class WeeklyScheduleWidgetProvider : HomeWidgetProvider() {
                     false,
                 )
 
-                bindTaskRows(context, payload)
+                bindTaskRows(context, pagePayload)
             }
 
+            WidgetPagination.bind(context, views, WeeklyScheduleWidgetProvider::class.java, widgetId, page, payload.tasks.isEmpty())
             appWidgetManager.updateAppWidget(widgetId, views)
         }
     }
@@ -117,6 +148,7 @@ class WeeklyScheduleWidgetProvider : HomeWidgetProvider() {
 
             setTextViewText(titleIds[index], task.title)
             setTextViewText(categoryIds[index], task.categoryLabel)
+            setViewVisibility(categoryIds[index], if (task.categoryLabel.isBlank()) View.GONE else View.VISIBLE)
             setInt(categoryIds[index], "setBackgroundColor", parseColor(task.categoryBackgroundHex))
             setTextColor(categoryIds[index], parseColor(task.categoryTextHex))
             setTextViewText(dueIds[index], task.dueLabel)
@@ -205,7 +237,7 @@ class WeeklyScheduleWidgetProvider : HomeWidgetProvider() {
                         WidgetTask(
                             id = id,
                             title = title,
-                            categoryLabel = taskJson.optString("categoryLabel", "개인"),
+                            categoryLabel = taskJson.optString("categoryLabel", ""),
                             categoryBackgroundHex = taskJson.optString(
                                 "categoryBackgroundHex",
                                 DEFAULT_CATEGORY_BACKGROUND,
@@ -243,6 +275,8 @@ class WeeklyScheduleWidgetProvider : HomeWidgetProvider() {
         requestCode: Int,
     ): PendingIntent {
         val intent = Intent(context, WidgetTaskCompleteActivity::class.java).apply {
+            data = Uri.Builder().scheme("kutodo").authority("widget")
+                .appendPath(WidgetActions.WIDGET_KIND_WEEKLY).appendPath("toggle").appendPath(taskId).build()
             putExtra(WidgetActions.EXTRA_TASK_ID, taskId)
             putExtra(WidgetActions.EXTRA_WIDGET_KIND, WidgetActions.WIDGET_KIND_WEEKLY)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)

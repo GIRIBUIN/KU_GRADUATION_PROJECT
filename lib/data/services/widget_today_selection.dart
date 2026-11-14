@@ -1,8 +1,16 @@
 import '../models/task_models.dart';
-import '../models/today_widget_data.dart';
-import 'home_task_summary.dart';
+import 'widget_week_selection.dart';
 
-/// 오늘 마감 active 일정만 최대 3개(마감 시각 순).
-List<Task> selectWidgetTasks(HomeTaskSummary summary) {
-  return summary.todayTasks.take(TodayWidgetData.maxTasks).toList(growable: false);
+/// 오늘 날짜에 마감인 전체 일정. 이미 지난 마감 시각도 포함한다.
+List<Task> selectWidgetTasks(List<Task> tasks, {required DateTime now}) {
+  return selectWidgetWeekTasks(
+    tasks.where((task) {
+      final due = task.dueDate;
+      return due != null &&
+          isTaskEligibleForWeekWidget(task) &&
+          due.year == now.year &&
+          due.month == now.month &&
+          due.day == now.day;
+    }).toList(),
+  );
 }

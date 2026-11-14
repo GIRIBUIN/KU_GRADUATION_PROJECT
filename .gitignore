@@ -48,3 +48,6 @@ app.*.map.json
 /ignore/
 
 /agent/
+
+# Local agent instructions
+/AGENT.md

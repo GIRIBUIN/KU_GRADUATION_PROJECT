@@ -7,7 +7,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
-/** 위젯 체크박스 처리: 오늘=즉시 SQLite, 주간=JSON 토글+pending */
+/** 체크 상태를 DB와 두 위젯 전체 캐시에 반영하고 pending 큐로 재시도를 보장한다. */
 object WidgetTaskCompleter {
     private const val TODAY_WIDGET_DATA_KEY = "schedule_widget_data"
     private const val WEEKLY_WIDGET_DATA_KEY = "weekly_schedule_widget_data"
@@ -23,38 +23,44 @@ object WidgetTaskCompleter {
     }
 
     private fun completeTodayWidgetTask(context: Context, taskId: String) {
-        // 위젯 캐시에서 제거 후 Drift DB 직접 UPDATE
-        removeTaskFromTodayWidgetData(context, taskId)
-        ScheduleWidgetProvider.requestUpdate(context)
-
-        val dbUpdated = markTaskCompleted(context, taskId)
-        if (dbUpdated) {
-            HomeWidgetPlugin.getData(context)
-                .edit()
-                .putBoolean(WIDGET_REFRESH_REQUIRED, true)
-                .apply()
-        }
+        toggleWidgetTask(context, taskId, TODAY_WIDGET_DATA_KEY)
     }
 
     private fun toggleWeeklyWidgetTask(context: Context, taskId: String) {
-        // JSON isCompleted만 바꾸고, 실제 status 변경은 Flutter pending 큐에 위임
-        val toggledToCompleted = toggleWeeklyWidgetTaskInData(context, taskId) ?: return
+        toggleWidgetTask(context, taskId, WEEKLY_WIDGET_DATA_KEY)
+    }
 
-        if (toggledToCompleted) {
-            removeTaskFromTodayWidgetData(context, taskId)
+    private fun toggleWidgetTask(context: Context, taskId: String, sourceKey: String) {
+        val completed = toggleWidgetTaskInData(context, taskId, sourceKey) ?: return
+        val otherKey = if (sourceKey == TODAY_WIDGET_DATA_KEY) WEEKLY_WIDGET_DATA_KEY else TODAY_WIDGET_DATA_KEY
+        setTaskStateInData(context, taskId, otherKey, completed)
+        if (completed) {
+            markTaskCompleted(context, taskId)
             addPendingWidgetCompletion(context, taskId)
             removePendingWidgetUncompletion(context, taskId)
         } else {
+            markTaskUncompleted(context, taskId)
             addPendingWidgetUncompletion(context, taskId)
             removePendingWidgetCompletion(context, taskId)
         }
-
+        HomeWidgetPlugin.getData(context).edit().putBoolean(WIDGET_REFRESH_REQUIRED, true).apply()
         ScheduleWidgetProvider.requestUpdate(context)
         WeeklyScheduleWidgetProvider.requestUpdate(context)
-        HomeWidgetPlugin.getData(context)
-            .edit()
-            .putBoolean(WIDGET_REFRESH_REQUIRED, true)
-            .apply()
+    }
+
+    private fun markTaskUncompleted(context: Context, taskId: String) {
+        val file = resolveDatabaseFile(context) ?: return
+        try {
+            SQLiteDatabase.openDatabase(file.absolutePath, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
+                val legacy = db.version < 6
+                val statusAssignment = if (legacy) "status = 'active'," else ""
+                val completedPredicate = if (legacy) "status = 'completed'" else "completed_at IS NOT NULL AND deleted_at IS NULL"
+                db.execSQL("UPDATE tasks SET $statusAssignment completed_at = NULL, updated_at = ? WHERE id = ? AND $completedPredicate",
+                    arrayOf<Any>(System.currentTimeMillis() / 1000L, taskId))
+            }
+        } catch (_: Exception) {
+            // Pending queue retries through the existing repository on next refresh.
+        }
     }
 
     private fun markTaskCompleted(context: Context, taskId: String): Boolean {
@@ -118,33 +124,24 @@ object WidgetTaskCompleter {
             }
     }
 
-    private fun removeTaskFromTodayWidgetData(context: Context, taskId: String) {
+    private fun setTaskStateInData(context: Context, taskId: String, key: String, completed: Boolean) {
         val prefs = HomeWidgetPlugin.getData(context)
-        val rawJson = prefs.getString(TODAY_WIDGET_DATA_KEY, null) ?: return
-
         try {
-            val root = JSONObject(rawJson)
-            val tasksArray = root.optJSONArray("tasks") ?: JSONArray()
-            val filteredTasks = JSONArray()
-
-            for (index in 0 until tasksArray.length()) {
-                val taskJson = tasksArray.optJSONObject(index) ?: continue
-                if (taskJson.optString("id") != taskId) {
-                    filteredTasks.put(taskJson)
+            val root = JSONObject(prefs.getString(key, null) ?: return)
+            val tasks = root.optJSONArray("tasks") ?: return
+            for (i in 0 until tasks.length()) {
+                val task = tasks.getJSONObject(i)
+                if (task.optString("id") == taskId && task.optBoolean("isCompleted") != completed) {
+                    toggleWidgetTaskInData(context, taskId, key)
+                    return
                 }
             }
-
-            root.put("tasks", filteredTasks)
-            root.put("todayCount", filteredTasks.length())
-            prefs.edit().putString(TODAY_WIDGET_DATA_KEY, root.toString()).commit()
-        } catch (_: Exception) {
-            // Ignore malformed widget cache. App will rebuild it on next launch.
-        }
+        } catch (_: Exception) { }
     }
 
-    private fun toggleWeeklyWidgetTaskInData(context: Context, taskId: String): Boolean? {
+    private fun toggleWidgetTaskInData(context: Context, taskId: String, key: String): Boolean? {
         val prefs = HomeWidgetPlugin.getData(context)
-        val rawJson = prefs.getString(WEEKLY_WIDGET_DATA_KEY, null) ?: return null
+        val rawJson = prefs.getString(key, null) ?: return null
 
         return try {
             val root = JSONObject(rawJson)
@@ -176,7 +173,14 @@ object WidgetTaskCompleter {
             }
 
             root.put("completedCount", completedCount)
-            prefs.edit().putString(WEEKLY_WIDGET_DATA_KEY, root.toString()).commit()
+            val sorted = (0 until tasksArray.length()).map { tasksArray.getJSONObject(it) }
+                .sortedWith(compareBy<JSONObject> { it.optBoolean("isCompleted", false) }
+                    .thenBy { it.optLong("sortTimestamp", 0L) }
+                    .thenBy { it.optInt("sortOrder", 0) }
+                    .thenBy { it.optLong("createdTimestamp", 0L) }
+                    .thenBy { it.optString("id") })
+            root.put("tasks", JSONArray(sorted))
+            prefs.edit().putString(key, root.toString()).commit()
             toggledToCompleted
         } catch (_: Exception) {
             null

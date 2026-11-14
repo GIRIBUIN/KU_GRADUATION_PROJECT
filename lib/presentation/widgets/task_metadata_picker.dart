@@ -40,13 +40,13 @@ class TagPickerSection extends StatelessWidget {
     required this.tags,
     required this.selectedIds,
     required this.onToggle,
-    required this.onAdd,
+    this.onAdd,
   });
 
   final List<Tag> tags;
   final Set<String> selectedIds;
   final ValueChanged<Tag> onToggle;
-  final VoidCallback onAdd;
+  final VoidCallback? onAdd;
 
   @override
   Widget build(BuildContext context) {
@@ -55,7 +55,11 @@ class TagPickerSection extends StatelessWidget {
       addTooltip: '태그 추가',
       onAdd: onAdd,
       child: tags.isEmpty
-          ? const _EmptyPickerText(message: '태그가 없습니다. + 버튼으로 추가할 수 있습니다.')
+          ? _EmptyPickerText(
+              message: onAdd == null
+                  ? '등록된 태그가 없습니다.'
+                  : '태그가 없습니다. + 버튼으로 추가할 수 있습니다.',
+            )
           : SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
@@ -206,13 +210,13 @@ class _MetadataPickerFrame extends StatelessWidget {
   const _MetadataPickerFrame({
     required this.title,
     required this.addTooltip,
-    required this.onAdd,
+    this.onAdd,
     required this.child,
   });
 
   final String title;
   final String addTooltip;
-  final VoidCallback onAdd;
+  final VoidCallback? onAdd;
   final Widget child;
 
   @override
@@ -231,11 +235,12 @@ class _MetadataPickerFrame extends StatelessWidget {
                 ),
               ),
             ),
-            IconButton.filledTonal(
-              onPressed: onAdd,
-              icon: const Icon(Icons.add_rounded),
-              tooltip: addTooltip,
-            ),
+            if (onAdd != null)
+              IconButton.filledTonal(
+                onPressed: onAdd,
+                icon: const Icon(Icons.add_rounded),
+                tooltip: addTooltip,
+              ),
           ],
         ),
         const SizedBox(height: 10),

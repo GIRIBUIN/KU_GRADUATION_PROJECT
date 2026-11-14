@@ -1,5 +1,4 @@
 import '../models/task_models.dart';
-import '../models/weekly_widget_data.dart';
 
 class WeekWindow {
   const WeekWindow({required this.start, required this.end});
@@ -12,21 +11,17 @@ class WeekWindow {
 WeekWindow weekWindowFor(DateTime now) {
   final today = DateTime(now.year, now.month, now.day);
   final start = today.subtract(Duration(days: now.weekday - DateTime.monday));
-  final end = DateTime(
-    start.year,
-    start.month,
-    start.day + 6,
-    23,
-    59,
-    59,
-    999,
-  );
+  final end = DateTime(start.year, start.month, start.day + 6, 23, 59, 59, 999);
   return WeekWindow(start: start, end: end);
 }
 
 bool isDueDateInWeek(DateTime dueDate, WeekWindow week) {
   final dueDay = DateTime(dueDate.year, dueDate.month, dueDate.day);
-  final weekStartDay = DateTime(week.start.year, week.start.month, week.start.day);
+  final weekStartDay = DateTime(
+    week.start.year,
+    week.start.month,
+    week.start.day,
+  );
   final weekEndDay = DateTime(week.end.year, week.end.month, week.end.day);
   return !dueDay.isBefore(weekStartDay) && !dueDay.isAfter(weekEndDay);
 }
@@ -59,13 +54,18 @@ int compareWidgetWeekTasks(Task a, Task b) {
     return aDone ? 1 : -1;
   }
 
-  return a.dueDate!.compareTo(b.dueDate!);
+  final due = a.dueDate!.compareTo(b.dueDate!);
+  if (due != 0) return due;
+  final order = a.sortOrder.compareTo(b.sortOrder);
+  if (order != 0) return order;
+  final created = a.createdAt.compareTo(b.createdAt);
+  return created != 0 ? created : a.id.compareTo(b.id);
 }
 
-/// 주간 일정 중 위젯에 표시할 최대 5개.
+/// 전체 일정을 미완료 우선으로 정렬한다. 페이지 분할은 Android에서 수행한다.
 List<Task> selectWidgetWeekTasks(List<Task> weekTasks) {
   final sorted = [...weekTasks]..sort(compareWidgetWeekTasks);
-  return sorted.take(WeeklyWidgetData.maxTasks).toList(growable: false);
+  return sorted;
 }
 
 /// 진행률은 표시 5개가 아니라 이번 주 전체 일정 기준.

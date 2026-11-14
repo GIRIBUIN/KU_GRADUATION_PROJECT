@@ -3,6 +3,9 @@ import 'dart:convert';
 class WeeklyWidgetTaskSnapshot {
   const WeeklyWidgetTaskSnapshot({
     required this.id,
+    this.sortTimestamp = 0,
+    this.sortOrder = 0,
+    this.createdTimestamp = 0,
     required this.title,
     required this.categoryLabel,
     required this.categoryBackgroundHex,
@@ -13,6 +16,9 @@ class WeeklyWidgetTaskSnapshot {
   });
 
   final String id;
+  final int sortTimestamp;
+  final int sortOrder;
+  final int createdTimestamp;
   final String title;
   final String categoryLabel;
   final String categoryBackgroundHex;
@@ -24,6 +30,9 @@ class WeeklyWidgetTaskSnapshot {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'sortTimestamp': sortTimestamp,
+      'sortOrder': sortOrder,
+      'createdTimestamp': createdTimestamp,
       'title': title,
       'categoryLabel': categoryLabel,
       'categoryBackgroundHex': categoryBackgroundHex,
@@ -37,8 +46,11 @@ class WeeklyWidgetTaskSnapshot {
   factory WeeklyWidgetTaskSnapshot.fromJson(Map<String, dynamic> json) {
     return WeeklyWidgetTaskSnapshot(
       id: json['id'] as String,
+      sortTimestamp: json['sortTimestamp'] as int? ?? 0,
+      sortOrder: json['sortOrder'] as int? ?? 0,
+      createdTimestamp: json['createdTimestamp'] as int? ?? 0,
       title: json['title'] as String,
-      categoryLabel: json['categoryLabel'] as String? ?? '개인',
+      categoryLabel: json['categoryLabel'] as String? ?? '',
       categoryBackgroundHex:
           json['categoryBackgroundHex'] as String? ?? '#FCE7F3',
       categoryTextHex: json['categoryTextHex'] as String? ?? '#DB2777',
@@ -59,6 +71,7 @@ class WeeklyWidgetData {
   });
 
   static const maxTasks = 5;
+
   /// WeeklyScheduleWidgetProvider와 공유하는 home_widget 키.
   static const storageKey = 'weekly_schedule_widget_data';
 
@@ -100,7 +113,8 @@ class WeeklyWidgetData {
                 .map(WeeklyWidgetTaskSnapshot.fromJson)
                 .toList(growable: false)
           : const [],
-      updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? '') ??
+      updatedAt:
+          DateTime.tryParse(json['updatedAt'] as String? ?? '') ??
           DateTime.fromMillisecondsSinceEpoch(0),
     );
   }

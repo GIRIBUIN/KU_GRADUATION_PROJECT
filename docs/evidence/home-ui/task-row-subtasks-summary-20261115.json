@@ -1,0 +1,551 @@
+{
+  "recorded_at": "2026-11-15T02:33:53.007485+09:00",
+  "base_commit": "386927d25f00c78727d4347dfe21050cb4865565",
+  "scope": "Inline subtasks in shared home/calendar task rows; tap expands only when children exist, long press opens existing details, archive selection preserved",
+  "storage": "Existing SubTaskRepository.getSubTasks/updateSubTaskDone only; schema and repository code unchanged",
+  "state": [
+    "Expanded/collapsed and pending checkbox state are local widget memory",
+    "Rows cache initial child reads; ordinary expand/collapse does not fetch again",
+    "MainShell subTaskVersion refreshes mounted home/calendar row caches after a successful child write without replacing the task list",
+    "Task refresh after details reloads child rows; no automatic parent completion"
+  ],
+  "tests": {
+    "latest_unique_passed": 83,
+    "latest_unique_failed": 0,
+    "reports": [
+      "task-row-subtasks-regression-tests-20261115.jsonl",
+      "task-row-subtasks-calendar-actions-tests-20261115.jsonl"
+    ],
+    "aggregation": "Full regression had 82 passes and one obsolete calendar edit/delete-menu expectation. Updated that test to verify long-press details plus existing home swipe deletion and reran that case successfully. Latest result per suite path/name is used; duplicate runs are not summed.",
+    "latest_cases": [
+      {
+        "path": "test/presentation/widgets/task_list_row_subtasks_test.dart",
+        "name": "tap expands and collapses; parent checkbox and long press stay independent",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/widgets/task_list_row_subtasks_test.dart",
+        "name": "child completion persists without completing parent and preserves expansion on refresh",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/widgets/task_list_row_subtasks_test.dart",
+        "name": "child save failure preserves checkbox and can retry",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/widgets/task_list_row_subtasks_test.dart",
+        "name": "empty task opens details and archived scopes retain selection without fetching children",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/widgets/task_list_row_subtasks_test.dart",
+        "name": "tap during initial load waits before choosing expansion instead of detail",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/widgets/task_list_row_subtasks_test.dart",
+        "name": "load failure is reported and later tap retries",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/widgets/task_list_row_test.dart",
+        "name": "split deadline and priority backgrounds retain row actions at 1.0",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/widgets/task_list_row_test.dart",
+        "name": "split deadline and priority backgrounds retain row actions at 1.5",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/widgets/task_list_row_test.dart",
+        "name": "split deadline and priority backgrounds retain row actions at 2.0",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/widgets/task_list_row_test.dart",
+        "name": "relative deadline uses calendar dates and preserves the time",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/widgets/task_list_row_test.dart",
+        "name": "undated completed task keeps completion styling and no invented date",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/widgets/home_calendar_section_test.dart",
+        "name": "selects a date, adds on that date, opens and completes existing tasks",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/widgets/home_calendar_section_test.dart",
+        "name": "navigates months and weeks, jumps to today, and reflects refreshed tasks",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/widgets/home_calendar_section_test.dart",
+        "name": "filters completed and source types and makes undated tasks accessible",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/widgets/home_calendar_section_test.dart",
+        "name": "fits a narrow screen with large text",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/widgets/home_calendar_section_test.dart",
+        "name": "full-width month/week controls and the task adjustment header pin while scrolling",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/widgets/home_calendar_section_test.dart",
+        "name": "empty and loading calendar lists retain the same task header",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "home defaults to today with four plain sections and empty states",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "home and calendar expand subtasks, share completion and open details on long press",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "task backgrounds span the viewport in home, completed, trash, excluded and calendar",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "Drawer separates saved period and all dates with Inbox under Lists",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "relative period choices persist without saving unsaved view filters",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "failed period persistence is reported and can be retried",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "Drawer list reordering persists and fixed Inbox cannot be dragged",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "Drawer tag drag saves order, preserves settings and allows retry on failure",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "trash opens with an independent all-date period and resets on reentry and tab changes",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "excluded eCampus navigation is below trash and reuses allow-import handling",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "excluded home scope ignores home dates and filters and keeps sorting temporary",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "excluded allow-import failure retains the source and allows retry",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "home task rows fully wrap titles and metadata at text scale 1.0",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "home task rows fully wrap titles and metadata at text scale 1.5",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "home edge and interior section swipes open Drawer and keep the current scope",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "wide Drawer gesture preserves vertical scrolling, row taps and checkbox actions",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "swipes complete, reopen, delete, restore and confirm permanent deletion through existing handlers",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "settings context menu toggles notification and saves sliders on release without a page",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "automatic settings errors keep prior values and retry from their controls",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "swipe settings immediately save four mappings and survive restart without action buttons",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "failed swipe retains the task row and can be retried",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "failed automatic swipe save keeps the old choice and retries without buttons",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "selected Drawer row does not paint behind the fixed settings footer",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "folders only expand lists; list scopes compose with periods and retain selection",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "Drawer headings create metadata through existing management handlers",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "Inbox stays first in Drawer despite list order and folder expansion",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "separate visibility menus contain names and eyes only, persist changes and omit Inbox",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "visibility save failure keeps the eye unchanged and retries without conversion",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "folder long press reuses edit and preselects parent for a new list",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "list long press edits that list and quick adds into it without triggering folder actions",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "tag long press edits that tag and preserves it through detailed create",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "all-date option reveals future tasks and navigation names follow the selected period",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "custom period includes both date boundaries and supports a same-day range: 12",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "custom period includes both date boundaries and supports a same-day range: 14",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "canceling custom period selection retains the previous period",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "month and single custom date persist across restart",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "sort and filters apply immediately; unsaved changes disappear on restart",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "saved view survives restart; reset is immediate and only saved on request",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "period changes affect date and completion sections but keep urgent and overdue anchored to now",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "completed overdue and urgent stay scoped; checkbox and details use existing flows",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "detail sheet edits fields with keyboard and saves through existing reminder flow",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "detail sheet prevents accidental dismissal and stays open on failed atomic save",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "quick add shares create persistence and supports title only or detailed handoff",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "Drawer settings and calendar remain available at large text size",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "calendar uses the home task row and pins its adjustment header",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "trash row checkboxes start selection without a separate selection icon",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "archive checkbox header stays fixed and row taps only select: excluded=false textScale=1.0",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "archive checkbox header stays fixed and row taps only select: excluded=false textScale=1.5",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "archive checkbox header stays fixed and row taps only select: excluded=true textScale=1.0",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "archive checkbox header stays fixed and row taps only select: excluded=true textScale=1.5",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "excluded checkbox bulk restore preserves unselected sources and retries failures",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "trash filter choices use only deleted tasks and filter retained completion state",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "trash selection restores only selected tasks and keeps completion and list metadata",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "trash selected delete confirms once, cancels safely and deletes only checked rows",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "trash view is temporary and independent of saved home sorting and filters",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "trash select all only targets visible rows and clears selection when filters or dates change",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "trash bulk failure retains only failed selection and supports retry: restore=true",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "trash bulk failure retains only failed selection and supports retry: restore=false",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "completed and trash scopes use existing completion and restore policies",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/mobile_home_test.dart",
+        "name": "import button opens eCampus import without the old step dashboard",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/main_shell_home_layout_test.dart",
+        "name": "applies weekly widget completion before reloading the calendar on resume",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/main_shell_home_layout_test.dart",
+        "name": "applies weekly widget uncompletion before reloading the calendar on resume",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/main_shell_home_layout_test.dart",
+        "name": "settings changes preserve saved view and existing home preferences",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/main_shell_home_layout_test.dart",
+        "name": "creates and edits calendar tasks in the shared app repository",
+        "result": "success",
+        "report": "task-row-subtasks-calendar-actions-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/main_shell_home_layout_test.dart",
+        "name": "a prefilled calendar date alone can be cancelled without a draft prompt",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      },
+      {
+        "path": "test/presentation/screens/main_shell_home_layout_test.dart",
+        "name": "new home sections remain available with legacy layouts; calendar has its own tab",
+        "result": "success",
+        "report": "task-row-subtasks-regression-tests-20261115.jsonl"
+      }
+    ],
+    "focused_behavior": "6 focused cases cover cached expand/collapse, independent parent checkbox, child persistence, failure retry, archived scopes, pending load and read failure; included in regression count",
+    "real_drift_flow": "Home completion -> calendar checkbox -> details add -> refreshed calendar children -> home long press is verified in mobile_home_test"
+  },
+  "analyze": {
+    "exit_code": 0,
+    "output": "No issues found! (ran in 1.8s)"
+  },
+  "device": {
+    "model": "Galaxy S24 SM-S921N",
+    "build_exit_code": 0,
+    "install": "adb install -r: Success",
+    "launch": "MainActivity Status: ok; Complete",
+    "apk_sha256": "f65821ed392263b3e264e1037c3365233dab0aa3bf60d7ed0a1fc6b8c8a6c7ca",
+    "data_clear_or_uninstall": false,
+    "visual_confirmation": "User manual check pending"
+  },
+  "source_sha256": {
+    "lib/presentation/widgets/task_list_row.dart": "18ff563550653ed0a79be1ad80827a5871f91ef121ff75bec57e0c8bbbcc4ff0",
+    "lib/presentation/widgets/home_calendar_section.dart": "97016f551125c0897142b3ed5a2d643624fc478b476b95819558a318d1960ee2",
+    "lib/presentation/screens/main/main_shell_screen.dart": "4f0183cd36de0fbef654c035f75e1e5cb9cae2b3ec946d1fca552476e6baf0d6",
+    "lib/presentation/screens/main/mobile_home_page.dart": "f03385ef0b61c964c130985e42375bdfe7897204e69459f4075a195309741db5",
+    "test/presentation/widgets/task_list_row_subtasks_test.dart": "7812964e673b759de38f9f31164359e6ec186661b90552243a0722086114c6f6",
+    "test/presentation/widgets/home_calendar_section_test.dart": "ac9e771c3a5cddfed6d3b8f6031c031cbd0d6216c08a5cd891ec9502762f2da0",
+    "test/presentation/screens/mobile_home_test.dart": "e2ed16e92d2f9fcefad3adcd4b7993b9b1dce98a69ac24556d77ccf710479e11",
+    "test/presentation/screens/main_shell_home_layout_test.dart": "b018e4467b38b406d15153383e2087223a44705f7d61fd8f4a23fa2a75c9a85a"
+  },
+  "notes": [
+    "Initial focused developer test output is preserved separately as task-row-subtasks-initial-tests-20261115.jsonl; use the latest-case summary for final status.",
+    "Calendar long press now opens details directly rather than the old edit/delete menu; home swipe deletion remains tested."
+  ],
+  "commit_or_push_performed": false
+}

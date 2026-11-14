@@ -1,0 +1,23 @@
+{"protocolVersion":"0.1.1","runnerVersion":null,"pid":5256,"type":"start","time":0}
+{"suite":{"id":0,"platform":"vm","path":"D:/_workspace/repos/kutodo/test/presentation/widgets/task_list_row_subtasks_test.dart"},"type":"suite","time":0}
+{"test":{"id":1,"name":"loading D:/_workspace/repos/kutodo/test/presentation/widgets/task_list_row_subtasks_test.dart","suiteID":0,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":0}
+{"count":1,"time":2,"type":"allSuites"}
+{"testID":1,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":1088}
+{"group":{"id":2,"suiteID":0,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":6,"line":null,"column":null,"url":null},"type":"group","time":1089}
+{"test":{"id":3,"name":"(setUpAll)","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":16,"column":3,"url":"file:///D:/_workspace/repos/kutodo/test/presentation/widgets/task_list_row_subtasks_test.dart"},"type":"testStart","time":1090}
+{"testID":3,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":1105}
+{"test":{"id":4,"name":"tap expands and collapses; parent checkbox and long press stay independent","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":99,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/widgets/task_list_row_subtasks_test.dart"},"type":"testStart","time":1106}
+{"testID":4,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1605}
+{"test":{"id":5,"name":"child completion persists without completing parent and preserves expansion on refresh","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":130,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/widgets/task_list_row_subtasks_test.dart"},"type":"testStart","time":1606}
+{"testID":5,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1695}
+{"test":{"id":6,"name":"child save failure preserves checkbox and can retry","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":158,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/widgets/task_list_row_subtasks_test.dart"},"type":"testStart","time":1695}
+{"testID":6,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1780}
+{"test":{"id":7,"name":"empty task opens details and archived scopes retain selection without fetching children","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":182,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/widgets/task_list_row_subtasks_test.dart"},"type":"testStart","time":1780}
+{"testID":7,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1854}
+{"test":{"id":8,"name":"tap during initial load waits before choosing expansion instead of detail","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":204,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/widgets/task_list_row_subtasks_test.dart"},"type":"testStart","time":1855}
+{"testID":8,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1890}
+{"test":{"id":9,"name":"load failure is reported and later tap retries","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":221,"root_column":3,"root_url":"file:///D:/_workspace/repos/kutodo/test/presentation/widgets/task_list_row_subtasks_test.dart"},"type":"testStart","time":1891}
+{"testID":9,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1940}
+{"test":{"id":10,"name":"(tearDownAll)","suiteID":0,"groupIDs":[2],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":1940}
+{"testID":10,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":1941}
+{"success":true,"type":"done","time":1961}

@@ -1,0 +1,103 @@
+{
+  "recorded_at": "2026-11-15T02:37:15.444751+09:00",
+  "integration_branch": "integration/db-v7-widgets",
+  "integration_code_tip": "9b44246a9a65cba99d9b2aef17eb8a2ff7c4536a",
+  "remote_main": "3df50dd6fff9b5a197e45fdc1af6ef5d8b5437fd",
+  "remote_refs_confirmed_against_local_tracking_refs": true,
+  "remote_branches": [
+    {
+      "branch": "calendar2",
+      "remote_sha": "534f0d256b97fc447fa6b9ef91d255d741f6ad06",
+      "outside_integration": 0,
+      "outside_main": 0
+    },
+    {
+      "branch": "feature/ImprovedHomeWidget",
+      "remote_sha": "142416cf8ed61c7c03fff5d778bde9c532d259d7",
+      "outside_integration": 0,
+      "outside_main": 0
+    },
+    {
+      "branch": "feature/backend-core",
+      "remote_sha": "ec6cc4cdfaa1005694b205b8fe7bebee4b5de21d",
+      "outside_integration": 0,
+      "outside_main": 0
+    },
+    {
+      "branch": "feature/calendar",
+      "remote_sha": "fe8e65fb688d1ea919a7f32ec4d67924dae248db",
+      "outside_integration": 0,
+      "outside_main": 0
+    },
+    {
+      "branch": "feature/ui",
+      "remote_sha": "022db08e91d9fbb70641ca32dc413a675e134e79",
+      "outside_integration": 0,
+      "outside_main": 0
+    },
+    {
+      "branch": "feature/widget",
+      "remote_sha": "022db08e91d9fbb70641ca32dc413a675e134e79",
+      "outside_integration": 0,
+      "outside_main": 0
+    },
+    {
+      "branch": "refactor/flutter-db-v6",
+      "remote_sha": "ea6f9a9480e80ed755bad1b975381dcf157bfd44",
+      "outside_integration": 0,
+      "outside_main": 43
+    },
+    {
+      "branch": "v1.0.0-beta.1",
+      "remote_sha": "022db08e91d9fbb70641ca32dc413a675e134e79",
+      "outside_integration": 0,
+      "outside_main": 0
+    },
+    {
+      "branch": "codex/ios-sideload-ipa",
+      "remote_sha": "34bb8e33458d5ecd3ce9aa60249f4f5dc26be516",
+      "outside_integration": 9,
+      "outside_main": 9
+    },
+    {
+      "branch": "codex/widget-workspace-actions",
+      "remote_sha": "12aa89f97b64e68caddd35545bf88c1a2dcac8f6",
+      "outside_integration": 1,
+      "outside_main": 1
+    },
+    {
+      "branch": "feature/test",
+      "remote_sha": "1d27279c562b98235c5610bda57e91d84d30f501",
+      "outside_integration": 1,
+      "outside_main": 1
+    }
+  ],
+  "local_branches": [
+    {
+      "branch": "0r",
+      "sha": "52e5a3d935c4121ca63b1e5860b2c19542abdb01",
+      "outside_integration": 0
+    },
+    {
+      "branch": "backup-before-rollback",
+      "sha": "bda2d5b08b350fd8d669155b2a32b19048348769",
+      "outside_integration": 0
+    },
+    {
+      "branch": "cal",
+      "sha": "534f0d256b97fc447fa6b9ef91d255d741f6ad06",
+      "outside_integration": 0
+    },
+    {
+      "branch": "test/meeting-calendar-widget-20261014",
+      "sha": "7fabd858d7d3acee03360e8e03d5186fa80326b3",
+      "outside_integration": 0
+    }
+  ],
+  "widget_workspace_commit_is_in_ios_branch": true,
+  "note": "No branches or tags were deleted. Main remains unchanged. Refactor has 43 commits outside main; preserve integration until main contains it.",
+  "stale_remote_tracking_refs": [
+    "origin/feature/homewidget",
+    "origin/feature/homewidget-weektask"
+  ]
+}

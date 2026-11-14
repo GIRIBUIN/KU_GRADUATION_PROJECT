@@ -17,7 +17,6 @@
     "dbml_foreign_key_targets_valid": 11,
     "application_or_platform_or_dependency_changes": []
   },
-  "materials_manifest": "../../materials/manifest.json",
   "naming_and_location_changes": {
     "일정통합관리-연구계획서.pdf": "docs/materials/KUTODO_2026_1학기_연구계획서.pdf",
     "docs/일정통합관리-연구계획서.pdf": "docs/materials/KUTODO_2026_1학기_연구계획서_초기본.pdf",

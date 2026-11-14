@@ -1,0 +1,53 @@
+{
+  "recorded_at": "2026-11-15T03:14:54.851479+09:00",
+  "base_commit": "5abbd189869d5b0945ce14d7d7c4118198523943",
+  "scope": "Documentation content, document/material naming and placement; no app code changes",
+  "markdown_scope": "Root README, docs/**/*.md, lib/**/README.md",
+  "checks": {
+    "markdown_files": 50,
+    "local_links_checked": 570,
+    "missing_paths": [],
+    "invalid_markdown_anchors": [],
+    "unclosed_code_fences": 0,
+    "original_evidence_files_sha256_unchanged": 341,
+    "material_files_byte_identical": 3,
+    "historical_documents_body_preserved_except_banner_and_link_targets": 6,
+    "dbml_active_tables": 14,
+    "dbml_active_columns": 92,
+    "dbml_foreign_key_targets_valid": 11,
+    "application_or_platform_or_dependency_changes": []
+  },
+  "materials_manifest": "../../materials/manifest.json",
+  "naming_and_location_changes": {
+    "일정통합관리-연구계획서.pdf": "docs/materials/KUTODO_2026_1학기_연구계획서.pdf",
+    "docs/일정통합관리-연구계획서.pdf": "docs/materials/KUTODO_2026_1학기_연구계획서_초기본.pdf",
+    "KUTODO_2학기미팅.pptx": "docs/materials/KUTODO_2026_2학기_미팅.pptx",
+    "docs/미팅 검증 2026-10-14.md": "docs/history/미팅 검증 2026-10-14.md",
+    "docs/커밋 정리 2026-10-31.md": "docs/history/커밋 정리 2026-10-31.md",
+    "docs/커밋 정리 2026-11-15.md": "docs/history/커밋 정리 2026-11-15.md",
+    "docs/통합 브랜치 정리 2026-11-15.md": "docs/history/통합 브랜치 정리 2026-11-15.md",
+    "docs/main 통합 및 브랜치 정리 2026-11-15.md": "docs/history/main 통합 및 브랜치 정리 2026-11-15.md"
+  },
+  "validation_method": [
+    "Filesystem existence and GitHub-style Markdown heading-slug checks for local links outside code fences",
+    "SHA256 comparison with pre-edit hashes of 341 existing non-Markdown evidence files",
+    "SHA256 comparison of the three renamed PDF/PPTX files",
+    "Historical-body comparison after excluding only inserted context banner and rewritten link targets",
+    "DBML table/column names compared with active Drift table definitions; FK endpoints checked",
+    "git diff --check and executable/platform/dependency path diff"
+  ],
+  "not_run": [
+    "Flutter tests",
+    "Android build or installation",
+    "performance benchmark",
+    "iOS/web verification"
+  ],
+  "notes": [
+    "Existing test and performance results are historical records, not new runs in this documentation task.",
+    "PDF/PPTX page or slide contents are unchanged; two different first-semester PDFs are preserved separately.",
+    "Existing raw evidence JSON/JSONL/XML/TXT/images/ZIP was not rewritten or renamed.",
+    "Local output/presentation drafts, build folders, unused image assets and kutodo-current.diff were left untouched.",
+    "Internal path/anchor validation does not verify external website availability or execute embedded shell commands."
+  ],
+  "commit_or_push_performed": false
+}

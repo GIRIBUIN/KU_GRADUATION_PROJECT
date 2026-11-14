@@ -9,6 +9,8 @@ import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.os.Build
+import android.util.Log
 import es.antonborri.home_widget.HomeWidgetPlugin
 import java.util.Calendar
 import java.util.TimeZone
@@ -52,9 +54,19 @@ object WidgetDateRefresh {
             (context.getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler).cancel(JOB_ID)
             return
         }
-        // 위젯은 정확한 알람 권한을 요구하지 않는다. Doze에서는 OS가 실행을 지연할 수 있다.
-        alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,
-            nextMidnight(System.currentTimeMillis()), alarmIntent(context))
+        val midnight = nextMidnight(System.currentTimeMillis())
+        val operation = alarmIntent(context)
+        // 일반 알람은 절전 상태에서 자정 이후로 밀린다. 허용된 기기는 정확한 알람을 쓴다.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarm.canScheduleExactAlarms()) {
+            try {
+                alarm.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, midnight, operation)
+                return
+            } catch (_: SecurityException) {
+                // 권한 확인과 예약 사이에 권한이 취소되어도 갱신 경로를 유지한다.
+            }
+        }
+        Log.w("WidgetDateRefresh", "Exact alarm access unavailable; midnight refresh may be delayed")
+        alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, midnight, operation)
     }
 
     fun request(context: Context, force: Boolean = false) {
@@ -62,8 +74,14 @@ object WidgetDateRefresh {
         if (!force && HomeWidgetPlugin.getData(context).getString(DATE_KEY, null) == dateKey()) return
         val scheduler = context.getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler
         if (scheduler.getPendingJob(JOB_ID) != null) return
-        scheduler.schedule(JobInfo.Builder(JOB_ID, ComponentName(context, WidgetDateRefreshJobService::class.java))
-            .setOverrideDeadline(0).setBackoffCriteria(30_000L, JobInfo.BACKOFF_POLICY_EXPONENTIAL).build())
+        val builder = JobInfo.Builder(JOB_ID, ComponentName(context, WidgetDateRefreshJobService::class.java))
+            .setBackoffCriteria(30_000L, JobInfo.BACKOFF_POLICY_EXPONENTIAL)
+        // 정확한 알람이 울려도 일반 Job은 Doze에서 대기할 수 있으므로 우선 실행한다.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (scheduler.schedule(builder.setExpedited(true).build()) == JobScheduler.RESULT_SUCCESS) return
+            builder.setExpedited(false)
+        }
+        scheduler.schedule(builder.setOverrideDeadline(0).build())
     }
 }
 
@@ -71,7 +89,8 @@ class WidgetDateRefreshReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action !in setOf(WidgetDateRefresh.ACTION, Intent.ACTION_BOOT_COMPLETED,
                 Intent.ACTION_MY_PACKAGE_REPLACED, Intent.ACTION_DATE_CHANGED,
-                Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED)) return
+                Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED,
+                AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED)) return
         WidgetDateRefresh.schedule(context)
         WidgetDateRefresh.request(context, force = true)
     }

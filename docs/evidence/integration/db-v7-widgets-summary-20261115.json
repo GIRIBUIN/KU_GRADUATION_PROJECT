@@ -1,0 +1,186 @@
+{
+  "recorded_local_date": "2026-11-15",
+  "branch": "integration/db-v7-widgets",
+  "state": "merge prepared and tracked code staged; no commit, push, branch deletion or device installation",
+  "app_parent": "ea6f9a9480e80ed755bad1b975381dcf157bfd44",
+  "widget_parent": "3df50dd6fff9b5a197e45fdc1af6ef5d8b5437fd",
+  "remote": "https://github.com/GIRIBUIN/KU_GRADUATION_PROJECT.git",
+  "schema_version": 7,
+  "protected_paths": [
+    "lib/data/local",
+    "lib/data/repositories",
+    "lib/data/models/task_models.dart",
+    "lib/presentation/screens/task/task_create_screen.dart",
+    "lib/presentation/screens/settings/home_layout_screen.dart"
+  ],
+  "protected_paths_changed_from_app_parent": [],
+  "unmerged_index_entries": 0,
+  "working_tree_diff_check_exit": 0,
+  "staged_diff_check_exit": 0,
+  "flutter": {
+    "command": "C:\\flutter\\bin\\flutter.bat test --no-pub --concurrency=1 --file-reporter=json:docs/evidence/integration/db-v7-widgets-flutter-tests-20261115.jsonl test/data test/presentation",
+    "passed": 304,
+    "failed": 0,
+    "done": {
+      "success": true,
+      "type": "done",
+      "time": 61638
+    },
+    "report": "db-v7-widgets-flutter-tests-20261115.jsonl"
+  },
+  "android": {
+    "command": ".\\gradlew.bat :app:testDebugUnitTest --tests 'com.example.ku_task_management.WidgetIntegrationTest' --tests 'com.example.ku_task_management.WidgetDateRefreshTest' --tests 'com.example.ku_task_management.WidgetPageTest'",
+    "java_home": "C:\\Program Files\\Android\\Android Studio\\jbr",
+    "workdir": "android",
+    "exit_code": 0,
+    "build_result": "BUILD SUCCESSFUL",
+    "reports": [
+      {
+        "suite": "WidgetIntegrationTest",
+        "tests": 8,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "report": "TEST-com.example.ku_task_management.WidgetIntegrationTest.xml"
+      },
+      {
+        "suite": "WidgetDateRefreshTest",
+        "tests": 8,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "report": "TEST-com.example.ku_task_management.WidgetDateRefreshTest.xml"
+      },
+      {
+        "suite": "WidgetPageTest",
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "report": "TEST-com.example.ku_task_management.WidgetPageTest.xml"
+      }
+    ]
+  },
+  "analyze": {
+    "command": "C:\\flutter\\bin\\flutter.bat analyze --no-pub",
+    "exit_code": 0,
+    "result": "No issues found! (ran in 1.9s)",
+    "capture_method": "Prior successful exec output transcribed to txt; not a second analyzer run"
+  },
+  "staged_code": [
+    "M\t.gitignore",
+    "M\tandroid/app/build.gradle.kts",
+    "M\tandroid/app/src/main/AndroidManifest.xml",
+    "M\tandroid/app/src/main/kotlin/com/example/ku_task_management/ScheduleWidgetProvider.kt",
+    "M\tandroid/app/src/main/kotlin/com/example/ku_task_management/WeeklyScheduleWidgetProvider.kt",
+    "M\tandroid/app/src/main/kotlin/com/example/ku_task_management/WidgetActions.kt",
+    "A\tandroid/app/src/main/kotlin/com/example/ku_task_management/WidgetDateRefresh.kt",
+    "A\tandroid/app/src/main/kotlin/com/example/ku_task_management/WidgetDateRefreshJobService.kt",
+    "A\tandroid/app/src/main/kotlin/com/example/ku_task_management/WidgetPage.kt",
+    "A\tandroid/app/src/main/kotlin/com/example/ku_task_management/WidgetPagination.kt",
+    "M\tandroid/app/src/main/kotlin/com/example/ku_task_management/WidgetTaskCompleter.kt",
+    "A\tandroid/app/src/main/kotlin/com/example/ku_task_management/WidgetTaskCreateActivity.kt",
+    "A\tandroid/app/src/main/res/drawable/widget_add_icon.xml",
+    "M\tandroid/app/src/main/res/layout/schedule_widget.xml",
+    "M\tandroid/app/src/main/res/layout/weekly_schedule_widget.xml",
+    "A\tandroid/app/src/main/res/layout/widget_add_button.xml",
+    "M\tandroid/app/src/main/res/values/strings.xml",
+    "M\tandroid/app/src/main/res/values/styles.xml",
+    "M\tandroid/app/src/main/res/xml-v31/weekly_schedule_widget_info.xml",
+    "M\tandroid/app/src/main/res/xml/schedule_widget_info.xml",
+    "M\tandroid/app/src/main/res/xml/weekly_schedule_widget_info.xml",
+    "A\tandroid/app/src/test/kotlin/com/example/ku_task_management/WidgetDateRefreshTest.kt",
+    "A\tandroid/app/src/test/kotlin/com/example/ku_task_management/WidgetIntegrationTest.kt",
+    "A\tandroid/app/src/test/kotlin/com/example/ku_task_management/WidgetPageTest.kt",
+    "M\tlib/data/models/today_widget_data.dart",
+    "M\tlib/data/models/weekly_widget_data.dart",
+    "A\tlib/data/services/personal_task_draft.dart",
+    "A\tlib/data/services/widget_background_refresh.dart",
+    "M\tlib/data/services/widget_format.dart",
+    "A\tlib/data/services/widget_task_creation_service.dart",
+    "M\tlib/data/services/widget_today_selection.dart",
+    "M\tlib/data/services/widget_update_service.dart",
+    "M\tlib/data/services/widget_week_selection.dart",
+    "M\tlib/main.dart",
+    "M\tlib/presentation/screens/main/main_shell_screen.dart",
+    "A\tlib/presentation/screens/task/widget_task_create_screen.dart",
+    "M\tlib/presentation/widgets/task_metadata_picker.dart",
+    "A\tlib/widget_quick_create_app.dart",
+    "M\tpubspec.lock",
+    "A\ttest/data/services/widget_background_refresh_test.dart",
+    "A\ttest/data/services/widget_registration_refresh_test.dart",
+    "A\ttest/data/services/widget_tag_snapshot_test.dart",
+    "M\ttest/data/services/widget_update_service_test.dart",
+    "A\ttest/presentation/screens/widget_task_create_screen_test.dart"
+  ],
+  "remote_branch_audit": [
+    {
+      "branch": "main",
+      "sha": "3df50dd6fff9b5a197e45fdc1af6ef5d8b5437fd",
+      "commits_outside_both_merge_parents": 0
+    },
+    {
+      "branch": "refactor/flutter-db-v6",
+      "sha": "ea6f9a9480e80ed755bad1b975381dcf157bfd44",
+      "commits_outside_both_merge_parents": 0
+    },
+    {
+      "branch": "feature/ImprovedHomeWidget",
+      "sha": "142416cf8ed61c7c03fff5d778bde9c532d259d7",
+      "commits_outside_both_merge_parents": 0
+    },
+    {
+      "branch": "calendar2",
+      "sha": "534f0d256b97fc447fa6b9ef91d255d741f6ad06",
+      "commits_outside_both_merge_parents": 0
+    },
+    {
+      "branch": "feature/backend-core",
+      "sha": "ec6cc4cdfaa1005694b205b8fe7bebee4b5de21d",
+      "commits_outside_both_merge_parents": 0
+    },
+    {
+      "branch": "feature/calendar",
+      "sha": "fe8e65fb688d1ea919a7f32ec4d67924dae248db",
+      "commits_outside_both_merge_parents": 0
+    },
+    {
+      "branch": "feature/ui",
+      "sha": "022db08e91d9fbb70641ca32dc413a675e134e79",
+      "commits_outside_both_merge_parents": 0
+    },
+    {
+      "branch": "feature/widget",
+      "sha": "022db08e91d9fbb70641ca32dc413a675e134e79",
+      "commits_outside_both_merge_parents": 0
+    },
+    {
+      "branch": "v1.0.0-beta.1",
+      "sha": "022db08e91d9fbb70641ca32dc413a675e134e79",
+      "commits_outside_both_merge_parents": 0
+    },
+    {
+      "branch": "codex/ios-sideload-ipa",
+      "sha": "34bb8e33458d5ecd3ce9aa60249f4f5dc26be516",
+      "commits_outside_both_merge_parents": 9
+    },
+    {
+      "branch": "codex/widget-workspace-actions",
+      "sha": "12aa89f97b64e68caddd35545bf88c1a2dcac8f6",
+      "commits_outside_both_merge_parents": 1
+    },
+    {
+      "branch": "feature/test",
+      "sha": "1d27279c562b98235c5610bda57e91d84d30f501",
+      "commits_outside_both_merge_parents": 1
+    }
+  ],
+  "limitations": [
+    "No APK assembled or device installation in this integration task",
+    "No real launcher, midnight power-management or eCampus account validation",
+    "Native tests use Robolectric and test SQLite fixtures; Dart tests use actual Drift memory schema",
+    "No new database performance measurement",
+    "Remote main has not been updated; branch deletion depends on verified publication",
+    "Separate iOS/offline widget branch not merged; sync result Bottom Sheet remains design-only"
+  ]
+}

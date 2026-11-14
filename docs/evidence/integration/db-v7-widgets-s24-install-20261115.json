@@ -1,0 +1,28 @@
+{
+  "recorded_at": "2026-11-15T00:38:43.8899627+09:00",
+  "branch": "integration/db-v7-widgets",
+  "app_parent": "ea6f9a9480e80ed755bad1b975381dcf157bfd44",
+  "widget_parent": "3df50dd6fff9b5a197e45fdc1af6ef5d8b5437fd",
+  "commit_state": "pending merge commit",
+  "device": "Samsung Galaxy S24 (SM-S921N)",
+  "android_version": 16,
+  "adb_state": "device",
+  "apk": "build/app/outputs/flutter-apk/app-debug.apk",
+  "apk_sha256": "5A78C34339C37B3C99B7FD131EDEB318A2494E86F87BAFE7935A2D0A1A813BE8",
+  "apk_bytes": 192313691,
+  "build_command": "C:\\flutter\\bin\\flutter.bat build apk --debug --no-pub",
+  "build_exit_code": 0,
+  "install_command": "adb -s <S24> install -r build/app/outputs/flutter-apk/app-debug.apk",
+  "install_result": "Success",
+  "uninstall_or_clear_data": false,
+  "package_present_before_install": false,
+  "launch_command": "adb -s <S24> shell am start -W -n com.example.ku_task_management/.MainActivity",
+  "launch_result": "Status: ok; Complete",
+  "process_running_after_launch": true,
+  "limitations": [
+    "ADB installation and activity launch only; rendered UI and user flows not verified",
+    "Target package was not found before installation; existing DB upgrade not validated on this phone",
+    "User will test app CRUD, eCampus and launcher widgets",
+    "No commit, push or branch deletion performed"
+  ]
+}

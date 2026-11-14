@@ -1,0 +1,5 @@
+Command: C:\flutter\bin\flutter.bat analyze --no-pub
+Capture: copied from the prior successful exec output; exit code 0.
+
+Analyzing kutodo...
+No issues found! (ran in 1.9s)

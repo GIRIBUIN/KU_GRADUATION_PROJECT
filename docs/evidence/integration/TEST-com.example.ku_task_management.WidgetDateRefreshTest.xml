@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.example.ku_task_management.WidgetDateRefreshTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-11-14T15:22:38.778Z" hostname="DESKTOP" time="55.57">
+  <properties/>
+  <testcase name="naturalMidnightAlarmRequestsRefreshWithoutTimeChangedBroadcast" classname="com.example.ku_task_management.WidgetDateRefreshTest" time="40.931"/>
+  <testcase name="nextMidnightUsesCalendarDateAcrossWeekYearAndDst" classname="com.example.ku_task_management.WidgetDateRefreshTest" time="0.039"/>
+  <testcase name="completedDaySkipsPeriodicRefreshButClockAndBootEventsForceRefresh" classname="com.example.ku_task_management.WidgetDateRefreshTest" time="0.035"/>
+  <testcase name="permittedExactAlarmAndExpeditedJobAvoidNormalIdleDeferral" classname="com.example.ku_task_management.WidgetDateRefreshTest" time="14.472"/>
+  <testcase name="noWidgetsMeansNoAlarmOrJobAndUnknownBroadcastDoesNothing" classname="com.example.ku_task_management.WidgetDateRefreshTest" time="0.022"/>
+  <testcase name="deniedExactAccessFallsBackAndGrantReschedulesExactMidnight" classname="com.example.ku_task_management.WidgetDateRefreshTest" time="0.024"/>
+  <testcase name="weeklyWidgetAloneSchedulesOneMidnightAlarmAndDeduplicatedJob" classname="com.example.ku_task_management.WidgetDateRefreshTest" time="0.023"/>
+  <testcase name="exhaustedExpeditedQuotaStillQueuesFallbackJob" classname="com.example.ku_task_management.WidgetDateRefreshTest" time="0.024"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[Intent = Intent { act=com.example.ku_task_management.WIDGET_MIDNIGHT cmp=com.example.ku_task_management/.WidgetDateRefreshReceiver }; Matching wrappers: [Wrapper[receiver=[com.example.ku_task_management.WidgetDateRefreshReceiver@5c306074], context=[android.app.ContextImpl@3050f3a2], intentFilter=[android.content.IntentFilter@96aac4d]]]
+]]></system-err>
+</testsuite>

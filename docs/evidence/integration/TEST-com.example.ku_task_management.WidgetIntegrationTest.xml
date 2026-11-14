@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.example.ku_task_management.WidgetIntegrationTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-11-14T15:23:34.356Z" hostname="DESKTOP" time="1.028">
+  <properties/>
+  <testcase name="registrationIntentsSharePopupButKeepWidgetIdentity" classname="com.example.ku_task_management.WidgetIntegrationTest" time="0.178"/>
+  <testcase name="missingDatabaseRetainsRetryAndUnknownTaskDoesNothing" classname="com.example.ku_task_management.WidgetIntegrationTest" time="0.089"/>
+  <testcase name="equalDeadlinesRestoreCanonicalOrderAfterToggleAndUntoggle" classname="com.example.ku_task_management.WidgetIntegrationTest" time="0.127"/>
+  <testcase name="allCompletedRemainVisibleAndProgressReachesTotal" classname="com.example.ku_task_management.WidgetIntegrationTest" time="0.16"/>
+  <testcase name="collidingTaskHashesHaveDistinctPendingIntents" classname="com.example.ku_task_management.WidgetIntegrationTest" time="0.041"/>
+  <testcase name="v7TogglePreservesListSourceAndTagsAndCannotReopenDeletedTasks" classname="com.example.ku_task_management.WidgetIntegrationTest" time="0.255"/>
+  <testcase name="toggleSynchronizesDatabaseCachesAndRetryQueues" classname="com.example.ku_task_management.WidgetIntegrationTest" time="0.095"/>
+  <testcase name="checkboxAfterPageChangeTargetsTaskIdAndPreservesInstancePages" classname="com.example.ku_task_management.WidgetIntegrationTest" time="0.082"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

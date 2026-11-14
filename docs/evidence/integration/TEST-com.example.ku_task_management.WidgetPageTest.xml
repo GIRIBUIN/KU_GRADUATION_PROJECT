@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.example.ku_task_management.WidgetPageTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-11-14T15:23:35.386Z" hostname="DESKTOP" time="0.002">
+  <properties/>
+  <testcase name="registrationGrowthPreservesCurrentPage" classname="com.example.ku_task_management.WidgetPageTest" time="0.001"/>
+  <testcase name="countsAndBoundaries" classname="com.example.ku_task_management.WidgetPageTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

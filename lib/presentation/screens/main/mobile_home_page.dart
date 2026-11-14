@@ -9,6 +9,7 @@ import '../../../data/models/home_period_preference.dart';
 import '../../../data/models/task_models.dart';
 import '../../../data/models/task_swipe_options.dart';
 import '../../../data/repositories/settings_repository.dart';
+import '../../../data/repositories/sub_task_repository.dart';
 import '../../../data/services/home_task_summary.dart';
 import '../../widgets/task_metadata_picker.dart' show colorFromHex;
 import '../../widgets/task_list_row.dart';
@@ -49,9 +50,15 @@ class MobileHomePage extends StatefulWidget {
     required this.onMoveList,
     required this.onMoveTag,
     required this.onAllowExcludedTaskSync,
+    this.subTaskRepository,
+    this.subTaskVersion = 0,
+    this.onSubTasksChanged,
   });
 
   final List<Task> tasks;
+  final SubTaskRepository? subTaskRepository;
+  final int subTaskVersion;
+  final VoidCallback? onSubTasksChanged;
   final bool isLoading;
   final bool isActive;
   final AppSettings settings;
@@ -1429,6 +1436,9 @@ class _MobileHomePageState extends State<MobileHomePage> {
       },
       child: buildTaskListRow(
         task: task,
+        subTaskRepository: widget.subTaskRepository,
+        subTaskVersion: widget.subTaskVersion,
+        onSubTasksChanged: widget.onSubTasksChanged,
         lists: widget.lists,
         groups: widget.groups,
         tags: widget.tags,

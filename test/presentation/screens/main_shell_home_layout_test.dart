@@ -223,9 +223,19 @@ void main() {
     expect(repositories.tasks.last.title, '수정한 일정');
     await tester.longPress(find.byKey(ValueKey('calendar-task-${created.id}')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('삭제'));
+    expect(find.byType(TaskDetailScreen), findsOneWidget);
+    await tester.tap(find.byTooltip('작업 상세 닫기'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('nav-home')));
+    await tester.pumpAndSettle();
+    await tester.drag(
+      find.byKey(ValueKey('home-task-period-${created.id}')),
+      const Offset(-450, 0),
+    );
     await tester.pumpAndSettle();
     expect(repositories.tasks.last.status, TaskStatus.deleted);
+    await tester.tap(find.byKey(const ValueKey('nav-calendar')));
+    await tester.pumpAndSettle();
     expect(find.byKey(ValueKey('calendar-task-${created.id}')), findsNothing);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());

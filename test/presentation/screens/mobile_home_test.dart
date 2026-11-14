@@ -442,6 +442,112 @@ void main() {
   );
 
   testWidgets(
+    'home and calendar expand subtasks, share completion and open details on long press',
+    (tester) async {
+      await add(
+        'parent-with-children',
+        due: today,
+        priority: TaskPriority.high,
+      );
+      final subs = DriftSubTaskRepository(database: database);
+      await subs.createSubTask(
+        SubTask(
+          id: 'child',
+          taskId: 'parent-with-children',
+          title: '첫 서브 작업',
+          isDone: false,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await pumpApp(tester);
+      final parent = row('parent-with-children');
+      await tester.tap(parent);
+      await tester.pumpAndSettle();
+      expect(find.byType(TaskDetailScreen), findsNothing);
+      final homeChild = find.byKey(
+        const ValueKey<Object>((
+          'subtask',
+          ValueKey('home-task-period-parent-with-children'),
+          'child',
+        )),
+      );
+      expect(homeChild, findsOneWidget);
+      await tester.tap(
+        find.descendant(of: homeChild, matching: find.byType(Checkbox)),
+      );
+      await tester.pumpAndSettle();
+      expect((await subs.getSubTaskById('child'))!.isDone, isTrue);
+      expect(
+        (await tasks.getTaskById('parent-with-children'))!.status,
+        TaskStatus.active,
+      );
+      expect(homeChild, findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('nav-calendar')));
+      await tester.pumpAndSettle();
+      final calendarParent = find.byKey(
+        const ValueKey('calendar-task-parent-with-children'),
+      );
+      await tester.tap(calendarParent);
+      await tester.pumpAndSettle();
+      final calendarChild = find.byKey(
+        const ValueKey<Object>((
+          'subtask',
+          ValueKey('calendar-task-parent-with-children'),
+          'child',
+        )),
+      );
+      expect(
+        tester
+            .widget<Checkbox>(
+              find.descendant(
+                of: calendarChild,
+                matching: find.byType(Checkbox),
+              ),
+            )
+            .value,
+        isTrue,
+      );
+      await tester.longPress(calendarParent);
+      await tester.pumpAndSettle();
+      expect(find.byType(TaskDetailScreen), findsOneWidget);
+      final input = find.byWidgetPredicate(
+        (w) => w is TextField && w.decoration?.hintText == '서브 작업 추가',
+      );
+      await tester.scrollUntilVisible(
+        input,
+        250,
+        scrollable: find
+            .descendant(
+              of: find.byType(TaskDetailScreen),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      await tester.enterText(input, '추가된 서브 작업');
+      await tester.ensureVisible(find.byTooltip('추가'));
+      await tester.tap(find.byTooltip('추가'));
+      await tester.pumpAndSettle();
+      expect(await subs.getSubTasks('parent-with-children'), hasLength(2));
+      await tester.tap(find.byTooltip('작업 상세 닫기'));
+      await tester.pumpAndSettle();
+      if (find.text('추가된 서브 작업').evaluate().isEmpty) {
+        await tester.tap(calendarParent);
+        await tester.pumpAndSettle();
+      }
+      expect(find.text('추가된 서브 작업'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('nav-home')));
+      await tester.pumpAndSettle();
+      await tester.longPress(parent);
+      await tester.pumpAndSettle();
+      expect(find.byType(TaskDetailScreen), findsOneWidget);
+      await tester.tap(find.byTooltip('작업 상세 닫기'));
+      await tester.pumpAndSettle();
+      await finish(tester);
+    },
+  );
+
+  testWidgets(
     'task backgrounds span the viewport in home, completed, trash, excluded and calendar',
     (tester) async {
       tester.view.physicalSize = const Size(360, 1000);

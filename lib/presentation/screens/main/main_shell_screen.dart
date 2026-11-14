@@ -63,6 +63,12 @@ class _MainShellScreenState extends State<MainShellScreen>
   var _metadataVersion = 0;
   var _isEcampusSyncing = false;
 
+  int _subTaskVersion = 0;
+
+  void _subTasksChanged() {
+    if (mounted) setState(() => _subTaskVersion++);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -539,6 +545,9 @@ class _MainShellScreenState extends State<MainShellScreen>
                     metadataSnapshot.data ?? const _TaskMetadataLookup.empty();
                 final pages = [
                   MobileHomePage(
+                    subTaskRepository: widget.subTaskRepository,
+                    subTaskVersion: _subTaskVersion,
+                    onSubTasksChanged: _subTasksChanged,
                     isActive: _selectedIndex == 0,
                     tasks: tasks,
                     isLoading: isLoading,
@@ -582,6 +591,9 @@ class _MainShellScreenState extends State<MainShellScreen>
                   ),
                   SafeArea(
                     child: HomeCalendarSection(
+                      subTaskRepository: widget.subTaskRepository,
+                      subTaskVersion: _subTaskVersion,
+                      onSubTasksChanged: _subTasksChanged,
                       tasks: tasks,
                       isLoading: isLoading,
                       lists: metadata.lists,

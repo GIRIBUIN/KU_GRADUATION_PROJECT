@@ -4,6 +4,7 @@ import 'package:table_calendar/table_calendar.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../data/models/task_models.dart';
+import '../../data/repositories/sub_task_repository.dart';
 import '../../data/services/calendar_task_index.dart';
 import 'task_list_row.dart';
 
@@ -20,9 +21,15 @@ class HomeCalendarSection extends StatefulWidget {
     this.lists = const [],
     this.groups = const [],
     this.tags = const [],
+    this.subTaskRepository,
+    this.subTaskVersion = 0,
+    this.onSubTasksChanged,
   });
 
   final List<Task> tasks;
+  final SubTaskRepository? subTaskRepository;
+  final int subTaskVersion;
+  final VoidCallback? onSubTasksChanged;
   final bool isLoading;
   final ValueChanged<DateTime> onCreateTask;
   final ValueChanged<Task> onOpenTask;
@@ -439,6 +446,9 @@ class _HomeCalendarSectionState extends State<HomeCalendarSection> {
     builder: (anchor) => buildTaskListRow(
       key: ValueKey('calendar-task-${task.id}'),
       task: task,
+      subTaskRepository: widget.subTaskRepository,
+      subTaskVersion: widget.subTaskVersion,
+      onSubTasksChanged: widget.onSubTasksChanged,
       lists: widget.lists,
       groups: widget.groups,
       tags: widget.tags,
@@ -448,32 +458,9 @@ class _HomeCalendarSectionState extends State<HomeCalendarSection> {
         onChanged: (_) => widget.onToggleTask(task),
       ),
       onTap: () => widget.onOpenTask(task),
-      onLongPress: () => _showTaskMenu(anchor, task),
+      onLongPress: () => widget.onOpenTask(task),
     ),
   );
-
-  Future<void> _showTaskMenu(BuildContext anchor, Task task) async {
-    final box = anchor.findRenderObject()! as RenderBox;
-    final overlay =
-        Navigator.of(anchor).overlay!.context.findRenderObject()! as RenderBox;
-    final action = await showMenu<String>(
-      context: anchor,
-      position: RelativeRect.fromRect(
-        box.localToGlobal(Offset.zero, ancestor: overlay) & box.size,
-        Offset.zero & overlay.size,
-      ),
-      items: const [
-        PopupMenuItem(value: 'edit', child: Text('편집')),
-        PopupMenuItem(value: 'delete', child: Text('삭제')),
-      ],
-    );
-    if (!mounted || action == null) return;
-    if (action == 'delete') {
-      widget.onDeleteTask(task);
-    } else {
-      widget.onOpenTask(task);
-    }
-  }
 
   String _sourceLabel(CalendarTaskSource source) => switch (source) {
     CalendarTaskSource.all => '전체 일정',

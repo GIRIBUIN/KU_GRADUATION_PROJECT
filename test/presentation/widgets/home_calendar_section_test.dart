@@ -110,9 +110,9 @@ void main() {
       expect(createdDay, DateTime(2026, 6, 16));
       await tester.longPress(find.byKey(const ValueKey('calendar-task-next')));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('삭제'));
-      await tester.pumpAndSettle();
-      expect(deletedTask?.id, 'next');
+      expect(openedTask?.id, 'next');
+      expect(find.text('삭제'), findsNothing);
+      expect(deletedTask, isNull);
     },
   );
 

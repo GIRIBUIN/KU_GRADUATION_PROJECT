@@ -8,6 +8,7 @@ class TodayWidgetTaskSnapshot {
     this.createdTimestamp = 0,
     required this.title,
     required this.timeLabel,
+    this.listLabel = '',
     required this.accentColorHex,
     this.isCompleted = false,
   });
@@ -18,6 +19,7 @@ class TodayWidgetTaskSnapshot {
   final int createdTimestamp;
   final String title;
   final String timeLabel;
+  final String listLabel;
   final String accentColorHex;
   final bool isCompleted;
 
@@ -29,6 +31,7 @@ class TodayWidgetTaskSnapshot {
       'createdTimestamp': createdTimestamp,
       'title': title,
       'timeLabel': timeLabel,
+      'listLabel': listLabel,
       'accentColorHex': accentColorHex,
       'isCompleted': isCompleted,
     };
@@ -43,6 +46,7 @@ class TodayWidgetTaskSnapshot {
       createdTimestamp: json['createdTimestamp'] as int? ?? 0,
       title: json['title'] as String,
       timeLabel: json['timeLabel'] as String? ?? '--:--',
+      listLabel: json['listLabel'] as String? ?? '',
       accentColorHex: json['accentColorHex'] as String? ?? '#1262D6',
     );
   }

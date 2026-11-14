@@ -185,27 +185,29 @@ void main() {
       );
     });
 
-    test('uses first tag color for accent bar', () {
+    test('uses list color independently from task tags', () {
+      final at = DateTime(2026, 5, 1);
       final task = Task(
-        id: 'task-1',
+        id: 'task',
         origin: TaskOrigin.personal,
         status: TaskStatus.active,
         title: 'task',
-        tagIds: const ['tag-1'],
-        createdAt: DateTime(2026, 5, 1),
-        updatedAt: DateTime(2026, 5, 1),
+        folderIds: const ['course'],
+        tagIds: const ['tag'],
+        createdAt: at,
+        updatedAt: at,
       );
-      final tagsById = {
-        'tag-1': Tag(
-          id: 'tag-1',
+      final lists = {
+        'course': Folder(
+          id: 'course',
           name: 'OS',
           color: '3B82F6',
-          createdAt: DateTime(2026, 5, 1),
-          updatedAt: DateTime(2026, 5, 1),
+          createdAt: at,
+          updatedAt: at,
         ),
       };
-
-      expect(accentColorForTask(task, tagsById: tagsById), '#3B82F6');
+      expect(listLabelForTask(task, listsById: lists), 'OS');
+      expect(listColorHexForTask(task, listsById: lists), '#3B82F6');
     });
   });
 }

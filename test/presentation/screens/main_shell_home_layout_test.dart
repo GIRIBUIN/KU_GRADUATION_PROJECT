@@ -288,7 +288,7 @@ class _PendingWidgetService extends WidgetUpdateService {
     : super(
         taskRepository: repositories,
         settingsRepository: repositories,
-        tagRepository: repositories,
+        folderRepository: repositories,
       );
 
   @override

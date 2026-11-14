@@ -48,7 +48,7 @@ class _KuTaskAppState extends State<KuTaskApp> {
     _widgetUpdateService = WidgetUpdateService(
       taskRepository: _taskRepository,
       settingsRepository: _settingsRepository,
-      tagRepository: _tagRepository,
+      folderRepository: _folderRepository,
     );
     _rescheduleNotificationsAfterRestart();
     _widgetUpdateService.refresh();

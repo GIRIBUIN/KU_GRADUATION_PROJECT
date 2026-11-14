@@ -6,6 +6,7 @@ import 'core/theme/app_theme.dart';
 import 'data/local/app_database.dart';
 import 'data/repositories/drift_settings_repository.dart';
 import 'data/repositories/drift_tag_repository.dart';
+import 'data/repositories/drift_folder_repository.dart';
 import 'data/repositories/drift_task_repository.dart';
 import 'data/services/widget_update_service.dart';
 import 'data/services/widget_task_creation_service.dart';
@@ -32,6 +33,7 @@ class _WidgetQuickCreateAppState extends State<WidgetQuickCreateApp> {
   late final AppDatabase _database;
   late final DriftTaskRepository _tasks;
   late final DriftTagRepository _tags;
+  late final DriftFolderRepository _lists;
   late final WidgetUpdateService _widgets;
 
   @override
@@ -41,10 +43,11 @@ class _WidgetQuickCreateAppState extends State<WidgetQuickCreateApp> {
     _database = AppDatabase.defaults();
     _tasks = DriftTaskRepository(database: _database);
     _tags = DriftTagRepository(database: _database);
+    _lists = DriftFolderRepository(database: _database);
     _widgets = WidgetUpdateService(
       taskRepository: _tasks,
       settingsRepository: DriftSettingsRepository(database: _database),
-      tagRepository: _tags,
+      folderRepository: _lists,
     );
   }
 
@@ -83,7 +86,7 @@ class _WidgetQuickCreateAppState extends State<WidgetQuickCreateApp> {
           taskRepository: _tasks,
           tagRepository: _tags,
         ).save,
-        tagRepository: _tags,
+        folderRepository: _lists,
         onSaved: _saved,
         onCancel: () {
           _channel.invokeMethod<void>('close');

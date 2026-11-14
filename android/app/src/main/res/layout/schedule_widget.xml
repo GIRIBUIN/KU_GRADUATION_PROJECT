@@ -94,17 +94,33 @@
                 android:textStyle="bold"
                 tools:text="09:00" />
 
-            <TextView
-                android:id="@+id/task_title_0"
+            <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
                 android:layout_weight="1"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:textColor="@color/widget_ink"
-                android:textSize="14sp"
-                tools:text="운영체제 강의 듣기" />
+                android:orientation="vertical">
+                <TextView
+                    android:id="@+id/task_title_0"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/widget_ink"
+                    android:textSize="14sp"
+                    tools:text="과제 제출" />
+                <TextView
+                    android:id="@+id/task_list_0"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/widget_muted"
+                    android:textSize="11sp"
+                    android:visibility="gone"
+                    tools:text="거대언어모델의이해"
+                    tools:visibility="visible" />
+            </LinearLayout>
         </LinearLayout>
 
         <TextView
@@ -159,17 +175,33 @@
                 android:textStyle="bold"
                 tools:text="13:00" />
 
-            <TextView
-                android:id="@+id/task_title_1"
+            <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
                 android:layout_weight="1"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:textColor="@color/widget_ink"
-                android:textSize="14sp"
-                tools:text="헬스장 가기" />
+                android:orientation="vertical">
+                <TextView
+                    android:id="@+id/task_title_1"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/widget_ink"
+                    android:textSize="14sp"
+                    tools:text="과제 제출" />
+                <TextView
+                    android:id="@+id/task_list_1"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/widget_muted"
+                    android:textSize="11sp"
+                    android:visibility="gone"
+                    tools:text="거대언어모델의이해"
+                    tools:visibility="visible" />
+            </LinearLayout>
         </LinearLayout>
 
         <TextView
@@ -224,17 +256,33 @@
                 android:textStyle="bold"
                 tools:text="18:00" />
 
-            <TextView
-                android:id="@+id/task_title_2"
+            <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
                 android:layout_weight="1"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:textColor="@color/widget_ink"
-                android:textSize="14sp"
-                tools:text="팀플 회의" />
+                android:orientation="vertical">
+                <TextView
+                    android:id="@+id/task_title_2"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/widget_ink"
+                    android:textSize="14sp"
+                    tools:text="과제 제출" />
+                <TextView
+                    android:id="@+id/task_list_2"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/widget_muted"
+                    android:textSize="11sp"
+                    android:visibility="gone"
+                    tools:text="거대언어모델의이해"
+                    tools:visibility="visible" />
+            </LinearLayout>
         </LinearLayout>
         <TextView
             android:id="@+id/widget_empty"

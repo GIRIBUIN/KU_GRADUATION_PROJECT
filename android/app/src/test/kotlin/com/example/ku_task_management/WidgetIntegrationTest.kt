@@ -1,5 +1,9 @@
 package com.example.ku_task_management
 
+import android.appwidget.AppWidgetManager
+import android.view.View
+import android.widget.TextView
+import org.robolectric.Shadows.shadowOf
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import es.antonborri.home_widget.HomeWidgetPlugin
@@ -56,6 +60,26 @@ class WidgetIntegrationTest {
                 assertTrue(row.getLong(2) > 0)
             }
         }
+    }
+
+    @Test fun todayShowsOnlyListNameAndHidesInboxAndLegacyLabels() {
+        val tasks = JSONArray()
+            .put(JSONObject().put("id", "course").put("title", "assignment").put("listLabel", "운영체제").put("accentColorHex", "#3B82F6"))
+            .put(JSONObject().put("id", "inbox").put("title", "personal").put("listLabel", ""))
+            .put(JSONObject().put("id", "legacy").put("title", "old cache"))
+        prefs.edit().putString(today, JSONObject().put("tasks", tasks).toString()).commit()
+        val manager = AppWidgetManager.getInstance(context)
+        val shadow = shadowOf(manager)
+        val id = shadow.createWidget(ScheduleWidgetProvider::class.java, R.layout.schedule_widget)
+        val view = shadow.getViewFor(id)
+        assertEquals("운영체제", view.findViewById<TextView>(R.id.task_list_0).text.toString())
+        assertEquals(View.VISIBLE, view.findViewById<TextView>(R.id.task_list_0).visibility)
+        assertEquals(View.GONE, view.findViewById<TextView>(R.id.task_list_1).visibility)
+        assertEquals(View.GONE, view.findViewById<TextView>(R.id.task_list_2).visibility)
+        tasks.getJSONObject(0).put("listLabel", "")
+        prefs.edit().putString(today, JSONObject().put("tasks", tasks).toString()).commit()
+        ScheduleWidgetProvider().onUpdate(context, manager, intArrayOf(id))
+        assertEquals(View.GONE, shadow.getViewFor(id).findViewById<TextView>(R.id.task_list_0).visibility)
     }
 
     @Test fun v7TogglePreservesListSourceAndTagsAndCannotReopenDeletedTasks() {

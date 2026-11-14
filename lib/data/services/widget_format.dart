@@ -1,6 +1,7 @@
 import 'package:flutter/painting.dart' show Color;
 
 import '../models/task_models.dart';
+import '../../core/utils/list_defaults.dart';
 
 const widgetDefaultAccentColorHex = '#1262D6';
 const widgetDueDangerColorHex = '#E72E2E';
@@ -29,16 +30,6 @@ String formatWidgetTime(DateTime? dueDate) {
   final hour = dueDate.hour.toString().padLeft(2, '0');
   final minute = dueDate.minute.toString().padLeft(2, '0');
   return '$hour:$minute';
-}
-
-String accentColorForTask(Task task, {required Map<String, Tag> tagsById}) {
-  for (final tagId in task.tagIds) {
-    final tag = tagsById[tagId];
-    if (tag != null) {
-      return normalizeWidgetColorHex(tag.color);
-    }
-  }
-  return widgetDefaultAccentColorHex;
 }
 
 String formatWidgetWeekRange(DateTime weekStart, DateTime weekEnd) {
@@ -88,32 +79,31 @@ String dueColorHexForDate(DateTime dueDate, {required DateTime now}) {
   return widgetDuePrimaryColorHex;
 }
 
-Tag? _displayTag(Task task, Map<String, Tag> tagsById) {
-  for (final id in task.tagIds) {
-    final tag = tagsById[id];
-    if (tag != null && tag.name.trim().isNotEmpty) return tag;
-  }
-  return null;
+Folder? _displayList(Task task, Map<String, Folder> listsById) {
+  if (task.listId == inboxListId) return null;
+  return listsById[task.listId];
 }
 
-String categoryLabelForTask(Task task, {required Map<String, Tag> tagsById}) {
-  return _displayTag(task, tagsById)?.name.trim() ?? '';
+String listLabelForTask(Task task, {required Map<String, Folder> listsById}) {
+  return _displayList(task, listsById)?.name.trim() ?? '';
 }
 
-String categoryBackgroundHexForTask(
+String listColorHexForTask(
   Task task, {
-  required Map<String, Tag> tagsById,
+  required Map<String, Folder> listsById,
 }) {
-  final tag = _displayTag(task, tagsById);
-  return tag == null ? '#E5E7EB' : normalizeWidgetColorHex(tag.color);
+  final list = _displayList(task, listsById);
+  return list == null
+      ? '#E5E7EB'
+      : normalizeWidgetColorHex(list.color ?? widgetDefaultAccentColorHex);
 }
 
-String categoryTextHexForTask(Task task, {required Map<String, Tag> tagsById}) {
-  final background = categoryBackgroundHexForTask(task, tagsById: tagsById);
+String listTextHexForTask(Task task, {required Map<String, Folder> listsById}) {
+  final background = listColorHexForTask(task, listsById: listsById);
   final rgb = int.tryParse(background.replaceFirst('#', ''), radix: 16);
   if (rgb == null) return '#111827';
   final luminance = Color(0xFF000000 | rgb).computeLuminance();
-  // Choose the stronger contrast against the actual stored tag color.
+  // Choose the stronger contrast against the actual stored list color.
   return luminance > 0.179 ? '#000000' : '#FFFFFF';
 }
 

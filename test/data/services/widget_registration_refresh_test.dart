@@ -10,6 +10,7 @@ import 'package:ku_task_management/data/models/today_widget_data.dart';
 import 'package:ku_task_management/data/models/task_models.dart';
 import 'package:ku_task_management/data/models/weekly_widget_data.dart';
 import 'package:ku_task_management/data/repositories/drift_settings_repository.dart';
+import 'package:ku_task_management/data/repositories/drift_folder_repository.dart';
 import 'package:ku_task_management/data/repositories/drift_tag_repository.dart';
 import 'package:ku_task_management/data/repositories/drift_task_repository.dart';
 import 'package:ku_task_management/data/services/personal_task_draft.dart';
@@ -39,7 +40,7 @@ void main() {
     );
     widgets = WidgetUpdateService(
       taskRepository: tasks,
-      tagRepository: tags,
+      folderRepository: DriftFolderRepository(database: db),
       settingsRepository: DriftSettingsRepository(database: db),
       now: () => now,
     );

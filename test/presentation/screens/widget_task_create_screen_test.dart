@@ -8,6 +8,8 @@ import 'package:ku_task_management/data/local/app_database.dart'
     show AppDatabase;
 import 'package:ku_task_management/data/models/task_models.dart';
 import 'package:ku_task_management/data/repositories/drift_tag_repository.dart';
+import 'package:ku_task_management/data/repositories/drift_folder_repository.dart';
+import 'package:ku_task_management/data/repositories/folder_repository.dart';
 import 'package:ku_task_management/data/repositories/drift_task_repository.dart';
 import 'package:ku_task_management/data/repositories/task_repository.dart';
 import 'package:ku_task_management/data/services/widget_task_creation_service.dart';
@@ -18,6 +20,7 @@ void main() {
   late AppDatabase db;
   late DriftTaskRepository tasks;
   late DriftTagRepository tags;
+  late DriftFolderRepository lists;
   late bool saved;
   late bool cancelled;
 
@@ -25,6 +28,16 @@ void main() {
     db = AppDatabase(NativeDatabase.memory());
     tasks = DriftTaskRepository(database: db);
     tags = DriftTagRepository(database: db);
+    lists = DriftFolderRepository(database: db);
+    await lists.createFolder(
+      Folder(
+        id: 'course',
+        name: '운영체제',
+        color: '#3B82F6',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
     saved = false;
     cancelled = false;
     await tags.createTag(
@@ -39,7 +52,11 @@ void main() {
   });
   tearDown(() => db.close());
 
-  Future<void> open(WidgetTester tester, {TaskRepository? repository}) async {
+  Future<void> open(
+    WidgetTester tester, {
+    TaskRepository? repository,
+    FolderRepository? folderRepository,
+  }) async {
     await tester.pumpWidget(
       MaterialApp(
         home: WidgetTaskCreateScreen(
@@ -48,7 +65,7 @@ void main() {
             taskRepository: repository ?? tasks,
             tagRepository: tags,
           ).save,
-          tagRepository: tags,
+          folderRepository: folderRepository ?? lists,
           now: () => now,
           onSaved: () async {
             saved = true;
@@ -68,101 +85,41 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Future<void> addTag(
-    WidgetTester tester,
-    String name, {
-    String color = '#8B5CF6',
-  }) async {
-    await tester.tap(find.byTooltip('태그 추가'));
-    await tester.pumpAndSettle();
-    final inputs = find.descendant(
-      of: find.byType(AlertDialog),
-      matching: find.byType(TextField),
-    );
-    await tester.enterText(inputs.at(0), name);
-    await tester.enterText(inputs.at(1), color);
-    await tester.tap(
-      find.descendant(of: find.byType(AlertDialog), matching: find.text('저장')),
-    );
-    await tester.pumpAndSettle();
-  }
-
-  testWidgets('typed tag name and color are committed with the task', (
+  testWidgets('selects one list without tag or list creation controls', (
     tester,
   ) async {
     await open(tester);
-    await tester.enterText(find.byType(TextFormField), '직접 태그 일정');
-    await addTag(tester, '  새 태그  ');
-    expect((await tags.getTags()).map((tag) => tag.name), ['졸업프로젝트']);
-    final chip = find.widgetWithText(FilterChip, '새 태그');
-    expect(tester.widget<FilterChip>(chip).selected, isTrue);
+    expect(find.text('태그'), findsNothing);
+    expect(find.byTooltip('태그 추가'), findsNothing);
+    expect(find.byTooltip('목록 추가'), findsNothing);
+    await tester.enterText(find.byType(TextFormField), '과제');
+    await tester.tap(find.widgetWithText(FilterChip, '운영체제'));
     await save(tester);
-    final createdTag = (await tags.getTags()).singleWhere(
-      (tag) => tag.name == '새 태그',
-    );
-    expect(createdTag.color, '#8B5CF6');
-    expect((await tasks.getTasks()).single.tagIds, [createdTag.id]);
+    final task = (await tasks.getTasks()).single;
+    expect(task.listId, 'course');
+    expect(task.tagIds, isEmpty);
+    expect(await tags.getTags(), hasLength(1));
+    expect(task.origin, TaskOrigin.personal);
     expect(saved, isTrue);
   });
 
-  testWidgets('cancelling the form does not create typed tags', (tester) async {
-    await open(tester);
-    await addTag(tester, '취소 태그');
-    await tester.tap(find.text('취소'));
+  testWidgets('list loading failure can retry without losing title', (
+    tester,
+  ) async {
+    final repository = _FailingLists(lists);
+    await open(tester, folderRepository: repository);
+    await tester.enterText(find.byType(TextFormField), '입력 유지');
+    expect(find.textContaining('목록을 불러오지 못했습니다.'), findsOneWidget);
+    expect(
+      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      isNull,
+    );
+    repository.fail = false;
+    await tester.tap(find.text('목록 다시 불러오기'));
     await tester.pumpAndSettle();
-    expect(cancelled, isTrue);
-    expect((await tags.getTags()).map((tag) => tag.name), ['졸업프로젝트']);
-    expect(await tasks.getTasks(), isEmpty);
-  });
-
-  testWidgets(
-    'typing an existing tag selects it without duplicating or recoloring',
-    (tester) async {
-      await open(tester);
-      await tester.enterText(find.byType(TextFormField), '기존 태그');
-      await addTag(tester, '졸업프로젝트');
-      await save(tester);
-      expect(await tags.getTags(), hasLength(1));
-      expect((await tags.getTags()).single.color, '#22C55E');
-      expect((await tasks.getTasks()).single.tagIds, ['tag-1']);
-    },
-  );
-
-  testWidgets(
-    'DB failure rolls back new tags, preserves input, and retries atomically',
-    (tester) async {
-      final failing = _FailingRepository(tasks);
-      await open(tester, repository: failing);
-      await tester.enterText(find.byType(TextFormField), '새 태그 재시도');
-      await addTag(tester, '재시도 태그');
-      await save(tester);
-      expect(await tags.getTags(), hasLength(1));
-      expect(await tasks.getTasks(), isEmpty);
-      expect(
-        tester
-            .widget<FilterChip>(find.widgetWithText(FilterChip, '재시도 태그'))
-            .selected,
-        isTrue,
-      );
-      expect(find.text('새 태그 재시도'), findsOneWidget);
-      failing.fail = false;
-      await save(tester);
-      expect(await tags.getTags(), hasLength(2));
-      final newTag = (await tags.getTags()).singleWhere(
-        (tag) => tag.name == '재시도 태그',
-      );
-      expect((await tasks.getTasks()).single.tagIds, [newTag.id]);
-    },
-  );
-
-  testWidgets('deselected draft tags are not persisted', (tester) async {
-    await open(tester);
-    await tester.enterText(find.byType(TextFormField), '선택 해제');
-    await addTag(tester, '사용 안 함');
-    await tester.tap(find.widgetWithText(FilterChip, '사용 안 함'));
+    expect(find.text('입력 유지'), findsOneWidget);
     await save(tester);
-    expect(await tags.getTags(), hasLength(1));
-    expect((await tasks.getTasks()).single.tagIds, isEmpty);
+    expect((await tasks.getTasks()).single.listId, inboxListId);
   });
 
   testWidgets('rapid save taps create exactly one task', (tester) async {
@@ -192,49 +149,19 @@ void main() {
   });
 
   testWidgets(
-    'uses today/current minute, existing multiple-select tags and standard DB',
+    'defaults to Inbox and preserves current minute and optional fields',
     (tester) async {
-      await tags.createTag(
-        Tag(
-          id: 'tag-2',
-          name: '전공',
-          color: '#3B82F6',
-          createdAt: now,
-          updatedAt: now,
-        ),
-      );
       await open(tester);
-      expect(find.text('마감 날짜  2026.11.12'), findsOneWidget);
-      expect(find.text('마감 시간  10:25'), findsOneWidget);
-      await tester.enterText(find.byType(TextFormField), '  위젯 일정  ');
-      await tester.tap(find.widgetWithText(FilterChip, '졸업프로젝트'));
-      await tester.ensureVisible(find.widgetWithText(FilterChip, '전공'));
-      await tester.tap(find.widgetWithText(FilterChip, '전공'));
+      await tester.enterText(find.byType(TextFormField), '태그 없는 일정');
       await save(tester);
-      final list = await tasks.getTasks();
-      expect(list, hasLength(1));
-      expect(list.single.title, '위젯 일정');
-      expect(list.single.dueDate, now);
-      expect(list.single.tagIds, unorderedEquals(['tag-1', 'tag-2']));
-      expect(list.single.origin, TaskOrigin.personal);
-      expect(list.single.status, TaskStatus.active);
-      expect(list.single.sortOrder, greaterThanOrEqualTo(0));
-      expect(saved, isTrue);
+      final task = (await tasks.getTasks()).single;
+      expect(task.dueDate, now);
+      expect(task.tagIds, isEmpty);
+      expect(task.priority, isNull);
+      expect(task.memo, isNull);
+      expect(task.folderIds, [inboxListId]);
     },
   );
-
-  testWidgets('saves without tags with default optional fields', (
-    tester,
-  ) async {
-    await open(tester);
-    await tester.enterText(find.byType(TextFormField), '태그 없는 일정');
-    await save(tester);
-    final task = (await tasks.getTasks()).single;
-    expect(task.tagIds, isEmpty);
-    expect(task.priority, isNull);
-    expect(task.memo, isNull);
-    expect(task.folderIds, [inboxListId]);
-  });
 
   testWidgets('date and time pickers update persisted deadline', (
     tester,
@@ -280,24 +207,30 @@ void main() {
     expect(saved, isFalse);
   });
 
-  testWidgets('DB failure preserves title and selected tag and permits retry', (
-    tester,
-  ) async {
-    final failing = _FailingRepository(tasks);
-    await open(tester, repository: failing);
-    await tester.enterText(find.byType(TextFormField), '재시도 일정');
-    await tester.tap(find.widgetWithText(FilterChip, '졸업프로젝트'));
-    await save(tester);
-    expect(find.textContaining('일정을 저장하지 못했습니다.'), findsOneWidget);
-    expect(find.text('재시도 일정'), findsOneWidget);
-    expect(tester.widget<FilterChip>(find.byType(FilterChip)).selected, isTrue);
-    expect(await tasks.getTasks(), isEmpty);
-    expect(saved, isFalse);
-    failing.fail = false;
-    await save(tester);
-    expect((await tasks.getTasks()).single.tagIds, ['tag-1']);
-    expect(saved, isTrue);
-  });
+  testWidgets(
+    'DB failure preserves title and selected list and permits retry',
+    (tester) async {
+      final failing = _FailingRepository(tasks);
+      await open(tester, repository: failing);
+      await tester.enterText(find.byType(TextFormField), '재시도 일정');
+      await tester.tap(find.widgetWithText(FilterChip, '운영체제'));
+      await save(tester);
+      expect(find.textContaining('일정을 저장하지 못했습니다.'), findsOneWidget);
+      expect(find.text('재시도 일정'), findsOneWidget);
+      expect(
+        tester
+            .widget<FilterChip>(find.widgetWithText(FilterChip, '운영체제'))
+            .selected,
+        isTrue,
+      );
+      expect(await tasks.getTasks(), isEmpty);
+      expect(saved, isFalse);
+      failing.fail = false;
+      await save(tester);
+      expect((await tasks.getTasks()).single.listId, 'course');
+      expect(saved, isTrue);
+    },
+  );
 }
 
 class _FailingRepository extends Fake implements TaskRepository {
@@ -321,5 +254,16 @@ class _BlockingRepository extends Fake implements TaskRepository {
     calls++;
     await ready.future;
     return delegate.createTask(task);
+  }
+}
+
+class _FailingLists extends Fake implements FolderRepository {
+  _FailingLists(this.delegate);
+  final FolderRepository delegate;
+  bool fail = true;
+  @override
+  Future<List<Folder>> getFolders() {
+    if (fail) throw StateError('injected load failure');
+    return delegate.getFolders();
   }
 }

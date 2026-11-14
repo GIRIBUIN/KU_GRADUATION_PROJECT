@@ -203,7 +203,7 @@ void main() {
             widgetUpdateService: _Widgets(
               tasks: tasks,
               settings: settings,
-              tags: tags,
+              lists: lists,
             ),
           ),
         ),
@@ -1691,6 +1691,52 @@ void main() {
       expect(await tasks.getTasks(), isEmpty);
       expect(find.byType(Drawer), findsOneWidget);
       expect(tester.takeException(), isNull);
+      await finish(tester);
+    },
+  );
+
+  testWidgets(
+    'Inbox stays first in Drawer despite list order and folder expansion',
+    (tester) async {
+      await (database.update(database.folders)
+            ..where((t) => t.id.equals(inboxListId)))
+          .write(const db.FoldersCompanion(sortOrder: Value(999)));
+      await lists.createFolder(
+        Folder(
+          id: 'root-list',
+          name: '개인 목록',
+          sortOrder: 0,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await pumpApp(tester);
+      await openDrawer(tester);
+      final inbox = find.byKey(const ValueKey('scope-list-kutodo:inbox'));
+      final group = find.byKey(const ValueKey('drawer-folder-school'));
+      final root = find.byKey(const ValueKey('scope-list-root-list'));
+      expect(inbox, findsOneWidget);
+      expect(
+        tester.getTopLeft(inbox).dy,
+        lessThan(tester.getTopLeft(group).dy),
+      );
+      expect(tester.getTopLeft(inbox).dy, lessThan(tester.getTopLeft(root).dy));
+      await tester.tap(group);
+      await tester.pumpAndSettle();
+      expect(
+        tester.getTopLeft(inbox).dy,
+        lessThan(
+          tester.getTopLeft(find.byKey(const ValueKey('scope-list-course'))).dy,
+        ),
+      );
+      await tester.tap(inbox);
+      await tester.pumpAndSettle();
+      await restart(tester);
+      await openDrawer(tester);
+      expect(
+        tester.getTopLeft(inbox).dy,
+        lessThan(tester.getTopLeft(group).dy),
+      );
       await finish(tester);
     },
   );
@@ -3463,11 +3509,11 @@ class _Widgets extends WidgetUpdateService {
   _Widgets({
     required DriftTaskRepository tasks,
     required DriftSettingsRepository settings,
-    required DriftTagRepository tags,
+    required DriftFolderRepository lists,
   }) : super(
          taskRepository: tasks,
          settingsRepository: settings,
-         tagRepository: tags,
+         folderRepository: lists,
        );
   @override
   Future<void> refresh() async {}

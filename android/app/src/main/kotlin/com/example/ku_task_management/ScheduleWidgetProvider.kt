@@ -77,6 +77,7 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
                 val accentIds = intArrayOf(R.id.task_accent_0, R.id.task_accent_1, R.id.task_accent_2)
                 val timeIds = intArrayOf(R.id.task_time_0, R.id.task_time_1, R.id.task_time_2)
                 val titleIds = intArrayOf(R.id.task_title_0, R.id.task_title_1, R.id.task_title_2)
+                val listIds = intArrayOf(R.id.task_list_0, R.id.task_list_1, R.id.task_list_2)
 
                 for (index in rowIds.indices) {
                     val task = pagePayload.tasks.getOrNull(index)
@@ -98,6 +99,8 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
 
                     setTextViewText(timeIds[index], task.timeLabel)
                     setTextViewText(titleIds[index], task.title)
+                    setTextViewText(listIds[index], task.listLabel)
+                    setViewVisibility(listIds[index], if (task.listLabel.isBlank()) View.GONE else View.VISIBLE)
                     setInt(accentIds[index], "setBackgroundColor", parseColor(task.accentColorHex))
 
                     setImageViewResource(checkboxIds[index], if (task.isCompleted)
@@ -126,6 +129,7 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
         val id: String,
         val title: String,
         val timeLabel: String,
+        val listLabel: String,
         val accentColorHex: String,
         val isCompleted: Boolean,
     )
@@ -161,6 +165,7 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
                             id = id,
                             title = title,
                             timeLabel = taskJson.optString("timeLabel", "--:--"),
+                            listLabel = taskJson.optString("listLabel", ""),
                             accentColorHex = taskJson.optString("accentColorHex", DEFAULT_ACCENT_COLOR),
                         ),
                     )

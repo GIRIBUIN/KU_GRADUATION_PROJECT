@@ -61,7 +61,11 @@ void main() {
     tagRepository: tags,
     folderRepository: lists,
     localNotificationService: _Notifications(),
-    widgetUpdateService: _Widgets(tasks: tasks, settings: settings, tags: tags),
+    widgetUpdateService: _Widgets(
+      tasks: tasks,
+      settings: settings,
+      lists: lists,
+    ),
   );
 
   Future<void> openManagement(WidgetTester tester) async {
@@ -368,11 +372,11 @@ class _Widgets extends WidgetUpdateService {
   _Widgets({
     required DriftTaskRepository tasks,
     required DriftSettingsRepository settings,
-    required DriftTagRepository tags,
+    required DriftFolderRepository lists,
   }) : super(
          taskRepository: tasks,
          settingsRepository: settings,
-         tagRepository: tags,
+         folderRepository: lists,
        );
   @override
   Future<void> refresh() async {}

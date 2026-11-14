@@ -8,6 +8,7 @@ Task personalTaskDraft({
   Iterable<String> tagIds = const [],
   TaskPriority? priority,
   String? memo,
+  String? listId,
 }) {
   final trimmed = title.trim();
   if (trimmed.isEmpty) throw ArgumentError('제목을 입력해주세요.');
@@ -20,7 +21,7 @@ Task personalTaskDraft({
     tagIds: tagIds.toList(growable: false),
     priority: priority,
     memo: memo == null || memo.trim().isEmpty ? null : memo.trim(),
-    folderIds: const [],
+    folderIds: listId == null ? const [] : [listId],
     createdAt: now,
     updatedAt: now,
   );

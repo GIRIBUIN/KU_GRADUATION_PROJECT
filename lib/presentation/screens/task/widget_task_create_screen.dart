@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../data/models/task_models.dart';
-import '../../../data/repositories/tag_repository.dart';
+import '../../../core/utils/list_defaults.dart';
+import '../../../data/repositories/folder_repository.dart';
 import '../../../data/services/personal_task_draft.dart';
 import '../../widgets/task_metadata_picker.dart';
 
@@ -10,14 +11,14 @@ class WidgetTaskCreateScreen extends StatefulWidget {
   const WidgetTaskCreateScreen({
     super.key,
     required this.saveTask,
-    required this.tagRepository,
+    required this.folderRepository,
     required this.onSaved,
     required this.onCancel,
     this.now = DateTime.now,
   });
 
   final Future<void> Function(Task task, List<Tag> newTags) saveTask;
-  final TagRepository tagRepository;
+  final FolderRepository folderRepository;
   final Future<void> Function() onSaved;
   final VoidCallback onCancel;
   final DateTime Function() now;
@@ -29,11 +30,9 @@ class WidgetTaskCreateScreen extends StatefulWidget {
 class _WidgetTaskCreateScreenState extends State<WidgetTaskCreateScreen> {
   final _formKey = GlobalKey<FormState>();
   final _title = TextEditingController();
-  final _selectedIds = <String>{};
-  // 새 태그는 일정 저장 전까지 메모리에만 보관하여 취소 시 DB 변경을 막는다.
-  final _draftTags = <Tag>[];
+  String _selectedListId = inboxListId;
   late DateTime _due;
-  List<Tag> _tags = const [];
+  List<Folder> _lists = const [];
   bool _loading = true;
   bool _saving = false;
   String? _error;
@@ -43,7 +42,7 @@ class _WidgetTaskCreateScreenState extends State<WidgetTaskCreateScreen> {
     super.initState();
     final now = widget.now();
     _due = DateTime(now.year, now.month, now.day, now.hour, now.minute);
-    _loadTags();
+    _loadLists();
   }
 
   @override
@@ -52,17 +51,22 @@ class _WidgetTaskCreateScreenState extends State<WidgetTaskCreateScreen> {
     super.dispose();
   }
 
-  Future<void> _loadTags() async {
+  Future<void> _loadLists() async {
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final tags = await widget.tagRepository.getTags();
+      final lists = await widget.folderRepository.getFolders();
       if (mounted) {
         setState(() {
-          _tags = [...tags, ..._draftTags]
-            ..sort((a, b) => a.name.compareTo(b.name));
+          _lists = lists.where((list) => list.archivedAt == null).toList()
+            ..sort((a, b) {
+              if (a.id == b.id) return 0;
+              if (a.id == inboxListId) return -1;
+              if (b.id == inboxListId) return 1;
+              return a.sortOrder.compareTo(b.sortOrder);
+            });
           _loading = false;
         });
       }
@@ -70,39 +74,10 @@ class _WidgetTaskCreateScreenState extends State<WidgetTaskCreateScreen> {
       if (mounted) {
         setState(() {
           _loading = false;
-          _error = '태그를 불러오지 못했습니다. 다시 시도해주세요.';
+          _error = '목록을 불러오지 못했습니다. 다시 시도해주세요.';
         });
       }
     }
-  }
-
-  // 앱의 태그 입력 창을 재사용하고, 동일한 이름이 있으면 기존 태그를 선택한다.
-  Future<void> _createTag() async {
-    final draft = await showTagCreateDialog(context);
-    if (draft == null || !mounted) return;
-    final existing = _tags
-        .where(
-          (tag) =>
-              tag.name.trim().toLowerCase() == draft.name.trim().toLowerCase(),
-        )
-        .firstOrNull;
-    if (existing != null) {
-      setState(() => _selectedIds.add(existing.id));
-      return;
-    }
-    final now = widget.now();
-    final tag = Tag(
-      id: 'tag_${now.microsecondsSinceEpoch}_${_draftTags.length}',
-      name: draft.name.trim(),
-      color: draft.color,
-      createdAt: now,
-      updatedAt: now,
-    );
-    setState(() {
-      _draftTags.add(tag);
-      _tags = [..._tags, tag]..sort((a, b) => a.name.compareTo(b.name));
-      _selectedIds.add(tag.id);
-    });
   }
 
   // 날짜만 바꾸고 사용자가 선택한 마감 시간은 유지한다.
@@ -147,7 +122,7 @@ class _WidgetTaskCreateScreenState extends State<WidgetTaskCreateScreen> {
     }
   }
 
-  // 제목 검증 후 중복 저장을 차단하고, 선택된 새 태그만 일정과 함께 저장한다.
+  // 기존 저장 경로에 선택한 목록을 전달하고 중복 저장을 차단한다.
   Future<void> _save() async {
     if (_saving || !_formKey.currentState!.validate()) return;
     setState(() {
@@ -160,11 +135,9 @@ class _WidgetTaskCreateScreenState extends State<WidgetTaskCreateScreen> {
           title: _title.text,
           now: widget.now(),
           dueDate: _due,
-          tagIds: _selectedIds,
+          listId: _selectedListId,
         ),
-        _draftTags
-            .where((tag) => _selectedIds.contains(tag.id))
-            .toList(growable: false),
+        const [],
       );
     } catch (_) {
       // 저장 실패 시 입력과 선택을 유지하고 재시도를 허용한다.
@@ -247,14 +220,11 @@ class _WidgetTaskCreateScreenState extends State<WidgetTaskCreateScreen> {
                           else
                             AbsorbPointer(
                               absorbing: _saving,
-                              child: TagPickerSection(
-                                tags: _tags,
-                                onAdd: _createTag,
-                                selectedIds: _selectedIds,
-                                onToggle: (tag) => setState(() {
-                                  if (!_selectedIds.add(tag.id)) {
-                                    _selectedIds.remove(tag.id);
-                                  }
+                              child: FolderPickerSection(
+                                folders: _lists,
+                                selectedId: _selectedListId,
+                                onSelect: (list) => setState(() {
+                                  _selectedListId = list?.id ?? inboxListId;
                                 }),
                               ),
                             ),
@@ -266,10 +236,10 @@ class _WidgetTaskCreateScreenState extends State<WidgetTaskCreateScreen> {
                                 color: Theme.of(context).colorScheme.error,
                               ),
                             ),
-                            if (_tags.isEmpty)
+                            if (_lists.isEmpty)
                               TextButton(
-                                onPressed: _saving ? null : _loadTags,
-                                child: const Text('태그 다시 불러오기'),
+                                onPressed: _saving ? null : _loadLists,
+                                child: const Text('목록 다시 불러오기'),
                               ),
                           ],
                           const SizedBox(height: 20),
@@ -282,7 +252,9 @@ class _WidgetTaskCreateScreenState extends State<WidgetTaskCreateScreen> {
                               ),
                               const SizedBox(width: 8),
                               FilledButton(
-                                onPressed: _saving || _loading ? null : _save,
+                                onPressed: _saving || _loading || _lists.isEmpty
+                                    ? null
+                                    : _save,
                                 child: Text(_saving ? '저장 중…' : '저장'),
                               ),
                             ],

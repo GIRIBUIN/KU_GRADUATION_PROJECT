@@ -7,7 +7,7 @@ import '../models/task_models.dart';
 import '../models/today_widget_data.dart';
 import '../models/weekly_widget_data.dart';
 import '../repositories/settings_repository.dart';
-import '../repositories/tag_repository.dart';
+import '../repositories/folder_repository.dart';
 import '../repositories/task_repository.dart';
 import 'widget_format.dart';
 import 'widget_today_selection.dart';
@@ -18,10 +18,10 @@ class WidgetUpdateService {
   WidgetUpdateService({
     required TaskRepository taskRepository,
     required SettingsRepository settingsRepository,
-    required TagRepository tagRepository,
+    required FolderRepository folderRepository,
     DateTime Function()? now,
   }) : _taskRepository = taskRepository,
-       _tagRepository = tagRepository,
+       _folderRepository = folderRepository,
        _now = now ?? DateTime.now;
 
   static const todayAndroidProviderName = 'ScheduleWidgetProvider';
@@ -32,7 +32,7 @@ class WidgetUpdateService {
   static const widgetDatabasePathKey = 'widget_db_path';
 
   final TaskRepository _taskRepository;
-  final TagRepository _tagRepository;
+  final FolderRepository _folderRepository;
   final DateTime Function() _now;
 
   /// 두 위젯에서 쌓인 완료/해제 요청을 Drift에 반영한다.
@@ -112,8 +112,8 @@ class WidgetUpdateService {
   Future<TodayWidgetData> buildTodayWidgetData({DateTime? now}) async {
     final current = now ?? _now();
     final tasks = await _taskRepository.getTasks(includeArchived: true);
-    final tagsById = {
-      for (final tag in await _tagRepository.getTags()) tag.id: tag,
+    final listsById = {
+      for (final list in await _folderRepository.getFolders()) list.id: list,
     };
     final selectedTasks = selectWidgetTasks(tasks, now: current);
 
@@ -128,7 +128,8 @@ class WidgetUpdateService {
               createdTimestamp: task.createdAt.millisecondsSinceEpoch,
               title: task.title,
               timeLabel: formatWidgetTime(task.dueDate),
-              accentColorHex: accentColorForTask(task, tagsById: tagsById),
+              listLabel: listLabelForTask(task, listsById: listsById),
+              accentColorHex: listColorHexForTask(task, listsById: listsById),
               isCompleted: isTaskCompletedForWidget(task),
             ),
           )
@@ -143,8 +144,8 @@ class WidgetUpdateService {
     final current = now ?? _now();
     final week = weekWindowFor(current);
     final tasks = await _taskRepository.getTasks(includeArchived: true);
-    final tagsById = {
-      for (final tag in await _tagRepository.getTags()) tag.id: tag,
+    final listsById = {
+      for (final list in await _folderRepository.getFolders()) list.id: list,
     };
     final weekTasks = tasksForWeek(tasks, week);
     final selectedTasks = selectWidgetWeekTasks(weekTasks);
@@ -156,7 +157,8 @@ class WidgetUpdateService {
       totalCount: progress.totalCount,
       tasks: selectedTasks
           .map(
-            (task) => _toWeeklySnapshot(task, now: current, tagsById: tagsById),
+            (task) =>
+                _toWeeklySnapshot(task, now: current, listsById: listsById),
           )
           .toList(growable: false),
       updatedAt: current,
@@ -166,7 +168,7 @@ class WidgetUpdateService {
   WeeklyWidgetTaskSnapshot _toWeeklySnapshot(
     Task task, {
     required DateTime now,
-    required Map<String, Tag> tagsById,
+    required Map<String, Folder> listsById,
   }) {
     final dueDate = task.dueDate!;
     return WeeklyWidgetTaskSnapshot(
@@ -175,12 +177,9 @@ class WidgetUpdateService {
       sortOrder: task.sortOrder,
       createdTimestamp: task.createdAt.millisecondsSinceEpoch,
       title: task.title,
-      categoryLabel: categoryLabelForTask(task, tagsById: tagsById),
-      categoryBackgroundHex: categoryBackgroundHexForTask(
-        task,
-        tagsById: tagsById,
-      ),
-      categoryTextHex: categoryTextHexForTask(task, tagsById: tagsById),
+      categoryLabel: listLabelForTask(task, listsById: listsById),
+      categoryBackgroundHex: listColorHexForTask(task, listsById: listsById),
+      categoryTextHex: listTextHexForTask(task, listsById: listsById),
       dueLabel: formatWidgetDueLabel(dueDate, now: now),
       dueColorHex: dueColorHexForDate(dueDate, now: now),
       isCompleted: isTaskCompletedForWidget(task),

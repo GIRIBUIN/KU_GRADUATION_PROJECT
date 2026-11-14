@@ -1,6 +1,6 @@
 import '../local/app_database.dart';
 import '../repositories/drift_settings_repository.dart';
-import '../repositories/drift_tag_repository.dart';
+import '../repositories/drift_folder_repository.dart';
 import '../repositories/drift_task_repository.dart';
 import 'widget_update_service.dart';
 
@@ -14,7 +14,7 @@ Future<void> refreshWidgetsInBackground({
     await WidgetUpdateService(
       taskRepository: DriftTaskRepository(database: database),
       settingsRepository: DriftSettingsRepository(database: database),
-      tagRepository: DriftTagRepository(database: database),
+      folderRepository: DriftFolderRepository(database: database),
       now: now,
     ).refresh();
   } finally {

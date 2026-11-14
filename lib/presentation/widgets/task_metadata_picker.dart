@@ -85,13 +85,13 @@ class FolderPickerSection extends StatelessWidget {
     required this.folders,
     required this.selectedId,
     required this.onSelect,
-    required this.onAdd,
+    this.onAdd,
   });
 
   final List<Folder> folders;
   final String? selectedId;
   final ValueChanged<Folder?> onSelect;
-  final VoidCallback onAdd;
+  final VoidCallback? onAdd;
 
   @override
   Widget build(BuildContext context) {

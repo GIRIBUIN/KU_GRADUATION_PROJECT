@@ -608,6 +608,19 @@ class _MobileHomePageState extends State<MobileHomePage> {
                         ],
                       ),
                     ),
+                    for (final list in _drawerLists.where(
+                      (list) => list.id == inboxListId,
+                    ))
+                      _drawerEntry(
+                        list.name,
+                        Icons.square_rounded,
+                        _ScopeKind.list,
+                        list.id,
+                        colorFromHex(
+                          list.color,
+                          fallback: AppTheme.successGreen,
+                        ),
+                      ),
                     if (widget.groups.isEmpty)
                       const Padding(
                         padding: EdgeInsets.symmetric(
@@ -687,7 +700,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
                         ),
                       ),
                     for (final list in _drawerLists.where(
-                      (l) => l.groupId == null,
+                      (l) => l.groupId == null && l.id != inboxListId,
                     ))
                       _drawerEntry(
                         list.name,

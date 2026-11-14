@@ -1,0 +1,771 @@
+{
+  "scope": "Widget list labels/colors and list quick-create; pinned Inbox in Drawer",
+  "flutter_unique_latest_results": {
+    "test/data/services/widget_update_service_test.dart": {
+      "passed": 18,
+      "failed": 0
+    },
+    "test/data/services/widget_list_snapshot_test.dart": {
+      "passed": 2,
+      "failed": 0
+    },
+    "test/data/services/widget_registration_refresh_test.dart": {
+      "passed": 10,
+      "failed": 0
+    },
+    "test/data/services/widget_background_refresh_test.dart": {
+      "passed": 2,
+      "failed": 0
+    },
+    "test/presentation/screens/widget_task_create_screen_test.dart": {
+      "passed": 8,
+      "failed": 0
+    },
+    "test/presentation/screens/mobile_home_test.dart": {
+      "passed": 58,
+      "failed": 0
+    },
+    "test/presentation/screens/list_groups_test.dart": {
+      "passed": 6,
+      "failed": 0
+    },
+    "test/presentation/screens/main_shell_home_layout_test.dart": {
+      "passed": 6,
+      "failed": 0
+    }
+  },
+  "flutter_passed": 110,
+  "flutter_failed": 0,
+  "flutter_capture_note": "Initial run had 3 quick-create failures. Fixed FilterChip finders and disabled saving after list-load failure; reran all 8 quick-create tests successfully. Other unchanged suites retain their initial passing results. Counts deduplicate by suite path and test name.",
+  "flutter_latest_tests": [
+    {
+      "path": "test/data/services/widget_update_service_test.dart",
+      "name": "selectWidgetTasks shows only today tasks without a query limit sorted by due time",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/data/services/widget_update_service_test.dart",
+      "name": "selectWidgetTasks returns empty list when there are no today tasks",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/data/services/widget_update_service_test.dart",
+      "name": "widget queries retain all 0 tasks including completed and past times",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/data/services/widget_update_service_test.dart",
+      "name": "widget queries retain all 1 tasks including completed and past times",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/data/services/widget_update_service_test.dart",
+      "name": "widget queries retain all 3 tasks including completed and past times",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/data/services/widget_update_service_test.dart",
+      "name": "widget queries retain all 4 tasks including completed and past times",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/data/services/widget_update_service_test.dart",
+      "name": "widget queries retain all 5 tasks including completed and past times",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/data/services/widget_update_service_test.dart",
+      "name": "widget queries retain all 8 tasks including completed and past times",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/data/services/widget_update_service_test.dart",
+      "name": "widget queries retain all 10 tasks including completed and past times",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/data/services/widget_update_service_test.dart",
+      "name": "widget queries retain all 12 tasks including completed and past times",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/data/services/widget_update_service_test.dart",
+      "name": "weekWindowFor returns Monday through Sunday for the current week",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/data/services/widget_update_service_test.dart",
+      "name": "selectWidgetWeekTasks shows incomplete tasks first then due date within each group",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/data/services/widget_update_service_test.dart",
+      "name": "selectWidgetWeekTasks prefers incomplete tasks when due dates match",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/data/services/widget_update_service_test.dart",
+      "name": "weekProgressCounts counts all week tasks, not just displayed five",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/data/services/widget_update_service_test.dart",
+      "name": "midnight and Sunday to Monday change both query windows",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/data/services/widget_update_service_test.dart",
+      "name": "all completed tasks stay visible and have full progress",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/data/services/widget_update_service_test.dart",
+      "name": "widget format helpers formats today and weekly labels",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/data/services/widget_update_service_test.dart",
+      "name": "widget format helpers uses list color independently from task tags",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/data/services/widget_list_snapshot_test.dart",
+      "name": "both widgets follow list edits and moves, independently from tags",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/data/services/widget_list_snapshot_test.dart",
+      "name": "Inbox and unavailable lists never fall back to tag labels",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/data/services/widget_registration_refresh_test.dart",
+      "name": "pending checkbox completion and undo update DB and both snapshots",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/data/services/widget_registration_refresh_test.dart",
+      "name": "v7 widget registration and pending changes preserve source and list metadata",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/data/services/widget_registration_refresh_test.dart",
+      "name": "malformed pending queue broken json does not prevent refresh",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/data/services/widget_registration_refresh_test.dart",
+      "name": "malformed pending queue {} does not prevent refresh",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/data/services/widget_registration_refresh_test.dart",
+      "name": "malformed pending queue [null, 12, \"\"] does not prevent refresh",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/data/services/widget_registration_refresh_test.dart",
+      "name": "registration after 3 tasks refreshes both full lists without resetting pages",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/data/services/widget_registration_refresh_test.dart",
+      "name": "registration after 5 tasks refreshes both full lists without resetting pages",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/data/services/widget_registration_refresh_test.dart",
+      "name": "registration after 8 tasks refreshes both full lists without resetting pages",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/data/services/widget_registration_refresh_test.dart",
+      "name": "out-of-week registration stays in DB and out of both widget lists",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/data/services/widget_registration_refresh_test.dart",
+      "name": "weekly-only registration does not appear in today widget",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/data/services/widget_background_refresh_test.dart",
+      "name": "headless refresh rebuilds both DB snapshots for 2026-11-15 23:59:00.000",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/data/services/widget_background_refresh_test.dart",
+      "name": "headless refresh rebuilds both DB snapshots for 2026-11-16 00:00:00.000",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/widget_task_create_screen_test.dart",
+      "name": "selects one list without tag or list creation controls",
+      "result": "success",
+      "report": "widget-lists-quick-create-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/widget_task_create_screen_test.dart",
+      "name": "list loading failure can retry without losing title",
+      "result": "success",
+      "report": "widget-lists-quick-create-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/widget_task_create_screen_test.dart",
+      "name": "rapid save taps create exactly one task",
+      "result": "success",
+      "report": "widget-lists-quick-create-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/widget_task_create_screen_test.dart",
+      "name": "rejects blank title without saving",
+      "result": "success",
+      "report": "widget-lists-quick-create-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/widget_task_create_screen_test.dart",
+      "name": "defaults to Inbox and preserves current minute and optional fields",
+      "result": "success",
+      "report": "widget-lists-quick-create-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/widget_task_create_screen_test.dart",
+      "name": "date and time pickers update persisted deadline",
+      "result": "success",
+      "report": "widget-lists-quick-create-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/widget_task_create_screen_test.dart",
+      "name": "cancel and back do not persist draft",
+      "result": "success",
+      "report": "widget-lists-quick-create-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/widget_task_create_screen_test.dart",
+      "name": "DB failure preserves title and selected list and permits retry",
+      "result": "success",
+      "report": "widget-lists-quick-create-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "home defaults to today with four plain sections and empty states",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "Drawer separates saved period and all dates with Inbox under Lists",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "relative period choices persist without saving unsaved view filters",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "failed period persistence is reported and can be retried",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "Drawer list reordering persists and fixed Inbox cannot be dragged",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "Drawer tag drag saves order, preserves settings and allows retry on failure",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "trash opens with an independent all-date period and resets on reentry and tab changes",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "excluded eCampus navigation is below trash and reuses allow-import handling",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "excluded home scope ignores home dates and filters and keeps sorting temporary",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "excluded allow-import failure retains the source and allows retry",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "home task rows fully wrap titles and metadata at text scale 1.0",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "home task rows fully wrap titles and metadata at text scale 1.5",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "home edge and interior section swipes open Drawer and keep the current scope",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "wide Drawer gesture preserves vertical scrolling, row taps and checkbox actions",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "swipes complete, reopen, delete, restore and confirm permanent deletion through existing handlers",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "settings context menu toggles notification and saves sliders on release without a page",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "automatic settings errors keep prior values and retry from their controls",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "swipe settings immediately save four mappings and survive restart without action buttons",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "failed swipe retains the task row and can be retried",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "failed automatic swipe save keeps the old choice and retries without buttons",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "selected Drawer row does not paint behind the fixed settings footer",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "folders only expand lists; list scopes compose with periods and retain selection",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "Drawer headings create metadata through existing management handlers",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "Inbox stays first in Drawer despite list order and folder expansion",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "separate visibility menus contain names and eyes only, persist changes and omit Inbox",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "visibility save failure keeps the eye unchanged and retries without conversion",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "folder long press reuses edit and preselects parent for a new list",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "list long press edits that list and quick adds into it without triggering folder actions",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "tag long press edits that tag and preserves it through detailed create",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "all-date option reveals future tasks and navigation names follow the selected period",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "custom period includes both date boundaries and supports a same-day range: 12",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "custom period includes both date boundaries and supports a same-day range: 14",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "canceling custom period selection retains the previous period",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "month and single custom date persist across restart",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "sort and filters apply immediately; unsaved changes disappear on restart",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "saved view survives restart; reset is immediate and only saved on request",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "period changes affect date and completion sections but keep urgent and overdue anchored to now",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "completed overdue and urgent stay scoped; checkbox and details use existing flows",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "detail sheet edits fields with keyboard and saves through existing reminder flow",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "detail sheet prevents accidental dismissal and stays open on failed atomic save",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "quick add shares create persistence and supports title only or detailed handoff",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "Drawer settings and calendar remain available at large text size",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "calendar uses the home task row and pins its adjustment header",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "trash row checkboxes start selection without a separate selection icon",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "archive checkbox header stays fixed and row taps only select: excluded=false textScale=1.0",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "archive checkbox header stays fixed and row taps only select: excluded=false textScale=1.5",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "archive checkbox header stays fixed and row taps only select: excluded=true textScale=1.0",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "archive checkbox header stays fixed and row taps only select: excluded=true textScale=1.5",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "excluded checkbox bulk restore preserves unselected sources and retries failures",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "trash filter choices use only deleted tasks and filter retained completion state",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "trash selection restores only selected tasks and keeps completion and list metadata",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "trash selected delete confirms once, cancels safely and deletes only checked rows",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "trash view is temporary and independent of saved home sorting and filters",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "trash select all only targets visible rows and clears selection when filters or dates change",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "trash bulk failure retains only failed selection and supports retry: restore=true",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "trash bulk failure retains only failed selection and supports retry: restore=false",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "completed and trash scopes use existing completion and restore policies",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/mobile_home_test.dart",
+      "name": "import button opens eCampus import without the old step dashboard",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/list_groups_test.dart",
+      "name": "folder tap only expands lists; list tap opens its tasks",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/list_groups_test.dart",
+      "name": "long press moves a list into a folder and back out without moving its tasks",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/list_groups_test.dart",
+      "name": "Inbox uses the same colored square but remains a fixed list",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/list_groups_test.dart",
+      "name": "new task defaults to Inbox and no unassigned choice is exposed",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/list_groups_test.dart",
+      "name": "management creates a School folder and puts a course list under it",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/list_groups_test.dart",
+      "name": "list editing has no archive action and hiding preserves completed task membership",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/main_shell_home_layout_test.dart",
+      "name": "applies weekly widget completion before reloading the calendar on resume",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/main_shell_home_layout_test.dart",
+      "name": "applies weekly widget uncompletion before reloading the calendar on resume",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/main_shell_home_layout_test.dart",
+      "name": "settings changes preserve saved view and existing home preferences",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/main_shell_home_layout_test.dart",
+      "name": "creates and edits calendar tasks in the shared app repository",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/main_shell_home_layout_test.dart",
+      "name": "a prefilled calendar date alone can be cancelled without a draft prompt",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    },
+    {
+      "path": "test/presentation/screens/main_shell_home_layout_test.dart",
+      "name": "new home sections remain available with legacy layouts; calendar has its own tab",
+      "result": "success",
+      "report": "widget-lists-flutter-tests-20261115.jsonl"
+    }
+  ],
+  "android": [
+    {
+      "suite": "WidgetIntegrationTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "report": "widget-lists-WidgetIntegrationTest-20261115.xml"
+    },
+    {
+      "suite": "WidgetPageTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "report": "widget-lists-WidgetPageTest-20261115.xml"
+    }
+  ],
+  "analyze": {
+    "command": "C:\\flutter\\bin\\flutter.bat analyze --no-pub",
+    "exit_code": 0,
+    "output": "No issues found! (ran in 2.2s)"
+  },
+  "schema_or_repository_changes": false,
+  "commit_or_push_performed": false,
+  "runtime_checks_pending": [
+    "launcher widget layout on Galaxy S24",
+    "widget quick create selecting a list",
+    "Drawer Inbox remains first after grouping/reorder/restart"
+  ],
+  "base_commit": "53efcd0ce01944afb9a17c389f24dbb9d23712ba",
+  "recorded_at": "2026-11-15T01:03:54.134196+09:00",
+  "device": {
+    "model": "Samsung Galaxy S24 (SM-S921N)",
+    "android_version": 16,
+    "install": "adb install -r: Success",
+    "data_clear_or_uninstall": false,
+    "activity_launch": "MainActivity Status: ok; Complete",
+    "apk_sha256": "467298fd8ccb482c661b9c2f538c261c4a35e32e1200cbb963f16cbe1e5988bc",
+    "functional_ui_verification": "Not performed; user testing pending"
+  },
+  "notes": [
+    "List labels use current Task.listId and FolderRepository; existing tag data is preserved.",
+    "Weekly native payload retains category* field names for compatibility, now populated from lists. Today adds optional listLabel.",
+    "Inbox is rendered before folder groups and ungrouped lists, independent of stored sort order.",
+    "Native RemoteViews test revealed pre-existing unsupported setAlpha on page buttons; changed to supported text color alpha while retaining enabled state and navigation.",
+    "Android 11 tests use Robolectric SDK28; S24 installation/launch does not validate launcher interactions."
+  ],
+  "source_sha256": {
+    "android/app/src/main/kotlin/com/example/ku_task_management/ScheduleWidgetProvider.kt": "ee80c4979514e5b3ecf56e672f83bbf4c2d00da7be8621cdeb340f6577812d0c",
+    "android/app/src/main/kotlin/com/example/ku_task_management/WidgetPagination.kt": "7c0c5b2b526026f6ed853f38e04eed5ca12eb7ee0599c280407af4387f63ffe7",
+    "android/app/src/main/res/layout/schedule_widget.xml": "5e3b49f7bfabf57514e8682a53482250da9375bbd9cad0d8e4617f212d72f54e",
+    "android/app/src/test/kotlin/com/example/ku_task_management/WidgetIntegrationTest.kt": "3dafb01e4805eac1683f5178333eff0fc9842c5bfa98e1ee17c0eb1473924ad9",
+    "lib/app.dart": "13d21e689252d76fb6ae5667734dadecc21cad4df0a4051e234a3dbe00f84c69",
+    "lib/data/models/today_widget_data.dart": "bbd62e15efb6c8dfcf0c423eb5e6d64794f293886fbb7bc914e1a327b5731108",
+    "lib/data/services/personal_task_draft.dart": "7f05b33ba126f49767104483c3d268f3517d0adc162596a0041d69eb7d6b7a05",
+    "lib/data/services/widget_background_refresh.dart": "90e4cbf3cdf9f050c48f3c9cd2558cf5b814f67120b31366ff7c204905593b4d",
+    "lib/data/services/widget_format.dart": "4b971fe1d618a0f2887a7203152511e53872ea6619e376bb251336b04f1cfbfc",
+    "lib/data/services/widget_update_service.dart": "52caf2795e42004d14f653fda03f5a1f6c147eb63bd37bb44c4935ba7370c670",
+    "lib/presentation/screens/main/mobile_home_page.dart": "960dcbad2bddfe43051c60220e75ea2a7faa35f3bb0d7ba5271a4017efff3fee",
+    "lib/presentation/screens/task/widget_task_create_screen.dart": "fe567afb20f7f45e4bc086fd05021e69e11967e7f0fe5484387247d68da1251a",
+    "lib/presentation/widgets/task_metadata_picker.dart": "326985b8a2e872a101ede3e08331988a339a3ea0518c27a91843cd8b7c729afd",
+    "lib/widget_quick_create_app.dart": "c4faea14eeb39fe02062973d33612b26a321d303bbe5135477eb91b1a92cf3ca",
+    "test/data/services/widget_registration_refresh_test.dart": "99437a63e092286d8df530ac7afe183aedc31f3eaaa09a2dcb37fda9368697b1",
+    "test/data/services/widget_update_service_test.dart": "491c6beea7a6aece7986f8ad6cb75be79f931084a751afab58a89c3511ba1090",
+    "test/presentation/screens/list_groups_test.dart": "ce3606d92f37404438cd84b1e66bb2ddda0c870fc280f6857322f5a45cfce81a",
+    "test/presentation/screens/main_shell_home_layout_test.dart": "2ef308c85eb1e0d8ab691315a3a04ba5e8d2591730e562835437f7b181a696d8",
+    "test/presentation/screens/mobile_home_test.dart": "4307b8de2f1009931a2eb6cb54b2413464236744e72ededd8b60630d4c6d810f",
+    "test/presentation/screens/widget_task_create_screen_test.dart": "d1eb4a72af1d317e60df9f4fb9a43cce7f2b33e8b0aabf7b1179e121bf3a127e",
+    "test/data/services/widget_list_snapshot_test.dart": "4593b211206f6122729b7952dbccdcc951498da86e3e6b512ef879749d0c263d"
+  }
+}

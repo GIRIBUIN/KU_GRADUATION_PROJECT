@@ -1,0 +1,61 @@
+{
+  "recorded_at": "2026-11-15T01:12:37.072330+09:00",
+  "base_commit": "53efcd0ce01944afb9a17c389f24dbb9d23712ba",
+  "scope": [
+    "shared Task row only: priority background and separate date/time",
+    "home, calendar, completed, trash and excluded use the same renderer"
+  ],
+  "priority_colors": {
+    "high": "theme dangerRed at alpha .08",
+    "medium": "theme warningOrange at alpha .08",
+    "low": "theme primaryBlue at alpha .08",
+    "none": "transparent"
+  },
+  "preserved": [
+    "stored priority values and repository contracts",
+    "source/list/tag metadata and wrapped title",
+    "completion and row/checkbox actions",
+    "overdue text color and no-deadline label",
+    "screen reader priority label"
+  ],
+  "tests": {
+    "command": "C:\\flutter\\bin\\flutter.bat test --no-pub --concurrency=1 --file-reporter=json:docs/evidence/home-ui/task-row-priority-tests-20261115.jsonl test/presentation/widgets/task_list_row_test.dart test/presentation/widgets/home_calendar_section_test.dart test/presentation/screens/mobile_home_test.dart",
+    "passed": 68,
+    "failed": 0,
+    "done": {
+      "success": true,
+      "type": "done",
+      "time": 27301
+    },
+    "report": "task-row-priority-tests-20261115.jsonl",
+    "coverage": [
+      "360px at 1/1.5/2x text",
+      "existing calendar 320px at 2x text",
+      "distinct priority backgrounds and no visible priority words",
+      "split deadline geometry for today",
+      "row and checkbox callbacks",
+      "existing home/calendar/trash/excluded flows"
+    ]
+  },
+  "analyze": {
+    "exit_code": 0,
+    "output": "No issues found! (ran in 1.9s)"
+  },
+  "apk": {
+    "sha256": "720287f31bd95286549062ebdea1b25e8bcce087e5de0140790611a6197501b0",
+    "build_exit_code": 0,
+    "device": "Galaxy S24 SM-S921N",
+    "install": "adb install -r: Success",
+    "launch": "MainActivity Status: ok; Complete",
+    "uninstall_or_data_clear": false
+  },
+  "source_sha256": {
+    "lib/presentation/widgets/task_list_row.dart": "1438dada79b1b8a5a8d747d230e41786ff825b38e27d03c871590f8d1ced16f4",
+    "test/presentation/widgets/task_list_row_test.dart": "0eec86ca5868f983239da84572b88b3b4c86b6b09c5f504c0ea2163cd7b57756"
+  },
+  "limitations": [
+    "Real device visual appearance and manual interactions await user confirmation",
+    "Native launcher widget layout is not changed by this app row update"
+  ],
+  "commit_or_push_performed": false
+}

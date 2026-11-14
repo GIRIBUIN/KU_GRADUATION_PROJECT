@@ -1,0 +1,44 @@
+{
+  "recorded_at": "2026-11-15T01:20:55.721532+09:00",
+  "scope": "Shared task row display only: month/day becomes D-N, D+N, or D-day above unchanged HH:mm",
+  "day_comparison": "Local calendar-date components compared as UTC date ordinals; no dueDate storage change",
+  "tests": [
+    {
+      "report": "task-row-dday-tests-20261115.jsonl",
+      "passed": 5,
+      "done": {
+        "success": true,
+        "type": "done",
+        "time": 2284
+      }
+    },
+    {
+      "report": "task-row-dday-scopes-tests-20261115.jsonl",
+      "passed": 1,
+      "done": {
+        "success": true,
+        "type": "done",
+        "time": 4698
+      }
+    }
+  ],
+  "analyze": {
+    "exit_code": 0,
+    "output": "No issues found! (ran in 1.8s)"
+  },
+  "preserved": [
+    "DB values and repositories",
+    "time text and due-date logic",
+    "priority backgrounds and full-width row",
+    "today remains D-day even after its due time; existing overdue coloring still applies"
+  ],
+  "apk": {
+    "sha256": "6d69d9aaacceebbb014d5797cfbaef99d423ef2a39472287b6faed2e6bdd9833",
+    "build_exit_code": 0,
+    "device": "Galaxy S24 SM-S921N",
+    "install": "adb install -r: Success",
+    "launch": "MainActivity Status: ok; Complete"
+  },
+  "commit_or_push_performed": false,
+  "source_sha256": "7a44f9bcca356aee1c8ffb7c39c447ac6e96298631655fe9b2f8e41d10930fe0"
+}

@@ -1,0 +1,42 @@
+{
+  "recorded_at": "2026-11-15T01:16:26.840216+09:00",
+  "change": "Full-width priority backgrounds; move the existing 16px horizontal inset from scroll containers into the shared task row",
+  "protected": [
+    "text, checkbox and deadline horizontal positions",
+    "section heading and empty-state insets",
+    "existing task actions and DB logic"
+  ],
+  "geometry_test": "360px viewport: row bounds x=0..360 in home, completed, trash, excluded and calendar; deadline right edge x=344",
+  "flutter": {
+    "passed": 69,
+    "failed": 0,
+    "done": {
+      "success": true,
+      "type": "done",
+      "time": 30220
+    },
+    "report": "task-row-full-width-tests-20261115.jsonl"
+  },
+  "analyze": {
+    "exit_code": 0,
+    "output": "No issues found! (ran in 2.0s)"
+  },
+  "apk": {
+    "build_exit_code": 0,
+    "sha256": "53b6f2382a2254a75fce68dc9a663a6866dea0e2fc6f5831e7e046e0245e3472",
+    "device": "Galaxy S24 SM-S921N",
+    "install": "adb install -r: Success",
+    "launch": "MainActivity Status: ok; Complete",
+    "data_clear_or_uninstall": false
+  },
+  "commit_or_push_performed": false,
+  "source_sha256": {
+    "lib/presentation/widgets/task_list_row.dart": "e3bc752b3be80fe71f783b6484690d549ffdda8e643295752924afbd461112f9",
+    "lib/presentation/screens/main/mobile_home_page.dart": "23cea077a636cb6bb3430406d7d0c20cfca50f25f670fc6ef363ad31847b8bb1",
+    "lib/presentation/widgets/home_calendar_section.dart": "ef5b53a1348c2cdbc7cd93859d325b22403268c2c61a95f062350a17f2412430",
+    "test/presentation/screens/mobile_home_test.dart": "f07cd4e31558bfe986f8432007277b69a0a1946ee525ef756fe355d103f0af3c"
+  },
+  "limitations": [
+    "Real device appearance awaits user visual confirmation"
+  ]
+}

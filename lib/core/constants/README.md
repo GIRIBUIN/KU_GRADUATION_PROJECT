@@ -1,7 +1,9 @@
-# constants
+# 초기 상수 경로 자리표시자
 
-앱 전체에서 공통으로 사용하는 상수 정의.
+현재 기준: 2026-11-15.
 
-## 예정 파일
-- `api_constants.dart` : eCampus 베이스 URL, 엔드포인트 경로
-- `app_constants.dart` : 태그 종류, 정렬 기준 등 앱 공통 상수
+api_constants.dart/app_constants.dart는 예정 파일명이었고 현재 이 폴더에 구현되어 있지 않다.
+
+현재 eCampus baseUrl/endpoint는 해당 HTTP service 구현을, 테마는 ../theme/app_theme.dart, 기본 목록 ID는 ../utils/list_defaults.dart를 확인한다.
+
+전체 구조·정책·실행 방법은 [프로젝트 문서](../../../docs/README.md)를 본다.

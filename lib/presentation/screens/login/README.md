@@ -1,33 +1,9 @@
-# login
+# eCampus WebView 로그인
 
-WebView 기반 eCampus 로그인 화면.
-크리덴셜을 앱에서 직접 수집하지 않고 WebView로 처리함.
+현재 기준: 2026-11-15.
 
-이 화면은 Android WebView 기준으로 검증한다.
-Chrome web 실행은 쿠키, 리다이렉트, WebView API 동작이 달라 수동 검증 대상에서 제외한다.
+ecampus_login_webview_screen.dart가 DOM 로그인 신호와 쿠키로 EcampusSession을 반환한다. 가져오기 화면이 inline WebView로 구성하는 경우에도 같은 컴포넌트를 사용한다.
 
-## 현재 파일
+매번 가져오기 시작 시 이전 쿠키를 정리하고 사용자 로그인을 받는다. 종료/실패/취소 후 세션 참조·eCampus 도메인 쿠키를 정리한다. 계정 입력/비밀번호를 앱 설정·DB에 저장하지 않는다. 검증 기준은 Android WebView이며 웹 브라우저에서 같은 인증 동작을 보장하지 않는다.
 
-- `ecampus_login_webview_screen.dart`: e-campus 로그인 페이지를 WebView로 표시하고 로그인 성공 시 `EcampusSession` 반환
-
-## 로그인 성공 기준
-
-- URL 변화는 사용하지 않는다.
-- WebView DOM에서 PC/모바일 로그인 완료 신호를 확인한다.
-  - PC: `#user`, `.header_logout`, `logout.acl`
-  - 모바일: `#user_photo`, `.header_exit`, `logout.acl`
-- `todoList` 관련 요소는 보조 신호로만 사용한다.
-- WebView 쿠키에서 `JSESSIONID`가 존재하는지 확인한다.
-- 성공 시 `Navigator.pop(context, EcampusSession)`으로 세션을 반환한다.
-
-## 세션 쿠키 회수
-
-- e-campus는 로그인 중 `http`/`https`, PC/모바일 경로를 오갈 수 있다.
-- 쿠키는 대표 URL들과 현재 WebView URL 기준으로 모두 조회한다.
-- 계정 정보와 쿠키 값은 로그에 남기지 않는다.
-
-## 로그아웃
-
-- 로그인 입력은 WebView가 담당하고 앱은 크리덴셜을 직접 다루지 않는다.
-- 로그아웃은 `EcampusSession`의 쿠키로 e-campus logout endpoint를 호출한 뒤 WebView 쿠키를 삭제한다.
-- 세션 쿠키가 없으면 네트워크 logout 요청 없이 로컬 WebView 쿠키만 정리한다.
+전체 구조·정책·실행 방법은 [프로젝트 문서](../../../../docs/README.md)를 본다.

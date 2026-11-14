@@ -1,6 +1,9 @@
-# widget_settings
+# 초기 위젯 설정 경로 자리표시자
 
-홈 화면 위젯 설정 화면.
+현재 기준: 2026-11-15.
 
-## 예정 파일
-- `widget_settings_screen.dart` : 위젯 표시 항목 및 갱신 주기 설정
+현재 별도 widget_settings_screen.dart는 없다.
+
+Android 런처에서 오늘/이번 주 위젯을 등록한다. 앱 설정의 위젯 표시 항목/주기 편집은 구현된 기능이 아니다. 위젯 선택·페이지·빠른 추가는 기존 service와 Kotlin provider 경로를 따른다.
+
+전체 구조·정책·실행 방법은 [프로젝트 문서](../../../../docs/README.md)를 본다.

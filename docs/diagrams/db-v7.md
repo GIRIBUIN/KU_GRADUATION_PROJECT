@@ -1,34 +1,50 @@
-# DB v7 — 상위 폴더·목록·할 일
+# DB v7 — 폴더·목록·할 일
 
-최신 저장 구조는 [app_database.dart](../../lib/data/local/app_database.dart) 기준이다.
-[변환용 Mermaid 원본](db-v7.mmd)은 Markdown 코드 블록 없이 그래프 문법만 저장했다.
+현재 기준: 2026-11-15 / [실제 Drift 스키마](../../lib/data/local/app_database.dart).
+[Mermaid 원본](db-v7.mmd)과 [DBML](../database.dbml)을 변환 도구에 넣을 수 있다.
 
 ```mermaid
+%% Flutter DB v7: arrows point from FK owner to referenced table.
 flowchart BT
-    Tasks["할 일 · tasks"] -->|"list_id 필수"| Lists["목록 · task_lists"]
-    Lists -->|"folder_id 선택"| Groups["상위 폴더 · folder_groups"]
-    Courses["eCampus 강의"] -->|"기본 배치 목록"| Lists
-    Items["eCampus 원본"] -->|"선택적 연결"| Tasks
-    Items --> Courses
-    TaskTags["할 일–태그 연결"] --> Tasks
-    TaskTags --> Tags["전역 태그"]
+    Tasks["tasks · 할 일<br/>list_id 필수 · 완료/휴지통에도 보존"]
+    Lists["task_lists · 목록<br/>미지정 포함 · UI는 숨김 사용"]
+    Groups["folder_groups · 상위 폴더<br/>목록만 묶음"]
+    Subs["sub_tasks · 하위 할 일"]
+    Tags["tags · 전역 태그"]
+    Links["task_tags · 할 일–태그 연결"]
+    Items["ecampus_items · 원본 스냅샷"]
+    Courses["ecampus_courses · 강의<br/>기본 과목 목록 연결"]
+    Reminders["task_reminders · 알림 규칙"]
+    Schedules["local_notification_schedules · 기기 예약 상태"]
+    Tasks -->|"list_id · 정확히 1개"| Lists
+    Lists -->|"folder_id · 선택"| Groups
+    Subs -->|"task_id"| Tasks
+    Links -->|"task_id"| Tasks
+    Links -->|"tag_id"| Tags
+    Items -->|"task_id · 선택 · 고유"| Tasks
+    Items -->|"course_id · 선택"| Courses
+    Courses -->|"list_id · 기본 배치 목록"| Lists
+    Courses -->|"tag_id · 선택 연결"| Tags
+    Reminders -->|"task_id · 기본키"| Tasks
+    Schedules -->|"task_id · 기본키"| Tasks
+    subgraph Independent["외래키 없는 보조 테이블"]
+        Sessions["import_sessions · 반영 기록"]
+        Settings["app_settings · 앱 설정"]
+        Issues["migration_issues · 이관 문제"]
+        Deleted["deleted_entities · 영구 삭제 기록"]
+    end
 ```
 
-- 모든 저장 Task는 목록 하나에 속한다. 상위 폴더를 Task의 소속으로 저장하지 않는다.
-- 직접 만든 Task의 기본 목록은 수집함(`kutodo:inbox`)이다. 수집함은 보관·이름 변경·폴더 이동이 불가능하다.
-- 목록은 상위 폴더에 속하지 않을 수도 있다. 폴더 중첩·목록 중첩은 지원하지 않는다.
-- 관리 화면에서 폴더를 누르면 목록만 펼치거나 접는다. 목록을 길게 눌러 폴더로 이동하거나 ‘폴더 밖’에 놓을 수 있고, 목록을 누르면 해당 할 일을 연다. 수집함도 색상을 바꿀 수 있는 네모 아이콘의 고정 목록이다.
-- 완료·휴지통 이동은 시각만 변경한다. 목록 소속은 그대로 유지하며 휴지통 복원 후에도 보존한다.
-- 목록은 물리 삭제 대신 보관한다. Task·완료·휴지통·원본의 연결은 유지하고 관리 화면에서 목록을 복원한다. 폴더 삭제는 목록을 폴더 밖으로 꺼낸다.
-- eCampus NEW의 기본 배치는 `eCampus 폴더 → 강의별 목록 → Task`다. 강의 식별값으로 기본 목록을 찾으며 이름으로 합치지 않는다. 가져오기에서 수집함·다른 목록을 직접 선택할 수도 있다.
-- 재가져오기는 기존 Task의 목록을 유지한다. 사용자가 Task나 목록을 옮겨도 자동 배치가 되돌리지 않는다. 보관한 과목 목록은 새 Task 때문에 다시 열지 않고 새 목록을 만든다.
-- 전체·오늘·예정·완료는 기존 상태·날짜 기반 조회다. 별도의 저장 목록으로 만들지 않는다. 전역 태그도 폴더·목록 소속과 독립적이다.
+- Tasks는 목록 하나에 필수 소속되고 상위 폴더를 직접 참조하지 않는다.
+- 미지정은 기본 고정 목록이다. 완료·휴지통·복원 후에도 소속을 보존한다.
+- 태그는 폴더·목록과 독립적이다. 위젯은 현재 태그 대신 소속 목록명/색상을 표시한다.
+- 목록 보관/복원 UI는 제거됐고 숨김을 사용한다. 저장소의 deleted_at 및 과거 데이터 호환 경로와 UI 기능을 구분한다.
+- 신규 eCampus 기본 배치는 eCampus 폴더 아래 강의별 목록이다. 기존 수동 이동은 재가져오기에서 유지한다.
+- EcampusItems는 원본, Tasks는 사용자 작업이다. 제외는 ignored 원본이며 별도 Task 행이 아니다.
+- ImportSessions는 반영 성공 기록이며 계정/로그인 세션 테이블이 아니다.
+- task_reminders 규칙과 local_notification_schedules의 기기 예약 결과를 분리한다.
+- 삭제 기록과 안정 ID는 기기 간 동기화 구현 완료를 뜻하지 않는다.
 
-내부 호환 경계: 기존 화면의 `Folder`/`FolderRepository`와 `Task.folderIds`, Drift의 `Tasks.folderId` 이름은 어댑터로 유지한다. 실제 저장은 `task_lists`와 NOT NULL `tasks.list_id`다. `Task.listId`가 단일 목록을 나타내며 `Folder.groupId`는 상위 폴더를 나타낸다. 이 경계가 상위 폴더에 Task를 직접 연결한다는 뜻은 아니다.
-
-## 이관
-
-- v6의 기존 폴더는 같은 ID·이름·보관 상태를 가진 목록으로 옮긴다. 기존 소속은 유지하고 소속 없는 Task만 수집함에 넣는다.
-- 완료·삭제 시각, 메모·태그·하위 항목·원본 연결은 보존한다. 원본 행은 `legacy_v6_tasks`, `legacy_v6_lists`에도 보관한다.
-- v5 설치본은 기존 원본 보존·예외 기록 경로를 거쳐 v7로 직접 이관한다.
-- [v7 검증 기록](../evidence/db-v7/README.md), [작업 기록 DB-010](../개선%20작업%20기록.md).
+v6의 폴더는 v7 목록으로 보존하며 소속 없는 Task는 미지정에 넣는다.
+이관 원본·예외 기록은 legacy_*·migration_issues에 남을 수 있고 이 그림의 활성 14개 테이블과 구분한다.
+세부 호환 이름은 [데이터 모델](../데이터%20모델.md), 도입 당시 검증은 [v7 증거](../evidence/db-v7/README.md)를 본다.

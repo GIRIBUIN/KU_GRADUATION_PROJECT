@@ -1,137 +1,60 @@
-# e-campus 동기화 명세
+# eCampus 가져오기 명세
 
-## 1. 목적
+현재 기준: 2026-11-15 / Flutter main. 파일명의 동기화는 eCampus 원본 비교·가져오기를 뜻하며 기기 간 동기화가 아니다.
 
-e-campus 체크리스트 HTML을 읽어 앱의 Task로 가져오기 위한 파싱, 식별, 분류 규칙을 정의한다.
+## 조회·식별
 
-## 2. 파싱 결과 모델
+[HTTP client](../../lib/data/services/http_ecampus_todo_client.dart)는 세션 Cookie로 체크리스트를 POST 조회한다.
+[parser](../../lib/data/services/ecampus_todo_parser.dart)는 `div.todo_wrap`에서 제목·과목·마감·유형과 식별 인자를 추출한다.
+`sourceKey = rawLectureId:rawItemId:rawType`. 식별 인자가 없으면 임의 fallback을 만들지 않고 오류 항목으로 분리한다.
+DB에서는 기본 source scope와 external_key의 조합으로 원본을 식별한다.
 
-HTML 파싱 직후에는 Task로 바로 저장하지 않고 `ParsedEcampusTask` 형태로 다룬다.
+## 분류
 
-| 필드 | 타입 | 설명 |
-| --- | --- | --- |
-| `sourceKey` | String | 앱 내부 동기화 식별 키 |
-| `title` | String | 원본 제목 |
-| `course` | String | 과목명 |
-| `dueDate` | DateTime? | 원본 마감일 |
-| `dueLabel` | String? | HTML에 표시된 마감 문자열 |
-| `dDay` | Int? | D-day 값 |
-| `type` | EcampusTaskType | `report`, `project`, `lecture`, `quiz`, `exam`, `unknown` |
-| `rawLectureId` | String? | `goLecture(...)` 첫 번째 인자 또는 `kj_*` 값 |
-| `rawItemId` | String? | `goLecture(...)` 두 번째 인자 |
-| `rawType` | String? | `goLecture(...)` 세 번째 인자 또는 `gubun_*` 값 |
+| 코드 분류 | 판단·사용자 선택 |
+| --- | --- |
+| newItem | 비교 대상에 같은 key 없음. 가져오기 / 신규 제외 |
+| updateCandidate | 미완료 기존 원본의 제목·마감·과목·유형이 새 원본과 다름. 제목·마감 각각 선택 |
+| alreadyImported | 같은 원본, 변경 없음 |
+| completed / deleted / excluded | 기존 완료·휴지통·ignored 원본. 일반 변경 후보와 구분 |
+| missing | 완전한 조회에서 기존 미완료 key가 사라짐. 기본 유지 / 완료 / 삭제 |
+| error | 파싱·식별 실패 또는 누락 안전 조건 안내 |
 
-## 3. HTML 기준 값
+변경 검사는 사용자 제목이 아니라 **이전 원본 snapshot**과 새 원본을 비교한다.
+사용자가 제목을 직접 바꿨다는 사실만으로 원본 변경 후보가 되는 것은 아니다.
 
-현재 확인한 체크리스트 HTML 기준으로 다음 값을 사용할 수 있다.
+## 미리보기와 반영
 
-```html
-<div class="todo_wrap" onclick="goLecture('A20261...', '13429606', 'project')">
-  <input type="hidden" id="kj_0" value="A20261..." />
-  <input type="hidden" id="gubun_0" value="project" />
-  <div class="todo_title">...</div>
-  <div class="todo_subjt">...</div>
-  <span class="todo_d_day">D-6</span>
-  <span class="todo_date">...</span>
-</div>
-```
+[DefaultEcampusSyncFlowService.preview](../../lib/data/services/ecampus_sync_flow_service.dart)는 완료·삭제·제외까지 포함해 기존 eCampus 비교 대상을 읽는다.
+preview는 DB를 쓰지 않는다. 결과는 현재 별도 EcampusSyncPreviewScreen에서 검토한다.
 
-## 4. sourceKey 생성 규칙
+[DefaultEcampusSyncApplyService._commit](../../lib/data/services/ecampus_sync_apply_service.dart)의 현재 Drift 경로는 선택 batch를 atomic으로 저장한다.
+실패 시 전체 rollback하며 완료/삭제된 항목은 일반 새 원본으로 덮어쓰지 않는다.
+검토 이후 ID·상태·제목·마감·메모·우선순위·태그·목록 변경을 검사한다.
+이 검사가 SubTask나 모든 원본 메타데이터까지 포함한 전체 DB 버전 잠금이라는 뜻은 아니다.
 
-`sourceKey`는 e-campus HTML에 있는 단일 필드가 아니다.
-앱에서 동기화를 위해 만드는 내부 식별 키이다.
+- NEW 가져오기: 새 Task·원본 연결. 명시한 목록 또는 강의별 기본 목록 사용. 기본 priority는 medium이며 과목명을 메모/태그로 강제 주입하지 않는다.
+- NEW 제외: ignored 원본만 보관. 사용자 작업은 생성하지 않는다.
+- CHANGED: applyTitle/applyDueDate에 따라 선택 필드만 원본 적용. 메모·우선순위·태그·목록·완료/삭제 시각 보존.
+- CHANGED 현재 값 유지(exclude 경로 포함): 사용자 제목·마감 유지, 원본 snapshot 갱신. 신규 제외와 의미가 다르다.
+- MISSING 유지: 작업·연결 유지. 완료는 기존 updateTaskStatus, 삭제는 markDeleted 경로 사용.
 
-기본 규칙:
+같은 NEW 선택을 재적용하면 기존 원본 연결을 찾아 중복 생성을 건너뛴다.
+반영 성공 기록은 ImportSessions이며 실패/취소 전체 세션 로그를 현재 구현했다고 쓰지 않는다.
 
-```text
-sourceKey = rawLectureId + ":" + rawItemId + ":" + rawType
-```
+## MISSING 안전 조건
 
-예:
+`parseResult.isComplete && !parseResult.hasFailures`일 때만 차집합 감지를 켠다.
+classifier도 빈 key/중복을 방어하고 기존 active eCampus만 후보로 만든다.
+정상 no_data 표시와 구조 미확인 빈 HTML을 구분하며, 잘린 HTML·실제 추가 페이지 표시는 누락 검토를 막는다.
+부분 응답의 유효 항목을 가져오는 것과 전체 누락 처리를 허용하는 것은 별개다.
 
-```text
-A20261BBAB590693222001:13429606:project
-```
+## 후처리와 세션
 
-현재 구현은 `rawLectureId`, `rawItemId`, `rawType` 중 하나라도 없으면 fallback key를 만들지 않고 파싱 실패 항목으로 분리한다.
+DB commit 후 [EcampusNotificationUpdater.afterCommit](../../lib/presentation/services/ecampus_notification_updater.dart)가
+마감 변경 + 기존 enabled 알림에만 재예약한다. 완료/삭제 전환은 취소 경로를 사용한다.
+후처리 실패는 성공한 DB transaction을 rollback하지 않는다.
 
-## 5. 동기화 분류
-
-### 신규 항목
-
-```text
-parsed.sourceKey가 DB에 없음
-```
-
-사용자가 선택하면 새 Task를 생성한다.
-
-### 이미 가져온 항목
-
-```text
-parsed.sourceKey가 active 또는 completed Task에 존재
-원본 정보 변경 없음
-```
-
-동기화 결과에서 가져올 항목으로 보여주지 않는다.
-
-### 업데이트 후보
-
-```text
-parsed.sourceKey가 DB에 있음
-sourceTitle, sourceDueDate, sourceCourse, sourceType 중 하나가 달라짐
-```
-
-자동 반영하지 않는다.
-사용자가 선택한 경우에만 Task 표시 값을 원본 기준으로 갱신한다.
-
-### 완료된 항목
-
-```text
-Task.status = completed
-```
-
-다시 신규 항목으로 표시하지 않는다.
-
-### 삭제된 항목
-
-```text
-Task.status = deleted
-```
-
-목록에는 숨기고, 다음 동기화 때 같은 항목은 가져오지 않을 항목으로 분류한다.
-
-### 제외된 항목
-
-```text
-Task.status = excluded
-```
-
-사용자가 가져오지 않기로 선택한 e-campus 항목이다.
-다음 동기화 때 신규 항목으로 다시 표시하지 않는다.
-
-## 6. 원본에서 사라진 항목
-
-현재 구현은 동기화가 오류 없이 끝났을 때, 기존 e-campus task가 이번 체크리스트에 없고 마감 전이면 완료 처리한다.
-
-완료 처리 조건:
-
-- 기존 task 상태가 `active`
-- `sourceKey`가 있음
-- 이번 동기화 결과에 같은 `sourceKey`가 없음
-- `sourceDueDate` 또는 `dueDate`가 동기화 시각 이후임
-
-마감일이 지났거나 마감일이 없는 task는 자동 완료하지 않고 기존 상태를 유지한다.
-
-## 7. 실패 처리
-
-다음 경우에는 동기화 실패 또는 부분 실패로 처리한다.
-
-- 로그인 실패
-- 세션 만료
-- 네트워크 오류
-- HTML 구조 변경
-- 필수 값 파싱 실패
-- sourceKey 생성 실패
-
-파싱 실패가 발생해도 앱 전체가 중단되면 안 된다.
-실패 항목은 동기화 결과에서 오류 항목으로 분리할 수 있다.
+[가져오기 화면](../../lib/presentation/screens/sync/ecampus_sync_progress_screen.dart)은 시작 시 쿠키 정리·명시 로그인,
+반영/종료·실패·취소에서 공통 _finishSession을 사용한다. 메모리 세션 제거·서버 로그아웃 시도·WebView 도메인 쿠키 정리 후 다음 실행에 재로그인한다.
+현재 설정 화면에는 별도 세션 관리 메뉴가 없다. [보안 정책](../보안%20정책.md) 참고.

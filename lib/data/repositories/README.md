@@ -1,26 +1,9 @@
-# repositories
+# 저장소 계약과 Drift 구현
 
-앱 데이터 저장소에 접근하는 인터페이스를 둔다.
-UI와 application 로직은 가능하면 DB나 service 구현체를 직접 호출하지 않고 repository를 통해 데이터를 읽고 쓴다.
+현재 기준: 2026-11-15.
 
-## 현재 파일
+task/sub_task/tag/folder/notification/settings_repository.dart와 대응 drift_* 구현을 사용한다. 이미 실제 DB·화면에 연결되어 있다.
 
-- `task_repository.dart`: Task 조회, 생성, 수정, 상태 변경, 삭제/복구
-- `drift_task_repository.dart`: Drift DB 기반 TaskRepository 구현
-- `sub_task_repository.dart`: Task별 서브 작업 조회, 생성, 수정, 삭제
-- `drift_sub_task_repository.dart`: Drift DB 기반 SubTaskRepository 구현
-- `tag_repository.dart`: Tag 조회, 생성, 수정, 삭제
-- `drift_tag_repository.dart`: Drift DB 기반 TagRepository 구현
-- `folder_repository.dart`: Folder 조회, 생성, 수정, 삭제
-- `drift_folder_repository.dart`: Drift DB 기반 FolderRepository 구현
-- `notification_repository.dart`: Task별 알림 설정 저장/삭제
-- `drift_notification_repository.dart`: Drift DB 기반 NotificationRepository 구현
-- `settings_repository.dart`: 자동 동기화, 계정 저장 여부 등 앱 설정
-- `drift_settings_repository.dart`: Drift DB 기반 SettingsRepository 구현
+FolderRepository는 현재 목록 계약이며 GroupedListRepository가 상위 폴더·목록 이동을 추가한다. TransactionalTaskRepository.atomic/recordImport를 가져오기 batch에 사용한다. 완료·휴지통은 Task 시각, 제외는 원본 import_state다. 일반 알림 규칙과 기기 예약 상태도 분리한다.
 
-## 구현 원칙
-
-- 이 폴더에는 인터페이스를 먼저 둔다.
-- 실제 로컬 DB 스키마는 `lib/data/local`의 Drift DB를 기준으로 한다.
-- repository 구현체는 후속 커밋에서 Drift DB를 감싸는 형태로 추가한다.
-- 저장 방식이 바뀌어도 인터페이스의 의미는 유지한다.
+전체 구조·정책·실행 방법은 [프로젝트 문서](../../../docs/README.md)를 본다.

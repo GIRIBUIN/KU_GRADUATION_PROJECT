@@ -6,6 +6,8 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.os.Looper
+import org.robolectric.shadows.ShadowAlarmManager
 import es.antonborri.home_widget.HomeWidgetPlugin
 import org.junit.Assert.*
 import org.junit.Before
@@ -50,6 +52,8 @@ class WidgetDateRefreshTest {
         WidgetDateRefresh.schedule(context)
         WidgetDateRefresh.schedule(context)
         assertEquals(1, alarms.scheduledAlarms.size)
+        assertEquals(0L, alarms.scheduledAlarms.single().windowLengthMs)
+        assertTrue(alarms.scheduledAlarms.single().isAllowWhileIdle)
         assertEquals(AlarmManager.RTC_WAKEUP, alarms.scheduledAlarms.single().type)
         WidgetDateRefresh.request(context)
         WidgetDateRefresh.request(context)
@@ -70,6 +74,57 @@ class WidgetDateRefreshTest {
             assertEquals(1, alarms.scheduledAlarms.size)
             scheduler.cancel(WidgetDateRefresh.JOB_ID)
         }
+    }
+
+    @Test fun naturalMidnightAlarmRequestsRefreshWithoutTimeChangedBroadcast() {
+        install()
+        ShadowAlarmManager.setAutoSchedule(false)
+        val oldDay = WidgetDateRefresh.dateKey()
+        HomeWidgetPlugin.getData(context).edit().putString(WidgetDateRefresh.DATE_KEY, oldDay).commit()
+        WidgetDateRefresh.schedule(context)
+        val midnightAlarm = alarms.scheduledAlarms.single()
+        // Deliver the scheduled PendingIntent itself, with no TIME_SET / DATE_CHANGED.
+        // Robolectric does not advance java.lang.System's wall clock here.
+        alarms.fireAlarm(midnightAlarm)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertNotNull(scheduler.getPendingJob(WidgetDateRefresh.JOB_ID))
+        assertEquals(1, alarms.scheduledAlarms.size)
+        assertEquals(WidgetDateRefresh.nextMidnight(System.currentTimeMillis()), alarms.scheduledAlarms.single().triggerAtMs)
+        assertEquals(0L, alarms.scheduledAlarms.single().windowLengthMs)
+    }
+
+    @Test @Config(sdk = [31])
+    fun permittedExactAlarmAndExpeditedJobAvoidNormalIdleDeferral() {
+        install()
+        ShadowAlarmManager.setCanScheduleExactAlarms(true)
+        WidgetDateRefresh.schedule(context)
+        assertEquals(0L, alarms.scheduledAlarms.single().windowLengthMs)
+        WidgetDateRefresh.request(context)
+        assertTrue(scheduler.getPendingJob(WidgetDateRefresh.JOB_ID)!!.isExpedited)
+    }
+
+    @Test @Config(sdk = [31])
+    fun deniedExactAccessFallsBackAndGrantReschedulesExactMidnight() {
+        install()
+        ShadowAlarmManager.setCanScheduleExactAlarms(false)
+        WidgetDateRefresh.schedule(context)
+        assertNotEquals(0L, alarms.scheduledAlarms.single().windowLengthMs)
+        ShadowAlarmManager.setCanScheduleExactAlarms(true)
+        WidgetDateRefreshReceiver().onReceive(context,
+            Intent(AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED))
+        assertEquals(1, alarms.scheduledAlarms.size)
+        assertEquals(0L, alarms.scheduledAlarms.single().windowLengthMs)
+        assertNotNull(scheduler.getPendingJob(WidgetDateRefresh.JOB_ID))
+    }
+
+    @Test @Config(sdk = [31])
+    fun exhaustedExpeditedQuotaStillQueuesFallbackJob() {
+        install()
+        shadowOf(scheduler).failExpeditedJob(true)
+        WidgetDateRefresh.request(context)
+        val job = scheduler.getPendingJob(WidgetDateRefresh.JOB_ID)!!
+        assertFalse(job.isExpedited)
+        assertEquals(0L, job.maxExecutionDelayMillis)
     }
 
     @Test fun noWidgetsMeansNoAlarmOrJobAndUnknownBroadcastDoesNothing() {

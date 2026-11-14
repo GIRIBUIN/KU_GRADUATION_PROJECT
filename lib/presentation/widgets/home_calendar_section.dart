@@ -347,7 +347,7 @@ class _HomeCalendarSectionState extends State<HomeCalendarSection> {
           ),
         ),
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 30),
+          padding: const EdgeInsets.only(bottom: 30),
           sliver: SliverList.list(
             children: [
               if (widget.isLoading)
@@ -357,7 +357,7 @@ class _HomeCalendarSectionState extends State<HomeCalendarSection> {
                 )
               else if (selectedTasks.isEmpty)
                 const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                   child: Text(
                     '할 일이 없습니다.',
                     style: TextStyle(fontSize: 13, color: AppTheme.muted),
@@ -368,7 +368,7 @@ class _HomeCalendarSectionState extends State<HomeCalendarSection> {
               if (!widget.isLoading && index.undated.isNotEmpty)
                 ExpansionTile(
                   key: const ValueKey('calendar-undated'),
-                  tilePadding: EdgeInsets.zero,
+                  tilePadding: const EdgeInsets.symmetric(horizontal: 16),
                   title: Text(
                     '날짜 미지정',
                     style: const TextStyle(fontSize: 13, color: AppTheme.muted),

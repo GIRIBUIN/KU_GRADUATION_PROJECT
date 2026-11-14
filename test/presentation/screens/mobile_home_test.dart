@@ -442,6 +442,64 @@ void main() {
   );
 
   testWidgets(
+    'task backgrounds span the viewport in home, completed, trash, excluded and calendar',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await add('edge-active', due: today, priority: TaskPriority.high);
+      await add(
+        'edge-completed',
+        due: today,
+        priority: TaskPriority.medium,
+        completed: true,
+      );
+      await add('edge-trash', due: today, priority: TaskPriority.low);
+      await tasks.updateTaskStatus('edge-trash', TaskStatus.deleted);
+      final excluded = await tasks.createTask(
+        Task(
+          id: 'edge-excluded',
+          title: '제외된 할 일',
+          origin: TaskOrigin.ecampus,
+          status: TaskStatus.excluded,
+          createdAt: now,
+          updatedAt: now,
+          ecampus: const EcampusSyncMetadata(sourceKey: 'edge-source'),
+        ),
+      );
+      void expectFullWidth(Finder item) {
+        expect(item, findsOneWidget);
+        final rect = tester.getRect(item);
+        expect(rect.left, closeTo(0, .01));
+        expect(rect.right, closeTo(360, .01));
+      }
+
+      await pumpApp(tester);
+      expectFullWidth(row('edge-active'));
+      final time = find.descendant(
+        of: row('edge-active'),
+        matching: find.text('23:59'),
+      );
+      expect(tester.getRect(time).right, closeTo(344, .01));
+      await chooseScope(tester, 'completed');
+      expectFullWidth(row('edge-completed', 'completed'));
+      await chooseScope(tester, 'trash');
+      expectFullWidth(row('edge-trash', 'trash'));
+      await openDrawer(tester);
+      final excludedEntry = find.byKey(const ValueKey('drawer-excluded'));
+      await tester.ensureVisible(excludedEntry);
+      await tester.tap(excludedEntry);
+      await tester.pumpAndSettle();
+      expectFullWidth(row(excluded.id, 'excluded'));
+      await tester.tap(find.byKey(const ValueKey('nav-calendar')));
+      await tester.pumpAndSettle();
+      expectFullWidth(find.byKey(const ValueKey('calendar-task-edge-active')));
+      await finish(tester);
+    },
+  );
+
+  testWidgets(
     'Drawer separates saved period and all dates with Inbox under Lists',
     (tester) async {
       await add('오늘 일정', due: today);

@@ -1181,7 +1181,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
           child: RefreshIndicator(
             onRefresh: () async => widget.onRefresh(),
             child: ListView(
-              padding: EdgeInsets.fromLTRB(16, _selectionMode ? 0 : 12, 16, 30),
+              padding: EdgeInsets.fromLTRB(0, _selectionMode ? 0 : 12, 0, 30),
               physics: const AlwaysScrollableScrollPhysics(),
               children: [
                 if (widget.isLoading)
@@ -1373,7 +1373,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
       children: [
         if (!_selectionMode)
           Padding(
-            padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 10),
             child: Text(
               title,
               style: const TextStyle(fontSize: 13, color: AppTheme.muted),
@@ -1381,7 +1381,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
           ),
         if (tasks.isEmpty)
           const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
             child: Text(
               '할 일이 없습니다.',
               style: TextStyle(fontSize: 13, color: AppTheme.muted),

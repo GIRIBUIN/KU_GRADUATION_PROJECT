@@ -32,70 +32,82 @@ Widget buildTaskListRow({
       '#${tag.name}',
   ];
   final due = task.dueDate?.toLocal();
-  final dueText = due == null
-      ? '마감 없음'
-      : DateFormat(
-          due.year == DateTime.now().year &&
-                  due.month == DateTime.now().month &&
-                  due.day == DateTime.now().day
-              ? 'HH:mm'
-              : 'M/d HH:mm',
-          'ko_KR',
-        ).format(due);
-  return ListTile(
-    key: key,
-    contentPadding: EdgeInsets.zero,
-    leading: leading,
-    onTap: onTap,
-    onLongPress: onLongPress,
-    title: Text(
-      task.title,
-      softWrap: true,
-      style: TextStyle(
-        fontSize: 13,
-        decoration: task.status == TaskStatus.completed
-            ? TextDecoration.lineThrough
-            : null,
-      ),
-    ),
-    subtitle: details.isEmpty
-        ? null
-        : Text(
-            details.join(' · '),
-            softWrap: true,
-            style: const TextStyle(fontSize: 12, color: AppTheme.muted),
-          ),
-    trailing: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Text(
-          dueText,
+  final now = DateTime.now();
+  final dueDays = due == null
+      ? 0
+      : DateTime.utc(
+          due.year,
+          due.month,
+          due.day,
+        ).difference(DateTime.utc(now.year, now.month, now.day)).inDays;
+  final dueLabel = dueDays == 0
+      ? 'D-day'
+      : dueDays > 0
+      ? 'D-$dueDays'
+      : 'D+${-dueDays}';
+  final priorityColor = switch (task.priority) {
+    TaskPriority.high => AppTheme.dangerRed,
+    TaskPriority.medium => AppTheme.warningOrange,
+    TaskPriority.low => AppTheme.primaryBlue,
+    null => null,
+  };
+  final priorityLabel = switch (task.priority) {
+    TaskPriority.high => '우선순위 높음',
+    TaskPriority.medium => '우선순위 중간',
+    TaskPriority.low => '우선순위 낮음',
+    null => null,
+  };
+  final dueStyle = TextStyle(
+    fontSize: 12,
+    height: 1.1,
+    color:
+        task.status == TaskStatus.active &&
+            due != null &&
+            isDueDateOverdue(due, now: now)
+        ? AppTheme.dangerRed
+        : AppTheme.muted,
+  );
+  return Semantics(
+    label: priorityLabel,
+    child: Material(
+      color: priorityColor?.withValues(alpha: .08) ?? Colors.transparent,
+      child: ListTile(
+        key: key,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+        leading: leading,
+        onTap: onTap,
+        onLongPress: onLongPress,
+        title: Text(
+          task.title,
+          softWrap: true,
           style: TextStyle(
-            fontSize: 12,
-            color:
-                task.status == TaskStatus.active &&
-                    due != null &&
-                    isDueDateOverdue(due, now: DateTime.now())
-                ? AppTheme.dangerRed
-                : AppTheme.muted,
+            fontSize: 13,
+            decoration: task.status == TaskStatus.completed
+                ? TextDecoration.lineThrough
+                : null,
           ),
         ),
-        if (task.priority != null)
-          Text(
-            switch (task.priority!) {
-              TaskPriority.high => '높음',
-              TaskPriority.medium => '중간',
-              TaskPriority.low => '낮음',
-            },
-            style: TextStyle(
-              fontSize: 10,
-              color: task.priority == TaskPriority.high
-                  ? AppTheme.warningOrange
-                  : AppTheme.muted,
-            ),
-          ),
-      ],
+        subtitle: details.isEmpty
+            ? null
+            : Text(
+                details.join(' · '),
+                softWrap: true,
+                style: const TextStyle(fontSize: 12, color: AppTheme.muted),
+              ),
+        trailing: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            if (due == null)
+              Text('마감 없음', style: dueStyle)
+            else ...[
+              Text(dueLabel, style: dueStyle),
+              Text(DateFormat('HH:mm', 'ko_KR').format(due), style: dueStyle),
+            ],
+          ],
+        ),
+      ),
     ),
   );
 }

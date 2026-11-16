@@ -30,12 +30,15 @@ jobs:
       - name: Verify widget layouts and interactions
         working-directory: android
         run: |
-          bash ./gradlew :app:testDebugUnitTest --tests '*WidgetResizeTest' --tests '*WidgetIntegrationTest' --tests '*WidgetDateRefreshTest'
+          bash ./gradlew :app:testDebugUnitTest --tests '*WidgetResizeTest' --tests '*WidgetIntegrationTest' --tests '*WidgetDateRefreshTest' || {
+            grep -h '<failure ' ../build/app/test-results/testDebugUnitTest/*.xml || true
+            exit 1
+          }
       - name: Verify Android package and signature
         run: |
           tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
           apk=deliverable/KUTODO-widgets-android-arm64.apk
-          "$tools/apksigner" verify "$apk"
+          "$tools/apksigner" verify --print-certs "$apk"
           "$tools/aapt" dump badging "$apk" | grep -E '^(package|sdkVersion|targetSdkVersion|native-code):'
           "$tools/aapt" dump xmltree "$apk" AndroidManifest.xml | grep -F CalendarWidgetProvider
           sha256sum "$apk"

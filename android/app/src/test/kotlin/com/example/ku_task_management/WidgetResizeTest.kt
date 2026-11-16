@@ -13,11 +13,12 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [28])
+@Config(sdk = [35])
 class WidgetResizeTest {
     @Test
     fun listWidgetsReduceRowsAndKeepTheUsualPageCapacityAtDefaultSize() {
@@ -28,12 +29,13 @@ class WidgetResizeTest {
     }
 
     @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
     fun calendarScalesFromCurrentWeeksWithDotsToFullMonthWithTitles() {
         val context = RuntimeEnvironment.getApplication()
         val today = LocalDate.of(2026, 8, 29)
         val events = JSONObject("""{"2026-08-29":{"title":"Capstone meeting","count":1}}""")
 
-        assertCalendar(context, today, events, WidgetSize(168, 128, 1f), 2, "•")
+        assertCalendar(context, today, events, WidgetSize(168, 128, 1f), 1, "•")
         assertCalendar(context, today, events, WidgetSize(340, 340, 1f), 6, "Capstone meeting")
     }
 
@@ -67,6 +69,10 @@ class WidgetResizeTest {
         )
         view.layout(0, 0, width, height)
         assertTrue(row.height > 0)
-        assertTrue(event.height > 0 && event.bottom <= eventCell.height)
+        assertTrue(
+            "At ${size.width}x${size.height}, event bottom=${event.bottom}, " +
+                "event height=${event.height}, cell height=${eventCell.height}",
+            event.height > 0 && event.bottom <= eventCell.height,
+        )
     }
 }

@@ -9,6 +9,7 @@ import '../models/weekly_widget_data.dart';
 import '../repositories/settings_repository.dart';
 import '../repositories/folder_repository.dart';
 import '../repositories/task_repository.dart';
+import 'calendar_task_index.dart';
 import 'widget_format.dart';
 import 'widget_today_selection.dart';
 import 'widget_week_selection.dart';
@@ -26,6 +27,8 @@ class WidgetUpdateService {
 
   static const todayAndroidProviderName = 'ScheduleWidgetProvider';
   static const weeklyAndroidProviderName = 'WeeklyScheduleWidgetProvider';
+  static const calendarAndroidProviderName = 'CalendarWidgetProvider';
+  static const calendarStorageKey = 'calendar_widget_data';
   static const widgetRefreshRequiredKey = 'widget_refresh_required';
   static const widgetPendingCompletionsKey = 'widget_pending_completions';
   static const widgetPendingUncompletionsKey = 'widget_pending_uncompletions';
@@ -93,8 +96,11 @@ class WidgetUpdateService {
     );
 
     // 두 범위의 전체 데이터를 재조회·정렬한 뒤 위젯들을 갱신한다.
-    final todayData = await buildTodayWidgetData(now: now);
-    final weeklyData = await buildWeeklyWidgetData(now: now);
+    final tasks = await _taskRepository.getTasks(includeArchived: true);
+    final listsById = await _loadLists();
+    final todayData = _buildTodayWidgetData(tasks, listsById, now);
+    final weeklyData = _buildWeeklyWidgetData(tasks, listsById, now);
+    final calendarDays = _buildCalendarDays(tasks, now);
     await HomeWidget.saveWidgetData(
       TodayWidgetData.storageKey,
       todayData.toJsonString(),
@@ -103,18 +109,32 @@ class WidgetUpdateService {
       WeeklyWidgetData.storageKey,
       weeklyData.toJsonString(),
     );
+    await HomeWidget.saveWidgetData(
+      calendarStorageKey,
+      jsonEncode(calendarDays),
+    );
     // Provider가 설치된 모든 인스턴스의 페이지 수를 다시 계산하고 현재 페이지를 보정한다.
     await HomeWidget.updateWidget(androidName: todayAndroidProviderName);
     await HomeWidget.updateWidget(androidName: weeklyAndroidProviderName);
+    await HomeWidget.updateWidget(androidName: calendarAndroidProviderName);
   }
 
   /// 오늘 할 일정 위젯(ScheduleWidgetProvider)용 스냅샷.
   Future<TodayWidgetData> buildTodayWidgetData({DateTime? now}) async {
     final current = now ?? _now();
     final tasks = await _taskRepository.getTasks(includeArchived: true);
-    final listsById = {
-      for (final list in await _folderRepository.getFolders()) list.id: list,
-    };
+    return _buildTodayWidgetData(tasks, await _loadLists(), current);
+  }
+
+  Future<Map<String, Folder>> _loadLists() async => {
+    for (final list in await _folderRepository.getFolders()) list.id: list,
+  };
+
+  TodayWidgetData _buildTodayWidgetData(
+    List<Task> tasks,
+    Map<String, Folder> listsById,
+    DateTime current,
+  ) {
     final selectedTasks = selectWidgetTasks(tasks, now: current);
 
     return TodayWidgetData(
@@ -142,11 +162,16 @@ class WidgetUpdateService {
   /// 이번 주 일정 위젯(WeeklyScheduleWidgetProvider)용 스냅샷.
   Future<WeeklyWidgetData> buildWeeklyWidgetData({DateTime? now}) async {
     final current = now ?? _now();
-    final week = weekWindowFor(current);
     final tasks = await _taskRepository.getTasks(includeArchived: true);
-    final listsById = {
-      for (final list in await _folderRepository.getFolders()) list.id: list,
-    };
+    return _buildWeeklyWidgetData(tasks, await _loadLists(), current);
+  }
+
+  WeeklyWidgetData _buildWeeklyWidgetData(
+    List<Task> tasks,
+    Map<String, Folder> listsById,
+    DateTime current,
+  ) {
+    final week = weekWindowFor(current);
     final weekTasks = tasksForWeek(tasks, week);
     final selectedTasks = selectWidgetWeekTasks(weekTasks);
     final progress = weekProgressCounts(weekTasks);
@@ -163,6 +188,30 @@ class WidgetUpdateService {
           .toList(growable: false),
       updatedAt: current,
     );
+  }
+
+  Map<String, Map<String, Object>> _buildCalendarDays(
+    List<Task> tasks,
+    DateTime now,
+  ) {
+    final local = now.toLocal();
+    final first = DateTime(local.year, local.month);
+    final start = DateTime(local.year, local.month, 2 - first.weekday);
+    final end = DateTime(start.year, start.month, start.day + 42);
+    final index = CalendarTaskIndex.fromTasks(tasks);
+
+    final days = <String, Map<String, Object>>{};
+    for (final day in index.days) {
+      if (day.isBefore(start) || !day.isBefore(end)) {
+        continue;
+      }
+      final tasksOnDay = index.tasksForDay(day);
+      days[day.toIso8601String().split('T').first] = {
+        'count': tasksOnDay.length,
+        'title': tasksOnDay.first.title,
+      };
+    }
+    return days;
   }
 
   WeeklyWidgetTaskSnapshot _toWeeklySnapshot(

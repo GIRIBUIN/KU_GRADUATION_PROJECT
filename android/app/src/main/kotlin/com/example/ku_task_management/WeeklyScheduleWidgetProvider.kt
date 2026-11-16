@@ -11,6 +11,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.view.View
 import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetLaunchIntent
@@ -52,40 +53,58 @@ class WeeklyScheduleWidgetProvider : HomeWidgetProvider() {
         WidgetDateRefresh.schedule(context)
         WidgetDateRefresh.request(context)
         val payload = parseWidgetData(widgetData.getString(WIDGET_DATA_KEY, null))
-
         appWidgetIds.forEach { widgetId ->
-            val page = WidgetPagination.page(widgetData, widgetId, payload.tasks.size, 5)
-            val pagePayload = payload.copy(tasks = payload.tasks.subList(page.start, page.end))
-            val views = RemoteViews(context.packageName, R.layout.weekly_schedule_widget).apply {
-                val openAppIntent =
-                    HomeWidgetLaunchIntent.getActivity(context, MainActivity::class.java)
-                setOnClickPendingIntent(R.id.widget_header, openAppIntent)
-                // 등록 이벤트는 + 버튼에만 연결한다. 체크·페이지 이동 이벤트는 유지한다.
-                setOnClickPendingIntent(R.id.widget_add, WidgetTaskCreateActivity.pendingIntent(
-                    context, WidgetActions.WIDGET_KIND_WEEKLY, widgetId,
-                ))
-
-                setTextViewText(R.id.widget_week_range, payload.weekRangeLabel)
-                setTextViewText(
-                    R.id.widget_progress_label,
-                    formatProgressLabel(payload.completedCount, payload.totalCount),
-                )
-                setProgressBar(
-                    R.id.widget_progress,
-                    100,
-                    payload.progressPercent,
-                    false,
-                )
-
-                bindTaskRows(context, pagePayload)
-            }
-
-            WidgetPagination.bind(context, views, WeeklyScheduleWidgetProvider::class.java, widgetId, page, payload.tasks.isEmpty())
-            appWidgetManager.updateAppWidget(widgetId, views)
+            render(context, appWidgetManager, widgetId, widgetData, payload, appWidgetManager.getAppWidgetOptions(widgetId))
         }
     }
 
-    private fun RemoteViews.bindTaskRows(context: Context, payload: WidgetPayload) {
+    override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, id: Int, options: Bundle) {
+        val prefs = HomeWidgetPlugin.getData(context)
+        render(context, manager, id, prefs, parseWidgetData(prefs.getString(WIDGET_DATA_KEY, null)), options)
+    }
+
+    private fun render(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        widgetId: Int,
+        widgetData: SharedPreferences,
+        payload: WidgetPayload,
+        options: Bundle,
+    ) {
+        val size = WidgetSize.from(context, options, defaultWidth = 276, defaultHeight = 340)
+        val pageSize = size.rows(reservedHeight = 118, rowHeight = 41, maximum = 5)
+        val page = WidgetPagination.page(widgetData, widgetId, payload.tasks.size, pageSize)
+        val pagePayload = payload.copy(tasks = payload.tasks.subList(page.start, page.end))
+        val views = RemoteViews(context.packageName, R.layout.weekly_schedule_widget).apply {
+            val openAppIntent =
+                HomeWidgetLaunchIntent.getActivity(context, MainActivity::class.java)
+            setOnClickPendingIntent(R.id.widget_header, openAppIntent)
+            // 등록 이벤트는 + 버튼에만 연결한다. 체크·페이지 이동 이벤트는 유지한다.
+            setOnClickPendingIntent(R.id.widget_add, WidgetTaskCreateActivity.pendingIntent(
+                context, WidgetActions.WIDGET_KIND_WEEKLY, widgetId,
+            ))
+
+            setTextViewText(R.id.widget_week_range, payload.weekRangeLabel)
+            setViewVisibility(R.id.widget_progress_group, if (size.width < 248) View.GONE else View.VISIBLE)
+            setTextViewText(
+                R.id.widget_progress_label,
+                formatProgressLabel(payload.completedCount, payload.totalCount),
+            )
+            setProgressBar(
+                R.id.widget_progress,
+                100,
+                payload.progressPercent,
+                false,
+            )
+
+            bindTaskRows(context, pagePayload, size.width)
+        }
+
+        WidgetPagination.bind(context, views, WeeklyScheduleWidgetProvider::class.java, widgetId, page, payload.tasks.isEmpty())
+        appWidgetManager.updateAppWidget(widgetId, views)
+    }
+
+    private fun RemoteViews.bindTaskRows(context: Context, payload: WidgetPayload, width: Int) {
         val rowIds = intArrayOf(
             R.id.task_row_0,
             R.id.task_row_1,
@@ -148,10 +167,11 @@ class WeeklyScheduleWidgetProvider : HomeWidgetProvider() {
 
             setTextViewText(titleIds[index], task.title)
             setTextViewText(categoryIds[index], task.categoryLabel)
-            setViewVisibility(categoryIds[index], if (task.categoryLabel.isBlank()) View.GONE else View.VISIBLE)
+            setViewVisibility(categoryIds[index], if (width < 248 || task.categoryLabel.isBlank()) View.GONE else View.VISIBLE)
             setInt(categoryIds[index], "setBackgroundColor", parseColor(task.categoryBackgroundHex))
             setTextColor(categoryIds[index], parseColor(task.categoryTextHex))
             setTextViewText(dueIds[index], task.dueLabel)
+            setViewVisibility(dueIds[index], if (width < 170) View.GONE else View.VISIBLE)
             setTextColor(dueIds[index], parseColor(task.dueColorHex))
 
             // 완료/미완료 모두 토글 가능; DB 반영은 앱에서 pending 큐로 처리

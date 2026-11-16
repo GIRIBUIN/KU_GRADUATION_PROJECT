@@ -11,7 +11,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: a65429a3dd9f2af93af12f0ff7270fb5342357eb
           persist-credentials: false
       - uses: actions/setup-java@v4
         with:
@@ -24,19 +23,25 @@ jobs:
       - name: Build arm64 Android APK
         run: |
           flutter pub get
-          flutter build apk --debug --no-pub --target-platform android-arm64 --build-number 4
+          flutter test --no-pub test/data/services/widget_background_refresh_test.dart test/data/services/widget_update_service_test.dart test/data/services/widget_registration_refresh_test.dart
+          flutter build apk --debug --no-pub --target-platform android-arm64 --build-number 5
           mkdir -p deliverable
-          cp build/app/outputs/flutter-apk/app-debug.apk deliverable/KUTODO-a65429a3-android-arm64.apk
+          cp build/app/outputs/flutter-apk/app-debug.apk deliverable/KUTODO-widgets-android-arm64.apk
+      - name: Verify widget layouts and interactions
+        working-directory: android
+        run: |
+          bash ./gradlew :app:testDebugUnitTest --tests '*WidgetResizeTest' --tests '*WidgetIntegrationTest' --tests '*WidgetDateRefreshTest'
       - name: Verify Android package and signature
         run: |
           tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
-          apk=deliverable/KUTODO-a65429a3-android-arm64.apk
+          apk=deliverable/KUTODO-widgets-android-arm64.apk
           "$tools/apksigner" verify "$apk"
           "$tools/aapt" dump badging "$apk" | grep -E '^(package|sdkVersion|targetSdkVersion|native-code):'
+          "$tools/aapt" dump xmltree "$apk" AndroidManifest.xml | grep -F CalendarWidgetProvider
           sha256sum "$apk"
       - uses: actions/upload-artifact@v4
         with:
-          name: KUTODO-a65429a3-android-arm64
+          name: KUTODO-widgets-android-arm64
           path: deliverable/*.apk
           if-no-files-found: error
           retention-days: 3

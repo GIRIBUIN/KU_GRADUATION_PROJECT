@@ -11,6 +11,7 @@ import android.graphics.Paint
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.view.View
 import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetLaunchIntent
@@ -52,77 +53,96 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
         WidgetDateRefresh.schedule(context)
         WidgetDateRefresh.request(context)
         val payload = parseWidgetData(widgetData.getString(WIDGET_DATA_KEY, null))
-
         appWidgetIds.forEach { widgetId ->
-            val page = WidgetPagination.page(widgetData, widgetId, payload.tasks.size, 3)
-            val pagePayload = payload.copy(tasks = payload.tasks.subList(page.start, page.end))
-            val views = RemoteViews(context.packageName, R.layout.schedule_widget).apply {
-                val openAppIntent =
-                    HomeWidgetLaunchIntent.getActivity(context, MainActivity::class.java)
-                setOnClickPendingIntent(R.id.widget_header, openAppIntent)
-                // 등록 이벤트는 + 버튼에만 연결한다. 체크·페이지 이동 이벤트는 유지한다.
-                setOnClickPendingIntent(R.id.widget_add, WidgetTaskCreateActivity.pendingIntent(
-                    context, WidgetActions.WIDGET_KIND_TODAY, widgetId,
-                ))
-
-                setTextViewText(R.id.widget_date, payload.headerDateLabel)
-
-                val rowIds = intArrayOf(R.id.task_row_0, R.id.task_row_1, R.id.task_row_2)
-                val dividerIds = intArrayOf(R.id.task_divider_0, R.id.task_divider_1)
-                val checkboxIds = intArrayOf(
-                    R.id.task_checkbox_0,
-                    R.id.task_checkbox_1,
-                    R.id.task_checkbox_2,
-                )
-                val accentIds = intArrayOf(R.id.task_accent_0, R.id.task_accent_1, R.id.task_accent_2)
-                val timeIds = intArrayOf(R.id.task_time_0, R.id.task_time_1, R.id.task_time_2)
-                val titleIds = intArrayOf(R.id.task_title_0, R.id.task_title_1, R.id.task_title_2)
-                val listIds = intArrayOf(R.id.task_list_0, R.id.task_list_1, R.id.task_list_2)
-
-                for (index in rowIds.indices) {
-                    val task = pagePayload.tasks.getOrNull(index)
-                    if (task == null) {
-                        setViewVisibility(rowIds[index], View.GONE)
-                        if (index < dividerIds.size) {
-                            setViewVisibility(dividerIds[index], View.GONE)
-                        }
-                        continue
-                    }
-
-                    setViewVisibility(rowIds[index], View.VISIBLE)
-                    if (index < dividerIds.size) {
-                        setViewVisibility(
-                            dividerIds[index],
-                            if (pagePayload.tasks.size > index + 1) View.VISIBLE else View.GONE,
-                        )
-                    }
-
-                    setTextViewText(timeIds[index], task.timeLabel)
-                    setTextViewText(titleIds[index], task.title)
-                    setTextViewText(listIds[index], task.listLabel)
-                    setViewVisibility(listIds[index], if (task.listLabel.isBlank()) View.GONE else View.VISIBLE)
-                    setInt(accentIds[index], "setBackgroundColor", parseColor(task.accentColorHex))
-
-                    setImageViewResource(checkboxIds[index], if (task.isCompleted)
-                        R.drawable.widget_checkbox_checked else R.drawable.widget_checkbox_unchecked)
-                    setTextColor(titleIds[index], Color.parseColor(if (task.isCompleted) "#9CA3AF" else "#111827"))
-                    setInt(titleIds[index], "setPaintFlags", Paint.ANTI_ALIAS_FLAG or
-                        if (task.isCompleted) Paint.STRIKE_THRU_TEXT_FLAG else 0)
-
-                    // 고유 ID 기반 체크 토글
-                    val completeIntent = completeTaskPendingIntent(
-                        context = context,
-                        taskId = task.id,
-                        requestCode = CHECKBOX_REQUEST_CODE_BASE + task.id.hashCode(),
-                    )
-                    setOnClickPendingIntent(rowIds[index], completeIntent)
-                    setOnClickPendingIntent(checkboxIds[index], completeIntent)
-                }
-            }
-
-            WidgetPagination.bind(context, views, ScheduleWidgetProvider::class.java, widgetId, page, payload.tasks.isEmpty())
-            appWidgetManager.updateAppWidget(widgetId, views)
+            render(context, appWidgetManager, widgetId, widgetData, payload, appWidgetManager.getAppWidgetOptions(widgetId))
         }
+    }
+
+    override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, id: Int, options: Bundle) {
+        val prefs = HomeWidgetPlugin.getData(context)
+        render(context, manager, id, prefs, parseWidgetData(prefs.getString(WIDGET_DATA_KEY, null)), options)
+    }
+
+    private fun render(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        widgetId: Int,
+        widgetData: SharedPreferences,
+        payload: WidgetPayload,
+        options: Bundle,
+    ) {
+        val size = WidgetSize.from(context, options, defaultWidth = 240, defaultHeight = 250)
+        val pageSize = size.rows(reservedHeight = 94, rowHeight = 45, maximum = 3)
+        val page = WidgetPagination.page(widgetData, widgetId, payload.tasks.size, pageSize)
+        val pagePayload = payload.copy(tasks = payload.tasks.subList(page.start, page.end))
+        val views = RemoteViews(context.packageName, R.layout.schedule_widget).apply {
+            val openAppIntent =
+                HomeWidgetLaunchIntent.getActivity(context, MainActivity::class.java)
+            setOnClickPendingIntent(R.id.widget_header, openAppIntent)
+            // 등록 이벤트는 + 버튼에만 연결한다. 체크·페이지 이동 이벤트는 유지한다.
+            setOnClickPendingIntent(R.id.widget_add, WidgetTaskCreateActivity.pendingIntent(
+                context, WidgetActions.WIDGET_KIND_TODAY, widgetId,
+            ))
+
+            setTextViewText(R.id.widget_date, payload.headerDateLabel)
+            setViewVisibility(R.id.widget_date, if (size.width < 212) View.GONE else View.VISIBLE)
+
+            val rowIds = intArrayOf(R.id.task_row_0, R.id.task_row_1, R.id.task_row_2)
+            val dividerIds = intArrayOf(R.id.task_divider_0, R.id.task_divider_1)
+            val checkboxIds = intArrayOf(
+                R.id.task_checkbox_0,
+                R.id.task_checkbox_1,
+                R.id.task_checkbox_2,
+            )
+            val accentIds = intArrayOf(R.id.task_accent_0, R.id.task_accent_1, R.id.task_accent_2)
+            val timeIds = intArrayOf(R.id.task_time_0, R.id.task_time_1, R.id.task_time_2)
+            val titleIds = intArrayOf(R.id.task_title_0, R.id.task_title_1, R.id.task_title_2)
+            val listIds = intArrayOf(R.id.task_list_0, R.id.task_list_1, R.id.task_list_2)
+
+            for (index in rowIds.indices) {
+                val task = pagePayload.tasks.getOrNull(index)
+                if (task == null) {
+                    setViewVisibility(rowIds[index], View.GONE)
+                    if (index < dividerIds.size) {
+                        setViewVisibility(dividerIds[index], View.GONE)
+                    }
+                    continue
+                }
+
+                setViewVisibility(rowIds[index], View.VISIBLE)
+                if (index < dividerIds.size) {
+                    setViewVisibility(
+                        dividerIds[index],
+                        if (pagePayload.tasks.size > index + 1) View.VISIBLE else View.GONE,
+                    )
+                }
+
+                setTextViewText(timeIds[index], task.timeLabel)
+                setViewVisibility(timeIds[index], if (size.width < 184) View.GONE else View.VISIBLE)
+                setTextViewText(titleIds[index], task.title)
+                setTextViewText(listIds[index], task.listLabel)
+                setViewVisibility(listIds[index], if (task.listLabel.isBlank()) View.GONE else View.VISIBLE)
+                setInt(accentIds[index], "setBackgroundColor", parseColor(task.accentColorHex))
+
+                setImageViewResource(checkboxIds[index], if (task.isCompleted)
+                    R.drawable.widget_checkbox_checked else R.drawable.widget_checkbox_unchecked)
+                setTextColor(titleIds[index], Color.parseColor(if (task.isCompleted) "#9CA3AF" else "#111827"))
+                setInt(titleIds[index], "setPaintFlags", Paint.ANTI_ALIAS_FLAG or
+                    if (task.isCompleted) Paint.STRIKE_THRU_TEXT_FLAG else 0)
+
+                // 고유 ID 기반 체크 토글
+                val completeIntent = completeTaskPendingIntent(
+                    context = context,
+                    taskId = task.id,
+                    requestCode = CHECKBOX_REQUEST_CODE_BASE + task.id.hashCode(),
+                )
+                setOnClickPendingIntent(rowIds[index], completeIntent)
+                setOnClickPendingIntent(checkboxIds[index], completeIntent)
+            }
+        }
+
+        WidgetPagination.bind(context, views, ScheduleWidgetProvider::class.java, widgetId, page, payload.tasks.isEmpty())
+        appWidgetManager.updateAppWidget(widgetId, views)
     }
 
     private data class WidgetTask(

@@ -71,11 +71,13 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
         payload: WidgetPayload,
         options: Bundle,
     ) {
-        val size = WidgetSize.from(context, options, defaultWidth = 240, defaultHeight = 250)
-        val pageSize = size.rows(reservedHeight = 94, rowHeight = 45, maximum = 3)
+        val size = WidgetSize.from(context, options, defaultWidth = 250, defaultHeight = 180)
+        val compact = size.height < 152 * size.fontScale.coerceAtLeast(1f)
+        val pageSize = if (compact) 1 else size.rows(reservedHeight = 94, rowHeight = 45, maximum = 3)
         val page = WidgetPagination.page(widgetData, widgetId, payload.tasks.size, pageSize)
         val pagePayload = payload.copy(tasks = payload.tasks.subList(page.start, page.end))
-        val views = RemoteViews(context.packageName, R.layout.schedule_widget).apply {
+        val layout = if (compact) R.layout.widget_schedule_compact else R.layout.schedule_widget
+        val views = RemoteViews(context.packageName, layout).apply {
             val openAppIntent =
                 HomeWidgetLaunchIntent.getActivity(context, MainActivity::class.java)
             setOnClickPendingIntent(R.id.widget_header, openAppIntent)
@@ -83,6 +85,15 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
             setOnClickPendingIntent(R.id.widget_add, WidgetTaskCreateActivity.pendingIntent(
                 context, WidgetActions.WIDGET_KIND_TODAY, widgetId,
             ))
+
+            if (compact) {
+                val task = pagePayload.tasks.firstOrNull()
+                bindCompactSchedule(
+                    context, R.string.schedule_widget_header_title, task?.title, task?.isCompleted == true,
+                    task?.let { completeTaskPendingIntent(context, it.id, CHECKBOX_REQUEST_CODE_BASE + it.id.hashCode()) },
+                )
+                return@apply
+            }
 
             setTextViewText(R.id.widget_date, payload.headerDateLabel)
             setViewVisibility(R.id.widget_date, if (size.width < 212) View.GONE else View.VISIBLE)

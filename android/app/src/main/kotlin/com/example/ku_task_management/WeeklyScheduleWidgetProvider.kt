@@ -71,11 +71,13 @@ class WeeklyScheduleWidgetProvider : HomeWidgetProvider() {
         payload: WidgetPayload,
         options: Bundle,
     ) {
-        val size = WidgetSize.from(context, options, defaultWidth = 276, defaultHeight = 340)
-        val pageSize = size.rows(reservedHeight = 118, rowHeight = 41, maximum = 5)
+        val size = WidgetSize.from(context, options, defaultWidth = 250, defaultHeight = 180)
+        val compact = size.height < 176 * size.fontScale.coerceAtLeast(1f)
+        val pageSize = if (compact) 1 else size.rows(reservedHeight = 118, rowHeight = 41, maximum = 5)
         val page = WidgetPagination.page(widgetData, widgetId, payload.tasks.size, pageSize)
         val pagePayload = payload.copy(tasks = payload.tasks.subList(page.start, page.end))
-        val views = RemoteViews(context.packageName, R.layout.weekly_schedule_widget).apply {
+        val layout = if (compact) R.layout.widget_schedule_compact else R.layout.weekly_schedule_widget
+        val views = RemoteViews(context.packageName, layout).apply {
             val openAppIntent =
                 HomeWidgetLaunchIntent.getActivity(context, MainActivity::class.java)
             setOnClickPendingIntent(R.id.widget_header, openAppIntent)
@@ -83,6 +85,15 @@ class WeeklyScheduleWidgetProvider : HomeWidgetProvider() {
             setOnClickPendingIntent(R.id.widget_add, WidgetTaskCreateActivity.pendingIntent(
                 context, WidgetActions.WIDGET_KIND_WEEKLY, widgetId,
             ))
+
+            if (compact) {
+                val task = pagePayload.tasks.firstOrNull()
+                bindCompactSchedule(
+                    context, R.string.weekly_schedule_widget_header_title, task?.title, task?.isCompleted == true,
+                    task?.let { toggleTaskPendingIntent(context, it.id, CHECKBOX_REQUEST_CODE_BASE + it.id.hashCode()) },
+                )
+                return@apply
+            }
 
             setTextViewText(R.id.widget_week_range, payload.weekRangeLabel)
             setViewVisibility(R.id.widget_progress_group, if (size.width < 248) View.GONE else View.VISIBLE)

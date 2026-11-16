@@ -3,6 +3,7 @@ package com.example.ku_task_management
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.SharedPreferences
+import android.graphics.Paint
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
@@ -48,7 +49,7 @@ class CalendarWidgetProvider : HomeWidgetProvider() {
     }
 
     private fun render(context: Context, manager: AppWidgetManager, id: Int, options: Bundle, days: JSONObject) {
-        val size = WidgetSize.from(context, options, defaultWidth = 276, defaultHeight = 340)
+        val size = WidgetSize.from(context, options, defaultWidth = 250, defaultHeight = 180)
         manager.updateAppWidget(id, createViews(context, size, LocalDate.now(), days))
     }
 
@@ -68,7 +69,7 @@ class CalendarWidgetProvider : HomeWidgetProvider() {
             val row = RemoteViews(context.packageName, R.layout.widget_calendar_week)
             for (day in 0 until 7) {
                 val date = layout.start.plusDays((week * 7 + day).toLong())
-                row.addView(R.id.widget_calendar_week, dayView(context, date, today, days, layout.showTitles))
+                row.addView(R.id.widget_calendar_week, dayView(context, date, today, days, layout))
             }
             views.addView(R.id.widget_calendar_weeks, row)
         }
@@ -80,7 +81,7 @@ class CalendarWidgetProvider : HomeWidgetProvider() {
         date: LocalDate,
         today: LocalDate,
         days: JSONObject,
-        showTitles: Boolean,
+        layout: WidgetCalendarLayout,
     ): RemoteViews {
         val events = days.optJSONObject(date.toString())
         val count = events?.optInt("count") ?: 0
@@ -97,10 +98,18 @@ class CalendarWidgetProvider : HomeWidgetProvider() {
             cell.setInt(R.id.widget_calendar_day_number, "setBackgroundResource", R.drawable.widget_calendar_today)
         }
         if (count > 0) {
-            cell.setViewVisibility(R.id.widget_calendar_event, View.VISIBLE)
-            cell.setTextViewText(R.id.widget_calendar_event, if (showTitles && title.isNotBlank()) title else "•")
+            val indicator = if (layout.inlineEvents) {
+                cell.setInt(R.id.widget_calendar_day_number, "setPaintFlags", Paint.ANTI_ALIAS_FLAG or Paint.UNDERLINE_TEXT_FLAG)
+                R.id.widget_calendar_day_number
+            } else {
+                cell.setViewVisibility(R.id.widget_calendar_event, View.VISIBLE)
+                cell.setTextViewText(
+                    R.id.widget_calendar_event, if (layout.showTitles && title.isNotBlank()) title else "•",
+                )
+                R.id.widget_calendar_event
+            }
             cell.setContentDescription(
-                R.id.widget_calendar_event,
+                indicator,
                 context.getString(R.string.widget_calendar_day_events, date.monthValue, date.dayOfMonth, count),
             )
         }

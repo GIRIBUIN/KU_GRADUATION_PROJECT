@@ -24,9 +24,9 @@ jobs:
         run: |
           flutter pub get
           flutter test --no-pub test/data/services/widget_background_refresh_test.dart test/data/services/widget_update_service_test.dart test/data/services/widget_registration_refresh_test.dart
-          flutter build apk --debug --no-pub --target-platform android-arm64 --build-number 5
+          flutter build apk --debug --no-pub --target-platform android-arm64 --build-number 6
           mkdir -p deliverable
-          cp build/app/outputs/flutter-apk/app-debug.apk deliverable/KUTODO-widgets-android-arm64.apk
+          cp build/app/outputs/flutter-apk/app-debug.apk deliverable/KUTODO-widgets-4x3-android-arm64.apk
       - name: Verify widget layouts and interactions
         working-directory: android
         run: |
@@ -37,14 +37,14 @@ jobs:
       - name: Verify Android package and signature
         run: |
           tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
-          apk=deliverable/KUTODO-widgets-android-arm64.apk
+          apk=deliverable/KUTODO-widgets-4x3-android-arm64.apk
           "$tools/apksigner" verify --print-certs "$apk"
           "$tools/aapt" dump badging "$apk" | grep -E '^(package|sdkVersion|targetSdkVersion|native-code):'
           "$tools/aapt" dump xmltree "$apk" AndroidManifest.xml | grep -F CalendarWidgetProvider
           sha256sum "$apk"
       - uses: actions/upload-artifact@v4
         with:
-          name: KUTODO-widgets-android-arm64
+          name: KUTODO-widgets-4x3-android-arm64
           path: deliverable/*.apk
           if-no-files-found: error
           retention-days: 3

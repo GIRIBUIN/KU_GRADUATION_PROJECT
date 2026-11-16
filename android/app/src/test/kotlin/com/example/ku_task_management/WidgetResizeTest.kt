@@ -51,7 +51,11 @@ class WidgetResizeTest {
         val android = "http://schemas.android.com/apk/res/android"
         for (id in listOf(R.xml.schedule_widget_info, R.xml.weekly_schedule_widget_info, R.xml.calendar_widget_info)) {
             resources.getXml(id).use { xml ->
-                assertEquals(XmlPullParser.START_TAG, xml.nextTag())
+                var event = xml.eventType
+                while (event != XmlPullParser.START_TAG && event != XmlPullParser.END_DOCUMENT) {
+                    event = xml.next()
+                }
+                assertEquals(XmlPullParser.START_TAG, event)
                 assertEquals(4, xml.getAttributeIntValue(android, "targetCellWidth", -1))
                 assertEquals(3, xml.getAttributeIntValue(android, "targetCellHeight", -1))
                 assertEquals(

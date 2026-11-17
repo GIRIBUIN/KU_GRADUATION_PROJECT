@@ -17,7 +17,8 @@ Future<void> main() async {
 @pragma('vm:entry-point')
 Future<void> widgetQuickCreate(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
-  await initializeDateFormatting('ko_KR');
+  // The quick-create form formats dates numerically and does not need intl's
+  // locale data. Avoid blocking its first frame on this initialization.
   runApp(
     WidgetQuickCreateApp(
       source: args.isNotEmpty ? args[0] : 'unknown',

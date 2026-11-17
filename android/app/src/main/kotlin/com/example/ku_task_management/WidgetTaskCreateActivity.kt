@@ -11,11 +11,18 @@ import es.antonborri.home_widget.HomeWidgetPlugin
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.android.FlutterActivityLaunchConfigs.BackgroundMode
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.embedding.engine.FlutterEngineCache
 import io.flutter.plugin.common.MethodChannel
 
 /** 메인 Activity를 열지 않고 두 위젯의 공통 등록 팝업을 실행한다. */
 class WidgetTaskCreateActivity : FlutterActivity() {
     override fun getDartEntrypointFunctionName() = "widgetQuickCreate"
+
+    override fun provideFlutterEngine(context: Context): FlutterEngine? =
+        FlutterEngineCache.getInstance().get(ENGINE_ID)
+
+    // The quick-create engine is kept alive so subsequent widget taps do not boot Dart again.
+    override fun shouldDestroyEngineWithHost() = false
 
     // 최초 실행 위젯 정보를 Dart에 전달한다. singleTask 재호출은 기존 폼을 유지한다.
     override fun getDartEntrypointArgs(): List<String> = listOf(
@@ -48,6 +55,8 @@ class WidgetTaskCreateActivity : FlutterActivity() {
     }
 
     companion object {
+        const val ENGINE_ID = "ku_todo_widget_quick_create"
+
         /** singleTask와 SINGLE_TOP으로 연속 클릭 시 입력 중인 팝업을 재사용한다. */
         fun createIntent(context: Context, source: String, widgetId: Int) =
             Intent(context, WidgetTaskCreateActivity::class.java).apply {

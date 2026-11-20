@@ -1200,6 +1200,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
       },
       child: Scaffold(
         key: _scaffoldKey,
+        backgroundColor: const Color(0xFFFAF6E9),
         drawer: _drawer(),
         onDrawerChanged: (open) {
           if (!open) _dismissMenus.value++;
@@ -1503,16 +1504,20 @@ class _MobileHomePageState extends State<MobileHomePage> {
 
   Widget _section(String title, String id, List<Task> tasks) => Padding(
     key: ValueKey('home-section-$id'),
-    padding: const EdgeInsets.only(bottom: 24),
+    padding: const EdgeInsets.only(bottom: 10),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (!_selectionMode)
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 10),
+            padding: const EdgeInsets.fromLTRB(20, 6, 20, 4),
             child: Text(
               title,
-              style: const TextStyle(fontSize: 13, color: AppTheme.muted),
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1D5638),
+              ),
             ),
           ),
         if (tasks.isEmpty)
@@ -1568,6 +1573,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
         subTaskRepository: widget.subTaskRepository,
         subTaskVersion: widget.subTaskVersion,
         onSubTasksChanged: widget.onSubTasksChanged,
+        cardStyle: _scope == _ScopeKind.period,
         lists: widget.lists,
         groups: widget.groups,
         tags: widget.tags,

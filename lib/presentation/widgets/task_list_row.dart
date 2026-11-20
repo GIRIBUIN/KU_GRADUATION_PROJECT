@@ -18,6 +18,7 @@ Widget buildTaskListRow({
   SubTaskRepository? subTaskRepository,
   int subTaskVersion = 0,
   VoidCallback? onSubTasksChanged,
+  bool cardStyle = false,
 }) => _TaskListRow(
   key: ValueKey(('task-row', key)),
   rowKey: key,
@@ -31,6 +32,7 @@ Widget buildTaskListRow({
   subTaskRepository: subTaskRepository,
   subTaskVersion: subTaskVersion,
   onSubTasksChanged: onSubTasksChanged,
+  cardStyle: cardStyle,
 );
 
 class _TaskListRow extends StatefulWidget {
@@ -47,6 +49,7 @@ class _TaskListRow extends StatefulWidget {
     required this.subTaskRepository,
     required this.subTaskVersion,
     required this.onSubTasksChanged,
+    required this.cardStyle,
   });
   final Key rowKey;
   final Task task;
@@ -57,6 +60,7 @@ class _TaskListRow extends StatefulWidget {
   final List<Tag> tags;
   final SubTaskRepository? subTaskRepository;
   final int subTaskVersion;
+  final bool cardStyle;
   @override
   State<_TaskListRow> createState() => _TaskListRowState();
 }
@@ -233,107 +237,125 @@ class _TaskListRowState extends State<_TaskListRow> {
           ? AppTheme.dangerRed
           : AppTheme.muted,
     );
+    final isOverdue = task.status == TaskStatus.active &&
+        due != null &&
+        isDueDateOverdue(due, now: now);
+    final row = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ListTile(
+          key: key,
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: widget.cardStyle ? 12 : 16,
+          ),
+          leading: leading,
+          onTap: onTap,
+          onLongPress: onLongPress,
+          title: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  task.title,
+                  softWrap: true,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: widget.cardStyle
+                        ? FontWeight.w600
+                        : FontWeight.normal,
+                    decoration: task.status == TaskStatus.completed
+                        ? TextDecoration.lineThrough
+                        : null,
+                  ),
+                ),
+              ),
+              if (_hasSubTasks)
+                Icon(
+                  _expanded ? Icons.keyboard_arrow_down : Icons.chevron_right,
+                  size: 18,
+                  color: AppTheme.muted,
+                  semanticLabel: _expanded ? '서브 작업 접기' : '서브 작업 펼치기',
+                ),
+            ],
+          ),
+          subtitle: details.isEmpty
+              ? null
+              : Text(
+                  details.join(' · '),
+                  softWrap: true,
+                  style: const TextStyle(fontSize: 12, color: AppTheme.muted),
+                ),
+          trailing: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (due == null)
+                Text('마감 없음', style: dueStyle)
+              else ...[
+                Text(dueLabel, style: dueStyle.copyWith(
+                  fontWeight: widget.cardStyle
+                      ? FontWeight.w700
+                      : FontWeight.normal,
+                )),
+                Text(DateFormat('HH:mm', 'ko_KR').format(due), style: dueStyle),
+              ],
+            ],
+          ),
+        ),
+        if (_hasSubTasks && _expanded)
+          for (final subTask in _subTasks)
+            Padding(
+              padding: const EdgeInsets.only(left: 24),
+              child: ListTile(
+                key: ValueKey<Object>(('subtask', widget.rowKey, subTask.id)),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                minTileHeight: 48,
+                leading: Checkbox(
+                  value: subTask.isDone,
+                  semanticLabel: '${subTask.title} 완료',
+                  onChanged: _saving ? null : (_) => _toggleSubTask(subTask),
+                ),
+                title: Text(
+                  subTask.title,
+                  softWrap: true,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: subTask.isDone ? AppTheme.muted : AppTheme.ink,
+                    decoration: subTask.isDone ? TextDecoration.lineThrough : null,
+                  ),
+                ),
+              ),
+            ),
+      ],
+    );
     return Semantics(
       label: priorityLabel,
       expanded: _hasSubTasks ? _expanded : null,
-      child: Material(
-        color: priorityColor?.withValues(alpha: .08) ?? Colors.transparent,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            ListTile(
-              key: key,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              leading: leading,
-              onTap: onTap,
-              onLongPress: onLongPress,
-              title: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      task.title,
-                      softWrap: true,
-                      style: TextStyle(
-                        fontSize: 13,
-                        decoration: task.status == TaskStatus.completed
-                            ? TextDecoration.lineThrough
-                            : null,
-                      ),
-                    ),
-                  ),
-                  if (_hasSubTasks)
-                    Icon(
-                      _expanded
-                          ? Icons.keyboard_arrow_down
-                          : Icons.chevron_right,
-                      size: 18,
-                      color: AppTheme.muted,
-                      semanticLabel: _expanded ? '서브 작업 접기' : '서브 작업 펼치기',
-                    ),
-                ],
-              ),
-              subtitle: details.isEmpty
-                  ? null
-                  : Text(
-                      details.join(' · '),
-                      softWrap: true,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.muted,
-                      ),
-                    ),
-              trailing: Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  if (due == null)
-                    Text('마감 없음', style: dueStyle)
-                  else ...[
-                    Text(dueLabel, style: dueStyle),
-                    Text(
-                      DateFormat('HH:mm', 'ko_KR').format(due),
-                      style: dueStyle,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            if (_hasSubTasks && _expanded)
-              for (final subTask in _subTasks)
-                Padding(
-                  padding: const EdgeInsets.only(left: 24),
-                  child: ListTile(
-                    key: ValueKey<Object>((
-                      'subtask',
-                      widget.rowKey,
-                      subTask.id,
-                    )),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    minTileHeight: 48,
-                    leading: Checkbox(
-                      value: subTask.isDone,
-                      semanticLabel: '${subTask.title} 완료',
-                      onChanged: _saving
-                          ? null
-                          : (_) => _toggleSubTask(subTask),
-                    ),
-                    title: Text(
-                      subTask.title,
-                      softWrap: true,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: subTask.isDone ? AppTheme.muted : AppTheme.ink,
-                        decoration: subTask.isDone
-                            ? TextDecoration.lineThrough
-                            : null,
-                      ),
-                    ),
-                  ),
+      child: widget.cardStyle
+          ? Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              decoration: BoxDecoration(
+                color: task.status == TaskStatus.completed
+                    ? Colors.white
+                    : const Color(0xFFFFFEFA),
+                borderRadius: BorderRadius.circular(13),
+                border: Border.all(
+                  color: isOverdue
+                      ? const Color(0xFFE52F25)
+                      : const Color(0xFFD0DFC8),
+                  width: isOverdue ? 1.5 : 1.2,
                 ),
-          ],
-        ),
-      ),
+              ),
+              child: Material(
+                color: priorityColor?.withValues(alpha: .05) ?? Colors.transparent,
+                borderRadius: BorderRadius.circular(13),
+                child: row,
+              ),
+            )
+          : Material(
+              color: priorityColor?.withValues(alpha: .08) ?? Colors.transparent,
+              child: row,
+            ),
     );
   }
 }

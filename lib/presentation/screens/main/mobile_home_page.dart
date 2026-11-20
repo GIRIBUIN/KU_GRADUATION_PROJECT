@@ -16,6 +16,7 @@ import '../../widgets/task_list_row.dart';
 import 'drawer_context_item.dart';
 
 enum _ScopeKind { period, all, list, tag, completed, trash, excluded }
+enum _HomeStatusFilter { all, urgent, overdue, completed }
 
 class MobileHomePage extends StatefulWidget {
   const MobileHomePage({
@@ -95,6 +96,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
   _ScopeKind _scope = _ScopeKind.period;
   String? _scopeId;
   HomePeriod _period = HomePeriod.today;
+  _HomeStatusFilter _homeStatusFilter = _HomeStatusFilter.all;
   DateTimeRange? _customRange;
   HomeViewOptions _view = const HomeViewOptions();
   HomeViewOptions _trashView = const HomeViewOptions();
@@ -899,60 +901,31 @@ class _MobileHomePageState extends State<MobileHomePage> {
     }
   }
 
-  Future<void> _selectQuickPeriod(HomePeriod period) async {
-    if (!widget.settingsReady || _savingPeriod || _bulkBusy) return;
-    await _savePeriod(period);
-  }
-
-  Widget _periodChips({required bool disabled}) {
-    final choices = <(String, HomePeriod)>[
-      ('전체', HomePeriod.all),
-      ('오늘', HomePeriod.today),
-      ('이번 주', HomePeriod.week),
-      ('이번 달', HomePeriod.month),
+  Widget _homeStatusChips({required bool disabled}) {
+    const choices = <(String, _HomeStatusFilter)>[
+      ('전체', _HomeStatusFilter.all),
+      ('마감 임박', _HomeStatusFilter.urgent),
+      ('마감 지남', _HomeStatusFilter.overdue),
+      ('완료', _HomeStatusFilter.completed),
     ];
     return SizedBox(
       height: 38,
       child: ListView.separated(
-        key: const ValueKey('home-period-chips'),
+        key: const ValueKey('home-status-chips'),
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: choices.length + 1,
+        itemCount: choices.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
-          if (index == choices.length) {
-            final selected =
-                _period == HomePeriod.custom && _scope == _ScopeKind.period;
-            return ChoiceChip(
-              key: const ValueKey('home-period-chip-custom'),
-              label: const Text('기간 선택'),
-              selected: selected,
-              onSelected: disabled
-                  ? null
-                  : (_) => _pickPeriod(skipPeriodMenu: true),
-              showCheckmark: false,
-              labelStyle: TextStyle(
-                color: selected
-                    ? const Color(0xFF1D5638)
-                    : const Color(0xFF353A36),
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-              backgroundColor: const Color(0xFFFAF6E9),
-              selectedColor: const Color(0xFFD0DFC8),
-              side: const BorderSide(color: Color(0xFFD0DFC8)),
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              shape: const StadiumBorder(),
-            );
-          }
-          final (label, period) = choices[index];
-          final selected =
-              _period == period && _scope == _ScopeKind.period;
+          final (label, filter) = choices[index];
+          final selected = _homeStatusFilter == filter;
           return ChoiceChip(
-            key: ValueKey('home-period-chip-${period.name}'),
+            key: ValueKey('home-status-chip-${filter.name}'),
             label: Text(label),
             selected: selected,
-            onSelected: disabled ? null : (_) => _selectQuickPeriod(period),
+            onSelected: disabled
+                ? null
+                : (_) => setState(() => _homeStatusFilter = filter),
             showCheckmark: false,
             labelStyle: TextStyle(
               color: selected ? const Color(0xFF1D5638) : const Color(0xFF353A36),
@@ -1212,7 +1185,6 @@ class _MobileHomePageState extends State<MobileHomePage> {
                 backgroundColor: const Color(0xFFFAF6E9),
                 foregroundColor: const Color(0xFF1D5638),
                 surfaceTintColor: Colors.transparent,
-                toolbarHeight: _scope == _ScopeKind.period ? 54 : kToolbarHeight,
                 automaticallyImplyLeading: false,
                 titleSpacing: 0,
                 leading: IconButton(
@@ -1224,14 +1196,12 @@ class _MobileHomePageState extends State<MobileHomePage> {
                 ),
                 title: InkWell(
                   key: const ValueKey('home-period'),
-                  onLongPress: _bulkBusy
-                      ? null
-                      : () => widget.onRefresh(),
                   onTap:
                       _bulkBusy ||
                           _savingPeriod ||
                           !widget.settingsReady ||
-                          isAll
+                          _scope == _ScopeKind.all ||
+                          _scope == _ScopeKind.excluded
                       ? null
                       : _pickPeriod,
                   child: Padding(
@@ -1243,8 +1213,8 @@ class _MobileHomePageState extends State<MobileHomePage> {
                           children: [
                             Flexible(
                               child: Text(
-                                _scope == _ScopeKind.period
-                                    ? '할 일'
+                                _scope == _ScopeKind.trash
+                                    ? '휴지통'
                                     : isAll
                                     ? '전체'
                                     : (_scope == _ScopeKind.trash
@@ -1258,11 +1228,11 @@ class _MobileHomePageState extends State<MobileHomePage> {
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF252923),
+                                  color: Color(0xFF252923),
                                 ),
                               ),
                             ),
-                            if (!isAll && _scope != _ScopeKind.period)
+                            if (!isAll && _scope != _ScopeKind.excluded)
                               const Icon(Icons.expand_more_rounded, size: 20),
                           ],
                         ),
@@ -1344,12 +1314,18 @@ class _MobileHomePageState extends State<MobileHomePage> {
                     done: completed.length,
                     total: periodTasks.length + completed.length,
                   ),
-                  _periodChips(disabled: _bulkBusy || _savingPeriod),
+                  _homeStatusChips(disabled: _bulkBusy || _savingPeriod),
                   const SizedBox(height: 8),
-                  _section('전체', 'period', periodTasks),
-                  _section('마감 임박', 'urgent', urgent),
-                  _section('마감 지남', 'overdue', overdue),
-                  _section('완료', 'completed', completed),
+                  switch (_homeStatusFilter) {
+                    _HomeStatusFilter.all =>
+                      _section('전체', 'period', periodTasks),
+                    _HomeStatusFilter.urgent =>
+                      _section('마감 임박', 'urgent', urgent),
+                    _HomeStatusFilter.overdue =>
+                      _section('마감 지남', 'overdue', overdue),
+                    _HomeStatusFilter.completed =>
+                      _section('완료', 'completed', completed),
+                  },
                 ]
                 else if (_scope == _ScopeKind.excluded)
                   _section('제외된 eCampus 항목', 'excluded', matching)

@@ -893,6 +893,93 @@ class _MobileHomePageState extends State<MobileHomePage> {
     }
   }
 
+  Future<void> _selectQuickPeriod(HomePeriod period) async {
+    if (!widget.settingsReady || _savingPeriod || _bulkBusy) return;
+    await _savePeriod(period);
+  }
+
+  Widget _periodChips({required bool disabled}) {
+    final choices = <(String, HomePeriod)>[
+      ('전체', HomePeriod.all),
+      ('오늘', HomePeriod.today),
+      ('이번 주', HomePeriod.week),
+      ('이번 달', HomePeriod.month),
+    ];
+    return SizedBox(
+      height: 38,
+      child: ListView.separated(
+        key: const ValueKey('home-period-chips'),
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: choices.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final (label, period) = choices[index];
+          final selected = _period == period && _scope == _ScopeKind.period;
+          return ChoiceChip(
+            key: ValueKey('home-period-chip-${period.name}'),
+            label: Text(label),
+            selected: selected,
+            onSelected: disabled ? null : (_) => _selectQuickPeriod(period),
+            showCheckmark: false,
+            labelStyle: TextStyle(
+              color: selected ? const Color(0xFF1D5638) : const Color(0xFF353A36),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+            backgroundColor: const Color(0xFFFAF6E9),
+            selectedColor: const Color(0xFFD0DFC8),
+            side: BorderSide(
+              color: selected ? const Color(0xFFD0DFC8) : const Color(0xFFD0DFC8),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            shape: const StadiumBorder(),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _progressCard({required int done, required int total}) {
+    final progress = total == 0 ? 0.0 : (done / total).clamp(0.0, 1.0);
+    return Container(
+      key: const ValueKey('home-progress-card'),
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1D5638),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('전체 진행률', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                const SizedBox(height: 5),
+                Text('$done / $total 완료', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            flex: 1,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 7,
+                backgroundColor: const Color(0xFFC9D8C0),
+                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFF18A24)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _savePeriod(HomePeriod selected, {DateTimeRange? range}) async {
     if (_scope == _ScopeKind.trash) {
       setState(() {
@@ -1188,11 +1275,23 @@ class _MobileHomePageState extends State<MobileHomePage> {
           child: RefreshIndicator(
             onRefresh: () async => widget.onRefresh(),
             child: ListView(
-              padding: EdgeInsets.fromLTRB(0, _selectionMode ? 0 : 12, 0, 30),
+              padding: EdgeInsets.fromLTRB(0, _selectionMode ? 0 : 8, 0, 30),
               physics: const AlwaysScrollableScrollPhysics(),
               children: [
                 if (widget.isLoading)
                   const Center(child: CircularProgressIndicator())
+                else if (!_selectionMode && _scope == _ScopeKind.period) ...[
+                  _progressCard(
+                    done: completed.length,
+                    total: periodTasks.length + completed.length,
+                  ),
+                  _periodChips(disabled: _bulkBusy || _savingPeriod),
+                  const SizedBox(height: 8),
+                  _section('전체', 'period', periodTasks),
+                  _section('마감 임박', 'urgent', urgent),
+                  _section('마감 지남', 'overdue', overdue),
+                  _section('완료', 'completed', completed),
+                ]
                 else if (_scope == _ScopeKind.excluded)
                   _section('제외된 eCampus 항목', 'excluded', matching)
                 else if (_scope == _ScopeKind.trash) ...[

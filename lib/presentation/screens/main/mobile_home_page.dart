@@ -1209,6 +1209,10 @@ class _MobileHomePageState extends State<MobileHomePage> {
         appBar: _selectionMode
             ? _selectionAppBar(selectionVisible)
             : AppBar(
+                backgroundColor: const Color(0xFFFAF6E9),
+                foregroundColor: const Color(0xFF1D5638),
+                surfaceTintColor: Colors.transparent,
+                toolbarHeight: _scope == _ScopeKind.period ? 54 : kToolbarHeight,
                 automaticallyImplyLeading: false,
                 titleSpacing: 0,
                 leading: IconButton(
@@ -1220,6 +1224,9 @@ class _MobileHomePageState extends State<MobileHomePage> {
                 ),
                 title: InkWell(
                   key: const ValueKey('home-period'),
+                  onLongPress: _bulkBusy
+                      ? null
+                      : () => widget.onRefresh(),
                   onTap:
                       _bulkBusy ||
                           _savingPeriod ||
@@ -1232,18 +1239,13 @@ class _MobileHomePageState extends State<MobileHomePage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          _scopeLabel,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppTheme.muted,
-                          ),
-                        ),
                         Row(
                           children: [
                             Flexible(
                               child: Text(
-                                isAll
+                                _scope == _ScopeKind.period
+                                    ? '할 일'
+                                    : isAll
                                     ? '전체'
                                     : (_scope == _ScopeKind.trash
                                               ? _trashPeriod
@@ -1254,12 +1256,13 @@ class _MobileHomePageState extends State<MobileHomePage> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
-                                  fontSize: 17,
+                                  fontSize: 18,
                                   fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF252923),
                                 ),
                               ),
                             ),
-                            if (!isAll)
+                            if (!isAll && _scope != _ScopeKind.period)
                               const Icon(Icons.expand_more_rounded, size: 20),
                           ],
                         ),
@@ -1269,20 +1272,45 @@ class _MobileHomePageState extends State<MobileHomePage> {
                 ),
                 actions: [
                   IconButton(
-                    tooltip: 'eCampus 가져오기',
-                    onPressed: _bulkBusy ? null : widget.onImport,
-                    icon: const Icon(Icons.sync_rounded),
+                    tooltip: '새로고침',
+                    onPressed: _bulkBusy ? null : widget.onRefresh,
+                    icon: const Icon(Icons.refresh_rounded),
                   ),
                   IconButton(
-                    tooltip: '보기 조정',
-                    onPressed: widget.settingsReady && !_bulkBusy
-                        ? _adjustView
-                        : null,
-                    icon: Badge(
-                      isLabelVisible: !_currentView.isDefault,
-                      smallSize: 6,
-                      child: const Icon(Icons.tune_rounded),
-                    ),
+                    tooltip: '보기 조정 및 가져오기',
+                    onPressed: _bulkBusy
+                        ? null
+                        : () => showModalBottomSheet<void>(
+                            context: context,
+                            showDragHandle: true,
+                            builder: (context) => SafeArea(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  ListTile(
+                                    leading: const Icon(Icons.tune_rounded),
+                                    title: const Text('보기 조정'),
+                                    trailing: !_currentView.isDefault
+                                        ? const Icon(Icons.check_rounded)
+                                        : null,
+                                    onTap: () {
+                                      Navigator.pop(context);
+                                      _adjustView();
+                                    },
+                                  ),
+                                  ListTile(
+                                    leading: const Icon(Icons.sync_rounded),
+                                    title: const Text('eCampus 가져오기'),
+                                    onTap: () {
+                                      Navigator.pop(context);
+                                      widget.onImport();
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                    icon: const Icon(Icons.tune_rounded),
                   ),
                   const SizedBox(width: 4),
                 ],

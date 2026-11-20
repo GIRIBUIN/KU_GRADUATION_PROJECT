@@ -787,44 +787,50 @@ class _MobileHomePageState extends State<MobileHomePage> {
     ),
   );
 
-  Future<void> _pickPeriod() async {
+  Future<void> _pickPeriod({bool skipPeriodMenu = false}) async {
     if (!widget.settingsReady || _savingPeriod) return;
-    final selected = await showModalBottomSheet<HomePeriod>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Padding(
-              padding: EdgeInsets.all(12),
-              child: Text(
-                '날짜 / 기간 선택',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+    final selected = skipPeriodMenu
+        ? HomePeriod.custom
+        : await showModalBottomSheet<HomePeriod>(
+            context: context,
+            showDragHandle: true,
+            builder: (context) => SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: Text(
+                      '날짜 / 기간 선택',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  for (final period in HomePeriod.values.where(
+                    (mode) =>
+                        _scope == _ScopeKind.trash || mode != HomePeriod.all,
+                  ))
+                    ListTile(
+                      title: Text(switch (period) {
+                        HomePeriod.today => '오늘',
+                        HomePeriod.week => '이번 주',
+                        HomePeriod.month => '이번 달',
+                        HomePeriod.all => '전체',
+                        HomePeriod.custom => '기간 선택',
+                      }),
+                      trailing:
+                          (_scope == _ScopeKind.trash ? _trashPeriod : _period) ==
+                                  period
+                              ? const Icon(Icons.check_rounded)
+                              : null,
+                      onTap: () => Navigator.pop(context, period),
+                    ),
+                ],
               ),
             ),
-            for (final period in HomePeriod.values.where(
-              (mode) => _scope == _ScopeKind.trash || mode != HomePeriod.all,
-            ))
-              ListTile(
-                title: Text(switch (period) {
-                  HomePeriod.today => '오늘',
-                  HomePeriod.week => '이번 주',
-                  HomePeriod.month => '이번 달',
-                  HomePeriod.all => '전체',
-                  HomePeriod.custom => '기간 선택',
-                }),
-                trailing:
-                    (_scope == _ScopeKind.trash ? _trashPeriod : _period) ==
-                        period
-                    ? const Icon(Icons.check_rounded)
-                    : null,
-                onTap: () => Navigator.pop(context, period),
-              ),
-          ],
-        ),
-      ),
-    );
+          );
     if (selected == null || !mounted) return;
     if (selected == HomePeriod.custom) {
       final isRange = await showModalBottomSheet<bool>(
@@ -911,11 +917,37 @@ class _MobileHomePageState extends State<MobileHomePage> {
         key: const ValueKey('home-period-chips'),
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: choices.length,
+        itemCount: choices.length + 1,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
+          if (index == choices.length) {
+            final selected =
+                _period == HomePeriod.custom && _scope == _ScopeKind.period;
+            return ChoiceChip(
+              key: const ValueKey('home-period-chip-custom'),
+              label: const Text('기간 선택'),
+              selected: selected,
+              onSelected: disabled
+                  ? null
+                  : (_) => _pickPeriod(skipPeriodMenu: true),
+              showCheckmark: false,
+              labelStyle: TextStyle(
+                color: selected
+                    ? const Color(0xFF1D5638)
+                    : const Color(0xFF353A36),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+              backgroundColor: const Color(0xFFFAF6E9),
+              selectedColor: const Color(0xFFD0DFC8),
+              side: const BorderSide(color: Color(0xFFD0DFC8)),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              shape: const StadiumBorder(),
+            );
+          }
           final (label, period) = choices[index];
-          final selected = _period == period && _scope == _ScopeKind.period;
+          final selected =
+              _period == period && _scope == _ScopeKind.period;
           return ChoiceChip(
             key: ValueKey('home-period-chip-${period.name}'),
             label: Text(label),
@@ -929,9 +961,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
             ),
             backgroundColor: const Color(0xFFFAF6E9),
             selectedColor: const Color(0xFFD0DFC8),
-            side: BorderSide(
-              color: selected ? const Color(0xFFD0DFC8) : const Color(0xFFD0DFC8),
-            ),
+            side: const BorderSide(color: Color(0xFFD0DFC8)),
             padding: const EdgeInsets.symmetric(horizontal: 8),
             shape: const StadiumBorder(),
           );

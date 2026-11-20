@@ -16,6 +16,7 @@ import '../../widgets/task_list_row.dart';
 import 'drawer_context_item.dart';
 
 enum _ScopeKind { period, all, list, tag, completed, trash, excluded }
+enum _HomeStatusFilter { all, urgent, overdue, completed }
 
 class MobileHomePage extends StatefulWidget {
   const MobileHomePage({
@@ -95,6 +96,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
   _ScopeKind _scope = _ScopeKind.period;
   String? _scopeId;
   HomePeriod _period = HomePeriod.today;
+  _HomeStatusFilter _homeStatusFilter = _HomeStatusFilter.all;
   DateTimeRange? _customRange;
   HomeViewOptions _view = const HomeViewOptions();
   HomeViewOptions _trashView = const HomeViewOptions();
@@ -787,44 +789,50 @@ class _MobileHomePageState extends State<MobileHomePage> {
     ),
   );
 
-  Future<void> _pickPeriod() async {
+  Future<void> _pickPeriod({bool skipPeriodMenu = false}) async {
     if (!widget.settingsReady || _savingPeriod) return;
-    final selected = await showModalBottomSheet<HomePeriod>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Padding(
-              padding: EdgeInsets.all(12),
-              child: Text(
-                '날짜 / 기간 선택',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+    final selected = skipPeriodMenu
+        ? HomePeriod.custom
+        : await showModalBottomSheet<HomePeriod>(
+            context: context,
+            showDragHandle: true,
+            builder: (context) => SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: Text(
+                      '날짜 / 기간 선택',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  for (final period in HomePeriod.values.where(
+                    (mode) =>
+                        _scope == _ScopeKind.trash || mode != HomePeriod.all,
+                  ))
+                    ListTile(
+                      title: Text(switch (period) {
+                        HomePeriod.today => '오늘',
+                        HomePeriod.week => '이번 주',
+                        HomePeriod.month => '이번 달',
+                        HomePeriod.all => '전체',
+                        HomePeriod.custom => '기간 선택',
+                      }),
+                      trailing:
+                          (_scope == _ScopeKind.trash ? _trashPeriod : _period) ==
+                                  period
+                              ? const Icon(Icons.check_rounded)
+                              : null,
+                      onTap: () => Navigator.pop(context, period),
+                    ),
+                ],
               ),
             ),
-            for (final period in HomePeriod.values.where(
-              (mode) => _scope == _ScopeKind.trash || mode != HomePeriod.all,
-            ))
-              ListTile(
-                title: Text(switch (period) {
-                  HomePeriod.today => '오늘',
-                  HomePeriod.week => '이번 주',
-                  HomePeriod.month => '이번 달',
-                  HomePeriod.all => '전체',
-                  HomePeriod.custom => '기간 선택',
-                }),
-                trailing:
-                    (_scope == _ScopeKind.trash ? _trashPeriod : _period) ==
-                        period
-                    ? const Icon(Icons.check_rounded)
-                    : null,
-                onTap: () => Navigator.pop(context, period),
-              ),
-          ],
-        ),
-      ),
-    );
+          );
     if (selected == null || !mounted) return;
     if (selected == HomePeriod.custom) {
       final isRange = await showModalBottomSheet<bool>(
@@ -891,6 +899,88 @@ class _MobileHomePageState extends State<MobileHomePage> {
     } else {
       await _savePeriod(selected);
     }
+  }
+
+  Widget _homeStatusChips({required bool disabled}) {
+    const choices = <(String, _HomeStatusFilter)>[
+      ('전체', _HomeStatusFilter.all),
+      ('마감 임박', _HomeStatusFilter.urgent),
+      ('마감 지남', _HomeStatusFilter.overdue),
+      ('완료', _HomeStatusFilter.completed),
+    ];
+    return SizedBox(
+      height: 38,
+      child: ListView.separated(
+        key: const ValueKey('home-status-chips'),
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: choices.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final (label, filter) = choices[index];
+          final selected = _homeStatusFilter == filter;
+          return ChoiceChip(
+            key: ValueKey('home-status-chip-${filter.name}'),
+            label: Text(label),
+            selected: selected,
+            onSelected: disabled
+                ? null
+                : (_) => setState(() => _homeStatusFilter = filter),
+            showCheckmark: false,
+            labelStyle: TextStyle(
+              color: selected ? const Color(0xFF1D5638) : const Color(0xFF353A36),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+            backgroundColor: const Color(0xFFFAF6E9),
+            selectedColor: const Color(0xFFD0DFC8),
+            side: const BorderSide(color: Color(0xFFD0DFC8)),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            shape: const StadiumBorder(),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _progressCard({required int done, required int total}) {
+    final progress = total == 0 ? 0.0 : (done / total).clamp(0.0, 1.0);
+    return Container(
+      key: const ValueKey('home-progress-card'),
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1D5638),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('전체 진행률', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                const SizedBox(height: 5),
+                Text('$done / $total 완료', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            flex: 1,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 7,
+                backgroundColor: const Color(0xFFC9D8C0),
+                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFF18A24)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _savePeriod(HomePeriod selected, {DateTimeRange? range}) async {
@@ -1083,6 +1173,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
       },
       child: Scaffold(
         key: _scaffoldKey,
+        backgroundColor: const Color(0xFFFAF6E9),
         drawer: _drawer(),
         onDrawerChanged: (open) {
           if (!open) _dismissMenus.value++;
@@ -1091,6 +1182,9 @@ class _MobileHomePageState extends State<MobileHomePage> {
         appBar: _selectionMode
             ? _selectionAppBar(selectionVisible)
             : AppBar(
+                backgroundColor: const Color(0xFFFAF6E9),
+                foregroundColor: const Color(0xFF1D5638),
+                surfaceTintColor: Colors.transparent,
                 automaticallyImplyLeading: false,
                 titleSpacing: 0,
                 leading: IconButton(
@@ -1106,7 +1200,8 @@ class _MobileHomePageState extends State<MobileHomePage> {
                       _bulkBusy ||
                           _savingPeriod ||
                           !widget.settingsReady ||
-                          isAll
+                          _scope == _ScopeKind.all ||
+                          _scope == _ScopeKind.excluded
                       ? null
                       : _pickPeriod,
                   child: Padding(
@@ -1114,18 +1209,13 @@ class _MobileHomePageState extends State<MobileHomePage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          _scopeLabel,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppTheme.muted,
-                          ),
-                        ),
                         Row(
                           children: [
                             Flexible(
                               child: Text(
-                                isAll
+                                _scope == _ScopeKind.trash
+                                    ? '휴지통'
+                                    : isAll
                                     ? '전체'
                                     : (_scope == _ScopeKind.trash
                                               ? _trashPeriod
@@ -1136,12 +1226,13 @@ class _MobileHomePageState extends State<MobileHomePage> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
-                                  fontSize: 17,
+                                  fontSize: 18,
                                   fontWeight: FontWeight.w700,
+                                  color: Color(0xFF252923),
                                 ),
                               ),
                             ),
-                            if (!isAll)
+                            if (!isAll && _scope != _ScopeKind.excluded)
                               const Icon(Icons.expand_more_rounded, size: 20),
                           ],
                         ),
@@ -1151,20 +1242,45 @@ class _MobileHomePageState extends State<MobileHomePage> {
                 ),
                 actions: [
                   IconButton(
-                    tooltip: 'eCampus 가져오기',
-                    onPressed: _bulkBusy ? null : widget.onImport,
-                    icon: const Icon(Icons.sync_rounded),
+                    tooltip: '새로고침',
+                    onPressed: _bulkBusy ? null : widget.onRefresh,
+                    icon: const Icon(Icons.refresh_rounded),
                   ),
                   IconButton(
-                    tooltip: '보기 조정',
-                    onPressed: widget.settingsReady && !_bulkBusy
-                        ? _adjustView
-                        : null,
-                    icon: Badge(
-                      isLabelVisible: !_currentView.isDefault,
-                      smallSize: 6,
-                      child: const Icon(Icons.tune_rounded),
-                    ),
+                    tooltip: '보기 조정 및 가져오기',
+                    onPressed: _bulkBusy
+                        ? null
+                        : () => showModalBottomSheet<void>(
+                            context: context,
+                            showDragHandle: true,
+                            builder: (context) => SafeArea(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  ListTile(
+                                    leading: const Icon(Icons.tune_rounded),
+                                    title: const Text('보기 조정'),
+                                    trailing: !_currentView.isDefault
+                                        ? const Icon(Icons.check_rounded)
+                                        : null,
+                                    onTap: () {
+                                      Navigator.pop(context);
+                                      _adjustView();
+                                    },
+                                  ),
+                                  ListTile(
+                                    leading: const Icon(Icons.sync_rounded),
+                                    title: const Text('eCampus 가져오기'),
+                                    onTap: () {
+                                      Navigator.pop(context);
+                                      widget.onImport();
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                    icon: const Icon(Icons.tune_rounded),
                   ),
                   const SizedBox(width: 4),
                 ],
@@ -1188,11 +1304,29 @@ class _MobileHomePageState extends State<MobileHomePage> {
           child: RefreshIndicator(
             onRefresh: () async => widget.onRefresh(),
             child: ListView(
-              padding: EdgeInsets.fromLTRB(0, _selectionMode ? 0 : 12, 0, 30),
+              padding: EdgeInsets.fromLTRB(0, _selectionMode ? 0 : 8, 0, 30),
               physics: const AlwaysScrollableScrollPhysics(),
               children: [
                 if (widget.isLoading)
                   const Center(child: CircularProgressIndicator())
+                else if (!_selectionMode && _scope == _ScopeKind.period) ...[
+                  _progressCard(
+                    done: completed.length,
+                    total: periodTasks.length + completed.length,
+                  ),
+                  _homeStatusChips(disabled: _bulkBusy || _savingPeriod),
+                  const SizedBox(height: 8),
+                  switch (_homeStatusFilter) {
+                    _HomeStatusFilter.all =>
+                      _section('전체', 'period', periodTasks),
+                    _HomeStatusFilter.urgent =>
+                      _section('마감 임박', 'urgent', urgent),
+                    _HomeStatusFilter.overdue =>
+                      _section('마감 지남', 'overdue', overdue),
+                    _HomeStatusFilter.completed =>
+                      _section('완료', 'completed', completed),
+                  },
+                ]
                 else if (_scope == _ScopeKind.excluded)
                   _section('제외된 eCampus 항목', 'excluded', matching)
                 else if (_scope == _ScopeKind.trash) ...[
@@ -1374,19 +1508,60 @@ class _MobileHomePageState extends State<MobileHomePage> {
 
   Widget _section(String title, String id, List<Task> tasks) => Padding(
     key: ValueKey('home-section-$id'),
-    padding: const EdgeInsets.only(bottom: 24),
+    padding: const EdgeInsets.only(bottom: 10),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (!_selectionMode)
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 10),
+            padding: const EdgeInsets.fromLTRB(20, 6, 20, 4),
             child: Text(
               title,
-              style: const TextStyle(fontSize: 13, color: AppTheme.muted),
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1D5638),
+              ),
             ),
           ),
-        if (tasks.isEmpty)
+        if (tasks.isEmpty &&
+            (id == 'urgent' || id == 'overdue' || id == 'completed'))
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 6, 20, 14),
+            child: Column(
+              children: [
+                SizedBox(
+                  height: 150,
+                  child: Image.asset(
+                    switch (id) {
+                      'urgent' => 'assets/images/deadline_soon.png',
+                      'overdue' => 'assets/images/empty_assignment.png',
+                      _ => 'assets/images/task_completed.png',
+                    },
+                    fit: BoxFit.contain,
+                    semanticLabel: switch (id) {
+                      'urgent' => '마감 임박 항목이 없습니다',
+                      'overdue' => '마감 지난 항목이 없습니다',
+                      _ => '완료된 항목이 없습니다',
+                    },
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  switch (id) {
+                    'urgent' => '마감 임박 항목이 없어요.',
+                    'overdue' => '마감 지난 항목이 없어요.',
+                    _ => '완료된 항목이 없어요.',
+                  },
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.muted,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else if (tasks.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
             child: Text(
@@ -1439,6 +1614,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
         subTaskRepository: widget.subTaskRepository,
         subTaskVersion: widget.subTaskVersion,
         onSubTasksChanged: widget.onSubTasksChanged,
+        cardStyle: _scope == _ScopeKind.period,
         lists: widget.lists,
         groups: widget.groups,
         tags: widget.tags,

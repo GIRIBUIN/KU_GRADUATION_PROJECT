@@ -21,7 +21,7 @@
     </queries>
 
     <application
-        android:name="${applicationName}"
+        android:name=".KuTodoApplication"
         android:icon="@mipmap/ic_launcher"
         android:label="KU Todo"
         android:networkSecurityConfig="@xml/network_security_config">

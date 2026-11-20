@@ -32,6 +32,7 @@
         <item name="android:windowIsFloating">false</item>
         <item name="android:backgroundDimEnabled">true</item>
         <item name="android:backgroundDimAmount">0.32</item>
-        <item name="android:windowDisablePreview">true</item>
+        <!-- Keep the splash/preview visible while the dedicated Flutter engine starts. -->
+        <item name="android:windowDisablePreview">false</item>
     </style>
 </resources>

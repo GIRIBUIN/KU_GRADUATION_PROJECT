@@ -1524,7 +1524,44 @@ class _MobileHomePageState extends State<MobileHomePage> {
               ),
             ),
           ),
-        if (tasks.isEmpty)
+        if (tasks.isEmpty &&
+            (id == 'urgent' || id == 'overdue' || id == 'completed'))
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 6, 20, 14),
+            child: Column(
+              children: [
+                SizedBox(
+                  height: 150,
+                  child: Image.asset(
+                    switch (id) {
+                      'urgent' => 'assets/images/deadline_soon.png',
+                      'overdue' => 'assets/images/empty_assignment.png',
+                      _ => 'assets/images/task_completed.png',
+                    },
+                    fit: BoxFit.contain,
+                    semanticLabel: switch (id) {
+                      'urgent' => '마감 임박 항목이 없습니다',
+                      'overdue' => '마감 지난 항목이 없습니다',
+                      _ => '완료된 항목이 없습니다',
+                    },
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  switch (id) {
+                    'urgent' => '마감 임박 항목이 없어요.',
+                    'overdue' => '마감 지난 항목이 없어요.',
+                    _ => '완료된 항목이 없어요.',
+                  },
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.muted,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else if (tasks.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
             child: Text(

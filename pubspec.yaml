@@ -33,6 +33,10 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/images/deadline_soon.png
+    - assets/images/task_completed.png
+    - assets/images/empty_assignment.png
 
 flutter_launcher_icons:
   android: true

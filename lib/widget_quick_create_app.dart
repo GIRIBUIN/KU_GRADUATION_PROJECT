@@ -35,6 +35,7 @@ class _WidgetQuickCreateAppState extends State<WidgetQuickCreateApp> {
   late final DriftTagRepository _tags;
   late final DriftFolderRepository _lists;
   late final WidgetUpdateService _widgets;
+  var _formGeneration = 0;
 
   @override
   void initState() {
@@ -49,6 +50,11 @@ class _WidgetQuickCreateAppState extends State<WidgetQuickCreateApp> {
       settingsRepository: DriftSettingsRepository(database: _database),
       folderRepository: _lists,
     );
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'resetForm' && mounted) {
+        setState(() => _formGeneration++);
+      }
+    });
   }
 
   @override
@@ -81,6 +87,7 @@ class _WidgetQuickCreateAppState extends State<WidgetQuickCreateApp> {
       supportedLocales: const [Locale('ko', 'KR'), Locale('en', 'US')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
       home: WidgetTaskCreateScreen(
+        key: ValueKey(_formGeneration),
         saveTask: WidgetTaskCreationService(
           database: _database,
           taskRepository: _tasks,

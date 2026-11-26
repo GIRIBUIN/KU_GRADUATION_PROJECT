@@ -16,6 +16,8 @@ import io.flutter.plugin.common.MethodChannel
 
 /** 메인 Activity를 열지 않고 두 위젯의 공통 등록 팝업을 실행한다. */
 class WidgetTaskCreateActivity : FlutterActivity() {
+    private var quickCreateChannel: MethodChannel? = null
+
     override fun getDartEntrypointFunctionName() = "widgetQuickCreate"
 
     override fun provideFlutterEngine(context: Context): FlutterEngine? =
@@ -33,14 +35,24 @@ class WidgetTaskCreateActivity : FlutterActivity() {
     // 홈 화면이 팝업 뒤로 보이도록 Flutter 배경을 투명하게 렌더링한다.
     override fun getBackgroundMode() = BackgroundMode.transparent
 
+    override fun onResume() {
+        super.onResume()
+        // The cached engine keeps Dart state after this Activity closes. Reset the form
+        // whenever the popup is shown again so a previous save cannot leave it disabled.
+        quickCreateChannel?.invokeMethod("resetForm", null)
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "ku_todo/widget_quick_create")
-            .setMethodCallHandler { call, result ->
+        quickCreateChannel = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "ku_todo/widget_quick_create",
+        ).apply {
+            setMethodCallHandler { call, result ->
                 when (call.method) {
                     // Flutter 저장 완료 신호: 메인 앱 복귀 시 목록을 다시 조회하게 한다.
                     "saved" -> {
-                        HomeWidgetPlugin.getData(this).edit()
+                        HomeWidgetPlugin.getData(this@WidgetTaskCreateActivity).edit()
                             .putBoolean(WidgetTaskCompleter.WIDGET_REFRESH_REQUIRED, true).commit()
                         result.success(null)
                     }
@@ -52,6 +64,7 @@ class WidgetTaskCreateActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+        }
     }
 
     companion object {

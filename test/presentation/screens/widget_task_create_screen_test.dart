@@ -85,13 +85,13 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('selects one list without tag or list creation controls', (
+  testWidgets('selects one list and provides the same list creation control', (
     tester,
   ) async {
     await open(tester);
     expect(find.text('태그'), findsNothing);
     expect(find.byTooltip('태그 추가'), findsNothing);
-    expect(find.byTooltip('목록 추가'), findsNothing);
+    expect(find.byTooltip('목록 추가'), findsOneWidget);
     await tester.enterText(find.byType(TextFormField), '과제');
     await tester.tap(find.widgetWithText(FilterChip, '운영체제'));
     await save(tester);
@@ -101,6 +101,40 @@ void main() {
     expect(await tags.getTags(), hasLength(1));
     expect(task.origin, TaskOrigin.personal);
     expect(saved, isTrue);
+  });
+
+  testWidgets('creates a list from the quick form and selects it for save', (
+    tester,
+  ) async {
+    await open(tester);
+    await tester.enterText(find.byType(TextFormField), '빠른 등록 일정');
+    await tester.tap(find.byTooltip('목록 추가'));
+    await tester.pumpAndSettle();
+
+    final inputs = find.descendant(
+      of: find.byType(AlertDialog),
+      matching: find.byType(TextField),
+    );
+    await tester.enterText(inputs.at(0), '새 목록');
+    await tester.enterText(inputs.at(1), '#8B5CF6');
+    await tester.tap(
+      find.descendant(of: find.byType(AlertDialog), matching: find.text('저장')),
+    );
+    await tester.pumpAndSettle();
+
+    final created = (await lists.getFolders()).singleWhere(
+      (list) => list.name == '새 목록',
+    );
+    expect(created.color, '#8B5CF6');
+    expect(
+      tester
+          .widget<FilterChip>(find.widgetWithText(FilterChip, '새 목록'))
+          .selected,
+      isTrue,
+    );
+
+    await save(tester);
+    expect((await tasks.getTasks()).single.listId, created.id);
   });
 
   testWidgets('list loading failure can retry without losing title', (

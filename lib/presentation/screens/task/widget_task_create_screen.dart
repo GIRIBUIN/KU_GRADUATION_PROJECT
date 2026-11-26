@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../data/models/task_models.dart';
+import '../../../core/utils/entity_id.dart';
 import '../../../core/utils/list_defaults.dart';
 import '../../../data/repositories/folder_repository.dart';
 import '../../../data/services/personal_task_draft.dart';
@@ -75,6 +76,44 @@ class _WidgetTaskCreateScreenState extends State<WidgetTaskCreateScreen> {
         setState(() {
           _loading = false;
           _error = '목록을 불러오지 못했습니다. 다시 시도해주세요.';
+        });
+      }
+    }
+  }
+
+  // 앱 내부의 목록 생성 다이얼로그와 Repository를 그대로 사용하고,
+  // 새 목록은 생성 직후 이 일정의 목록으로 선택한다.
+  Future<void> _createList() async {
+    final draft = await showFolderCreateDialog(context);
+    if (draft == null || !mounted) return;
+
+    try {
+      final now = widget.now();
+      final list = await widget.folderRepository.createFolder(
+        Folder(
+          id: newEntityId(),
+          name: draft.name,
+          color: draft.color,
+          sortOrder: -1,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      if (!mounted) return;
+      setState(() {
+        _lists = [..._lists, list]
+          ..sort((a, b) {
+            if (a.id == b.id) return 0;
+            if (a.id == inboxListId) return -1;
+            if (b.id == inboxListId) return 1;
+            return a.sortOrder.compareTo(b.sortOrder);
+          });
+        _selectedListId = list.id;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _error = '목록을 저장하지 못했습니다. 다시 시도해주세요.';
         });
       }
     }
@@ -226,6 +265,7 @@ class _WidgetTaskCreateScreenState extends State<WidgetTaskCreateScreen> {
                                 onSelect: (list) => setState(() {
                                   _selectedListId = list?.id ?? inboxListId;
                                 }),
+                                onAdd: _createList,
                               ),
                             ),
                           if (_error != null) ...[

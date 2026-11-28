@@ -287,9 +287,7 @@ void main() {
   }
 
   Future<void> adjust(WidgetTester tester) async {
-    await tester.tap(find.byTooltip('보기 조정 및 가져오기'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(ListTile, '보기 조정'));
+    await tester.tap(find.byTooltip('보기 조정'));
     await tester.pumpAndSettle();
   }
 
@@ -3576,13 +3574,38 @@ void main() {
     },
   );
 
+  testWidgets('view adjustment directly opens sort and filter controls', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    final button = find.byTooltip('보기 조정');
+    final badge = find.descendant(of: button, matching: find.byType(Badge));
+    expect(tester.widget<Badge>(badge).isLabelVisible, isFalse);
+    expect(find.byTooltip('새로고침'), findsNothing);
+    expect(find.byTooltip('보기 조정 및 가져오기'), findsNothing);
+
+    await adjust(tester);
+    expect(find.widgetWithText(ChoiceChip, '마감 빠른 순'), findsOneWidget);
+    expect(find.widgetWithText(FilterChip, '높음'), findsOneWidget);
+    expect(find.widgetWithText(ListTile, 'eCampus 가져오기'), findsNothing);
+    expect(find.byType(EcampusSyncProgressScreen), findsNothing);
+    await tester.tap(find.widgetWithText(ChoiceChip, '마감 빠른 순'));
+    await dismissSheet(tester);
+    expect(tester.widget<Badge>(badge).isLabelVisible, isTrue);
+    expect(tester.takeException(), isNull);
+    await finish(tester);
+  });
+
   testWidgets(
-    'import button opens eCampus import without the old step dashboard',
+    'toolbar import button directly opens eCampus import without the old step dashboard',
     (tester) async {
       await pumpApp(tester);
-      await tester.tap(find.byTooltip('보기 조정 및 가져오기'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(ListTile, 'eCampus 가져오기'));
+      final button = find.byTooltip('eCampus 가져오기');
+      expect(
+        find.descendant(of: button, matching: find.byIcon(Icons.sync_rounded)),
+        findsOneWidget,
+      );
+      await tester.tap(button);
       await tester.pump();
       expect(
         find.byType(EcampusSyncProgressScreen, skipOffstage: false),

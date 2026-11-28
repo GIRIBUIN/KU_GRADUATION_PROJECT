@@ -1230,45 +1230,20 @@ class _MobileHomePageState extends State<MobileHomePage> {
                 ),
                 actions: [
                   IconButton(
-                    tooltip: '새로고침',
-                    onPressed: _bulkBusy ? null : widget.onRefresh,
-                    icon: const Icon(Icons.refresh_rounded),
+                    tooltip: 'eCampus 가져오기',
+                    onPressed: _bulkBusy ? null : widget.onImport,
+                    icon: const Icon(Icons.sync_rounded),
                   ),
                   IconButton(
-                    tooltip: '보기 조정 및 가져오기',
-                    onPressed: _bulkBusy
-                        ? null
-                        : () => showModalBottomSheet<void>(
-                            context: context,
-                            showDragHandle: true,
-                            builder: (context) => SafeArea(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  ListTile(
-                                    leading: const Icon(Icons.tune_rounded),
-                                    title: const Text('보기 조정'),
-                                    trailing: !_currentView.isDefault
-                                        ? const Icon(Icons.check_rounded)
-                                        : null,
-                                    onTap: () {
-                                      Navigator.pop(context);
-                                      _adjustView();
-                                    },
-                                  ),
-                                  ListTile(
-                                    leading: const Icon(Icons.sync_rounded),
-                                    title: const Text('eCampus 가져오기'),
-                                    onTap: () {
-                                      Navigator.pop(context);
-                                      widget.onImport();
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                    icon: const Icon(Icons.tune_rounded),
+                    tooltip: '보기 조정',
+                    onPressed: widget.settingsReady && !_bulkBusy
+                        ? _adjustView
+                        : null,
+                    icon: Badge(
+                      isLabelVisible: !_currentView.isDefault,
+                      smallSize: 6,
+                      child: const Icon(Icons.tune_rounded),
+                    ),
                   ),
                   const SizedBox(width: 4),
                 ],

@@ -17,7 +17,7 @@ void main() {
   final monday = DateTime(2026, 11, 16);
 
   for (final now in [sunday, monday]) {
-    test('headless refresh rebuilds both DB snapshots for $now', () async {
+    test('headless refresh rebuilds all widget snapshots for $now', () async {
       final db = AppDatabase(NativeDatabase.memory());
       final tasks = DriftTaskRepository(database: db);
       for (final due in [sunday, monday]) {
@@ -32,6 +32,7 @@ void main() {
       final storage = <String, Object?>{
         'schedule_widget_data': '{"tasks":[{"title":"stale"}]}',
         'weekly_schedule_widget_data': '{"tasks":[{"title":"stale"}]}',
+        'calendar_widget_data': '{}',
         'widget_page_101': 1,
       };
       final updates = <String>[];
@@ -78,9 +79,14 @@ void main() {
         );
         expect(data['updatedAt'], now.toIso8601String());
       }
+      expect(jsonDecode(storage['calendar_widget_data'] as String), {
+        '2026-11-15': {'title': 'Sunday', 'count': 1},
+        '2026-11-16': {'title': 'Monday', 'count': 1},
+      });
       expect(updates, [
         'ScheduleWidgetProvider',
         'WeeklyScheduleWidgetProvider',
+        'CalendarWidgetProvider',
       ]);
       expect(storage['widget_page_101'], 1);
     });

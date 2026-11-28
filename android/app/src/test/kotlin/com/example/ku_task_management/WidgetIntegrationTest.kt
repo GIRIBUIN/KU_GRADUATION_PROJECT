@@ -1,6 +1,7 @@
 package com.example.ku_task_management
 
 import android.appwidget.AppWidgetManager
+import android.os.Bundle
 import android.view.View
 import android.widget.TextView
 import org.robolectric.Shadows.shadowOf
@@ -71,6 +72,11 @@ class WidgetIntegrationTest {
         val manager = AppWidgetManager.getInstance(context)
         val shadow = shadowOf(manager)
         val id = shadow.createWidget(ScheduleWidgetProvider::class.java, R.layout.schedule_widget)
+        manager.updateAppWidgetOptions(id, Bundle().apply {
+            putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 250)
+            putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 250)
+        })
+        ScheduleWidgetProvider().onUpdate(context, manager, intArrayOf(id))
         val view = shadow.getViewFor(id)
         assertEquals("운영체제", view.findViewById<TextView>(R.id.task_list_0).text.toString())
         assertEquals(View.VISIBLE, view.findViewById<TextView>(R.id.task_list_0).visibility)

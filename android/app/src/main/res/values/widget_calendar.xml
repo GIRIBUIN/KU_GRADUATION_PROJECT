@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="calendar_widget_title">월간 캘린더</string>
+    <string name="calendar_widget_description">이번 달 일정을 홈 화면에서 확인할 수 있습니다.</string>
+    <string name="widget_calendar_month_format">%1$s년 %2$d월</string>
+    <string name="widget_calendar_day_events">%1$d월 %2$d일, 일정 %3$d개</string>
+    <string name="widget_weekday_monday">월</string>
+    <string name="widget_weekday_tuesday">화</string>
+    <string name="widget_weekday_wednesday">수</string>
+    <string name="widget_weekday_thursday">목</string>
+    <string name="widget_weekday_friday">금</string>
+    <string name="widget_weekday_saturday">토</string>
+    <string name="widget_weekday_sunday">일</string>
+
+    <style name="WidgetCalendarWeekday">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textColor">@color/widget_muted</item>
+        <item name="android:textSize">11sp</item>
+    </style>
+</resources>

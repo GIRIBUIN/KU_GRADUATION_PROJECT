@@ -1,0 +1,50 @@
+name: KU Todo Android test APK
+on:
+  push:
+    branches: [build/android-apk-a65429a3]
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.7'
+          channel: stable
+      - name: Build arm64 Android APK
+        run: |
+          flutter pub get
+          flutter test --no-pub test/data/services/widget_background_refresh_test.dart test/data/services/widget_update_service_test.dart test/data/services/widget_registration_refresh_test.dart
+          flutter build apk --debug --no-pub --target-platform android-arm64 --build-number 6
+          mkdir -p deliverable
+          cp build/app/outputs/flutter-apk/app-debug.apk deliverable/KUTODO-widgets-4x3-android-arm64.apk
+      - name: Verify widget layouts and interactions
+        working-directory: android
+        run: |
+          bash ./gradlew :app:testDebugUnitTest --tests '*WidgetResizeTest' --tests '*WidgetIntegrationTest' --tests '*WidgetDateRefreshTest' || {
+            grep -h '<failure ' ../build/app/test-results/testDebugUnitTest/*.xml || true
+            exit 1
+          }
+      - name: Verify Android package and signature
+        run: |
+          tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
+          apk=deliverable/KUTODO-widgets-4x3-android-arm64.apk
+          "$tools/apksigner" verify --print-certs "$apk"
+          "$tools/aapt" dump badging "$apk" | grep -E '^(package|sdkVersion|targetSdkVersion|native-code):'
+          "$tools/aapt" dump xmltree "$apk" AndroidManifest.xml | grep -F CalendarWidgetProvider
+          sha256sum "$apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KUTODO-widgets-4x3-android-arm64
+          path: deliverable/*.apk
+          if-no-files-found: error
+          retention-days: 3

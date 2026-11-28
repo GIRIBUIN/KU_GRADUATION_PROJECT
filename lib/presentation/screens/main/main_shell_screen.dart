@@ -57,6 +57,7 @@ class _MainShellScreenState extends State<MainShellScreen>
   var _selectedIndex = 0;
   final _metadataManagerKey = GlobalKey<_ManagementPageState>();
   Timer? _clockRefreshTimer;
+  StreamSubscription<Uri?>? _widgetLaunchSubscription;
   late Future<List<Task>> _tasksFuture;
   late Future<AppSettings> _settingsFuture;
   late Future<_TaskMetadataLookup> _metadataFuture;
@@ -85,6 +86,7 @@ class _MainShellScreenState extends State<MainShellScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _clockRefreshTimer?.cancel();
+    _widgetLaunchSubscription?.cancel();
     super.dispose();
   }
 
@@ -149,20 +151,28 @@ class _MainShellScreenState extends State<MainShellScreen>
 
   Future<void> _listenForWidgetLaunch() async {
     final launchedUri = await HomeWidget.initiallyLaunchedFromHomeWidget();
-    if (launchedUri != null) {
-      _openHomeFromWidget();
+    if (!mounted) {
+      return;
     }
-    HomeWidget.widgetClicked.listen((_) {
-      _openHomeFromWidget();
-    });
+    if (launchedUri != null) {
+      _openFromWidget(launchedUri);
+    }
+    _widgetLaunchSubscription = HomeWidget.widgetClicked.listen(
+      _openFromWidget,
+    );
   }
 
-  void _openHomeFromWidget() {
+  void _openFromWidget(Uri? uri) {
     if (!mounted) {
       return;
     }
     setState(() {
-      _selectedIndex = 0;
+      _selectedIndex =
+          uri?.scheme == 'kutodo' &&
+              uri?.host == 'widget' &&
+              uri?.path == '/calendar'
+          ? 1
+          : 0;
     });
   }
 

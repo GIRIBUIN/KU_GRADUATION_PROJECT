@@ -147,18 +147,6 @@ class _MobileHomePageState extends State<MobileHomePage> {
     );
   }
 
-  String get _scopeLabel => switch (_scope) {
-    _ScopeKind.period || _ScopeKind.all => '할 일',
-    _ScopeKind.list =>
-      widget.lists.where((l) => l.id == _scopeId).firstOrNull?.name ??
-          inboxListName,
-    _ScopeKind.tag =>
-      '#${widget.tags.where((t) => t.id == _scopeId).firstOrNull?.name ?? '태그'}',
-    _ScopeKind.completed => '완료',
-    _ScopeKind.trash => '휴지통',
-    _ScopeKind.excluded => '제외된 eCampus 항목',
-  };
-
   HomeViewOptions get _currentView => switch (_scope) {
     _ScopeKind.trash => _trashView,
     _ScopeKind.excluded => _excludedView,
@@ -915,7 +903,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         itemCount: choices.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final (label, filter) = choices[index];
           final selected = _homeStatusFilter == filter;

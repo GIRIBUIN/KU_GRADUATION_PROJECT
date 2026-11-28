@@ -25,6 +25,8 @@
                 android:id="@+id/widget_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
                 android:text="@string/weekly_schedule_widget_header_title"
                 android:textColor="@color/widget_ink"
                 android:textSize="17sp"
@@ -41,6 +43,7 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/widget_progress_group"
             android:layout_width="88dp"
             android:layout_height="wrap_content"
             android:orientation="vertical">
@@ -452,19 +455,24 @@
         android:orientation="horizontal">
         <Button
             android:id="@+id/widget_previous"
-            android:layout_width="72dp"
+            android:layout_width="wrap_content"
             android:layout_height="40dp"
+            android:minWidth="44dp"
+            android:paddingHorizontal="6dp"
             android:text="@string/widget_previous" />
         <TextView
             android:id="@+id/widget_page"
-            android:layout_width="64dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:gravity="center"
+            android:minWidth="38dp"
             android:textColor="@color/widget_muted" />
         <Button
             android:id="@+id/widget_next"
-            android:layout_width="72dp"
+            android:layout_width="wrap_content"
             android:layout_height="40dp"
+            android:minWidth="44dp"
+            android:paddingHorizontal="6dp"
             android:text="@string/widget_next" />
     </LinearLayout>
 </LinearLayout>

@@ -4,6 +4,8 @@
     android:initialLayout="@layout/weekly_schedule_widget"
     android:minWidth="294dp"
     android:minHeight="220dp"
+    android:minResizeWidth="160dp"
+    android:minResizeHeight="110dp"
     android:previewLayout="@layout/weekly_schedule_widget"
     android:resizeMode="horizontal|vertical"
     android:targetCellWidth="4"

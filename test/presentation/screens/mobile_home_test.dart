@@ -287,7 +287,9 @@ void main() {
   }
 
   Future<void> adjust(WidgetTester tester) async {
-    await tester.tap(find.byTooltip('보기 조정'));
+    await tester.tap(find.byTooltip('보기 조정 및 가져오기'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, '보기 조정'));
     await tester.pumpAndSettle();
   }
 
@@ -396,10 +398,16 @@ void main() {
   }
 
   testWidgets(
-    'home defaults to today with four plain sections and empty states',
+    'home defaults to today with status chips, progress and empty states',
     (tester) async {
       await pumpApp(tester);
-      for (final section in ['period', 'urgent', 'overdue', 'completed']) {
+      expect(find.byKey(const ValueKey('home-progress-card')), findsOneWidget);
+      for (final (section, chip) in [
+        ('period', 'all'), ('urgent', 'urgent'),
+        ('overdue', 'overdue'), ('completed', 'completed'),
+      ]) {
+        await tester.tap(find.byKey(ValueKey('home-status-chip-$chip')));
+        await tester.pumpAndSettle();
         expect(find.byKey(ValueKey('home-section-$section')), findsOneWidget);
         expect(
           find.descendant(
@@ -410,7 +418,7 @@ void main() {
         );
       }
       expect(find.textContaining('오늘 ·'), findsOneWidget);
-      expect(find.text('할 일이 없습니다.'), findsNWidgets(4));
+      expect(find.text('완료된 항목이 없어요.'), findsOneWidget);
       expect(find.byType(FloatingActionButton), findsNothing);
       expect(find.byType(NavigationDestination), findsNWidgets(3));
       for (final (id, label) in [
@@ -435,7 +443,10 @@ void main() {
       await tester.pumpAndSettle();
       await chooseScope(tester, 'all');
       expect(find.byKey(const ValueKey('home-section-period')), findsOneWidget);
-      expect(find.text('할 일이 없습니다.'), findsNWidgets(4));
+      expect(find.text('할 일이 없습니다.'), findsOneWidget);
+      expect(find.text('마감 임박 항목이 없어요.'), findsOneWidget);
+      expect(find.text('마감 지난 항목이 없어요.'), findsOneWidget);
+      expect(find.text('완료된 항목이 없어요.'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await finish(tester);
     },
@@ -548,7 +559,7 @@ void main() {
   );
 
   testWidgets(
-    'task backgrounds span the viewport in home, completed, trash, excluded and calendar',
+    'home uses inset cards while archive and calendar rows retain full width',
     (tester) async {
       tester.view.physicalSize = const Size(360, 1000);
       tester.view.devicePixelRatio = 1;
@@ -582,12 +593,14 @@ void main() {
       }
 
       await pumpApp(tester);
-      expectFullWidth(row('edge-active'));
+      final homeRect = tester.getRect(row('edge-active'));
+      expect(homeRect.left, closeTo(17.2, .01));
+      expect(homeRect.right, closeTo(342.8, .01));
       final time = find.descendant(
         of: row('edge-active'),
         matching: find.text('23:59'),
       );
-      expect(tester.getRect(time).right, closeTo(344, .01));
+      expect(tester.getRect(time).right, closeTo(330.8, .01));
       await chooseScope(tester, 'completed');
       expectFullWidth(row('edge-completed', 'completed'));
       await chooseScope(tester, 'trash');
@@ -659,7 +672,7 @@ void main() {
       await tester.tap(find.byTooltip('작업 상세 닫기'));
       await tester.pumpAndSettle();
       await chooseScope(tester, 'period');
-      expect(find.text('이번 주'), findsNWidgets(2));
+      expect(find.descendant(of: find.byKey(const ValueKey('home-period')), matching: find.text('이번 주')), findsOneWidget);
       expect(row('먼 마감'), findsNothing);
       expect(row('과거 완료', 'completed'), findsNothing);
       expect(tester.takeException(), isNull);
@@ -682,7 +695,7 @@ void main() {
         if (mode == HomePeriod.today) {
           expect(find.textContaining('오늘 ·'), findsOneWidget);
         } else {
-          expect(find.text(label), findsNWidgets(2));
+          expect(find.descendant(of: find.byKey(const ValueKey('home-period')), matching: find.text(label)), findsOneWidget);
         }
       }
       await adjust(tester);
@@ -692,7 +705,7 @@ void main() {
       await choosePeriod(tester, '이번 주');
       expect((await settings.getSettings()).homeView.isDefault, isTrue);
       await restart(tester);
-      expect(find.text('이번 주'), findsNWidgets(2));
+      expect(find.descendant(of: find.byKey(const ValueKey('home-period')), matching: find.text('이번 주')), findsOneWidget);
       expect((await settings.getSettings()).homeView.isDefault, isTrue);
       expect(tester.takeException(), isNull);
       await finish(tester);
@@ -711,7 +724,7 @@ void main() {
     failing.failSave = false;
     await choosePeriod(tester, '이번 달');
     await restart(tester);
-    expect(find.text('이번 달'), findsNWidgets(2));
+    expect(find.descendant(of: find.byKey(const ValueKey('home-period')), matching: find.text('이번 달')), findsOneWidget);
     expect((await settings.getSettings()).homePeriod.mode, HomePeriod.month);
     expect(tester.takeException(), isNull);
     await finish(tester);
@@ -842,7 +855,7 @@ void main() {
       expect(
         find.descendant(
           of: find.byKey(const ValueKey('home-period')),
-          matching: find.text('전체'),
+          matching: find.text('휴지통'),
         ),
         findsOneWidget,
       );
@@ -852,7 +865,7 @@ void main() {
       await chooseScope(tester, 'trash');
       expect(row('오래된 휴지통', 'trash'), findsOneWidget);
       await chooseScope(tester, 'period');
-      expect(find.text('이번 주'), findsNWidgets(2));
+      expect(find.descendant(of: find.byKey(const ValueKey('home-period')), matching: find.text('이번 주')), findsOneWidget);
       await chooseScope(tester, 'trash');
       expect(row('오래된 휴지통', 'trash'), findsOneWidget);
       await choosePeriod(tester, '이번 달');
@@ -988,8 +1001,7 @@ void main() {
         tester.widget<InkWell>(find.byKey(const ValueKey('home-period'))).onTap,
         isNull,
       );
-      await tester.tap(find.byTooltip('보기 조정'));
-      await tester.pumpAndSettle();
+      await adjust(tester);
       expect(find.text('상태'), findsNothing);
       expect(find.byType(FilterChip), findsNothing);
       expect(find.text('저장'), findsNothing);
@@ -1002,8 +1014,7 @@ void main() {
         tester.getTopLeft(row('late-source', 'excluded')).dy,
         lessThan(tester.getTopLeft(row('early-source', 'excluded')).dy),
       );
-      await tester.tap(find.byTooltip('보기 조정'));
-      await tester.pumpAndSettle();
+      await adjust(tester);
       await tester.tap(find.widgetWithText(ChoiceChip, '마감 빠른 순'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('닫기'));
@@ -1023,8 +1034,7 @@ void main() {
       await tester.ensureVisible(find.byKey(const ValueKey('drawer-excluded')));
       await tester.tap(find.byKey(const ValueKey('drawer-excluded')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('보기 조정'));
-      await tester.pumpAndSettle();
+      await adjust(tester);
       expect(
         tester
             .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, '기본'))
@@ -1775,7 +1785,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(row('학교 과제'), findsNothing);
       expect(row('개인 일정'), findsOneWidget);
-      expect(find.text('이번 주'), findsNWidgets(2));
+      expect(find.descendant(of: find.byKey(const ValueKey('home-period')), matching: find.text('이번 주')), findsOneWidget);
       await chooseScope(tester, 'list', inboxListId);
       expect(row('개인 일정'), findsOneWidget);
       await chooseScope(tester, 'period');
@@ -2307,16 +2317,16 @@ void main() {
         expect(row('구간 이전'), findsNothing);
         expect(row('구간 이후'), findsNothing);
         final label = endDay == 12 ? '2030년 11월 12일' : '2030.11.12 ~ 11.14';
-        expect(find.text(label), findsNWidgets(2));
+        expect(find.descendant(of: find.byKey(const ValueKey('home-period')), matching: find.text(label)), findsOneWidget);
         await capture(tester, endDay == 12 ? 'same-day' : 'range');
         await tester.tap(find.byKey(const ValueKey('nav-calendar')));
         await tester.pumpAndSettle();
         await tester.tap(find.byKey(const ValueKey('nav-home')));
         await tester.pumpAndSettle();
         expect(row('구간 끝'), findsOneWidget);
-        expect(find.text(label), findsNWidgets(2));
+        expect(find.descendant(of: find.byKey(const ValueKey('home-period')), matching: find.text(label)), findsOneWidget);
         await restart(tester);
-        expect(find.text(label), findsNWidgets(2));
+        expect(find.descendant(of: find.byKey(const ValueKey('home-period')), matching: find.text(label)), findsOneWidget);
         expect(row('구간 시작'), findsOneWidget);
         expect(row('구간 끝'), findsOneWidget);
         expect(row('구간 이전'), findsNothing);
@@ -2334,13 +2344,13 @@ void main() {
     await choosePeriod(tester, '이번 주');
     await choosePeriod(tester, '기간 선택');
     await dismissSheet(tester);
-    expect(find.text('이번 주'), findsNWidgets(2));
+    expect(find.descendant(of: find.byKey(const ValueKey('home-period')), matching: find.text('이번 주')), findsOneWidget);
     await choosePeriod(tester, '기간 선택');
     await tester.tap(find.text('날짜 구간'));
     await tester.pumpAndSettle();
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
-    expect(find.text('이번 주'), findsNWidgets(2));
+    expect(find.descendant(of: find.byKey(const ValueKey('home-period')), matching: find.text('이번 주')), findsOneWidget);
     expect(tester.takeException(), isNull);
     await finish(tester);
   });
@@ -2352,7 +2362,7 @@ void main() {
     await pumpApp(tester);
     await choosePeriod(tester, '이번 달');
     await restart(tester);
-    expect(find.text('이번 달'), findsNWidgets(2));
+    expect(find.descendant(of: find.byKey(const ValueKey('home-period')), matching: find.text('이번 달')), findsOneWidget);
     expect(row('선택 날짜 일정'), findsNothing);
     await choosePeriod(tester, '기간 선택');
     await tester.tap(find.text('단일 날짜'));
@@ -2362,15 +2372,15 @@ void main() {
     await tester.enterText(find.byType(TextField), '2030. 11. 12.');
     await tester.tap(find.text('확인'));
     await tester.pumpAndSettle();
-    expect(find.text('2030년 11월 12일'), findsNWidgets(2));
+    expect(find.descendant(of: find.byKey(const ValueKey('home-period')), matching: find.text('2030년 11월 12일')), findsOneWidget);
     expect(row('선택 날짜 일정'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('nav-calendar')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('nav-home')));
     await tester.pumpAndSettle();
-    expect(find.text('2030년 11월 12일'), findsNWidgets(2));
+    expect(find.descendant(of: find.byKey(const ValueKey('home-period')), matching: find.text('2030년 11월 12일')), findsOneWidget);
     await restart(tester);
-    expect(find.text('2030년 11월 12일'), findsNWidgets(2));
+    expect(find.descendant(of: find.byKey(const ValueKey('home-period')), matching: find.text('2030년 11월 12일')), findsOneWidget);
     expect(row('선택 날짜 일정'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await finish(tester);
@@ -2449,7 +2459,7 @@ void main() {
         TaskPriority.high,
       });
       await restart(tester);
-      expect(find.text('이번 주'), findsNWidgets(2));
+      expect(find.descendant(of: find.byKey(const ValueKey('home-period')), matching: find.text('이번 주')), findsOneWidget);
       expect(row('일반 일정'), findsNothing);
       expect(row('중요 과제'), findsOneWidget);
       await adjust(tester);
@@ -2971,7 +2981,8 @@ void main() {
           expect(selectionCount(1), findsOneWidget);
           expect(
             tester.getTopLeft(row('archive-0', section)).dy,
-            lessThanOrEqualTo(normalRowTop + 8),
+            // The compact section label is replaced by the 48px select-all bar.
+            lessThanOrEqualTo(normalRowTop + 16),
           );
           expect(tester.widget<Checkbox>(checkbox).value, isTrue);
           expect(find.byType(TaskDetailScreen), findsNothing);
@@ -3569,7 +3580,9 @@ void main() {
     'import button opens eCampus import without the old step dashboard',
     (tester) async {
       await pumpApp(tester);
-      await tester.tap(find.byTooltip('eCampus 가져오기'));
+      await tester.tap(find.byTooltip('보기 조정 및 가져오기'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ListTile, 'eCampus 가져오기'));
       await tester.pump();
       expect(
         find.byType(EcampusSyncProgressScreen, skipOffstage: false),

@@ -38,8 +38,11 @@ object WidgetDateRefresh {
 
     fun hasWidgets(context: Context): Boolean {
         val manager = AppWidgetManager.getInstance(context)
-        return listOf(ScheduleWidgetProvider::class.java, WeeklyScheduleWidgetProvider::class.java)
-            .any { manager.getAppWidgetIds(ComponentName(context, it)).isNotEmpty() }
+        return listOf(
+            ScheduleWidgetProvider::class.java,
+            WeeklyScheduleWidgetProvider::class.java,
+            CalendarWidgetProvider::class.java,
+        ).any { manager.getAppWidgetIds(ComponentName(context, it)).isNotEmpty() }
     }
 
     private fun alarmIntent(context: Context): PendingIntent = PendingIntent.getBroadcast(

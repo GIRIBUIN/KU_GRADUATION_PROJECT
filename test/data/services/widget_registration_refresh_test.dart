@@ -216,7 +216,7 @@ void main() {
     test('malformed pending queue $raw does not prevent refresh', () async {
       storage[WidgetUpdateService.widgetPendingCompletionsKey] = raw;
       await widgets.refresh();
-      expect(updates, hasLength(2));
+      expect(updates, hasLength(3));
       expect(storage[WidgetUpdateService.widgetPendingCompletionsKey], isNull);
     });
   }
@@ -258,6 +258,7 @@ void main() {
         expect(updates, [
           'ScheduleWidgetProvider',
           'WeeklyScheduleWidgetProvider',
+          'CalendarWidgetProvider',
         ]);
         expect(storage['widget_page_101'], 1);
         expect(storage['widget_page_102'], 0);
@@ -287,7 +288,7 @@ void main() {
         jsonDecode(storage[WeeklyWidgetData.storageKey] as String)['tasks'],
         isEmpty,
       );
-      expect(updates, hasLength(2));
+      expect(updates, hasLength(3));
     },
   );
 

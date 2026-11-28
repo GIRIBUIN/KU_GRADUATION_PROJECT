@@ -262,14 +262,19 @@ void main() {
   );
 
   testWidgets(
-    'new home sections remain available with legacy layouts; calendar has its own tab',
+    'home status sections remain available with legacy layouts; calendar has its own tab',
     (tester) async {
       repositories.settings = repositories.settings.copyWith(
         homeSectionOrder: HomeSection.values.reversed.toList(),
         hiddenHomeSections: HomeSection.values.toSet(),
       );
       await pumpApp(tester);
-      for (final id in ['period', 'urgent', 'overdue', 'completed']) {
+      for (final (id, chip) in [
+        ('period', 'all'), ('urgent', 'urgent'),
+        ('overdue', 'overdue'), ('completed', 'completed'),
+      ]) {
+        await tester.tap(find.byKey(ValueKey('home-status-chip-$chip')));
+        await tester.pumpAndSettle();
         expect(find.byKey(ValueKey('home-section-$id')), findsOneWidget);
       }
       expect(find.byType(HomeCalendarSection), findsNothing);
